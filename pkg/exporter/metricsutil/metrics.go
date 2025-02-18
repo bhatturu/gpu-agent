@@ -109,6 +109,13 @@ func (mh *MetricsHandler) GetMetricsConfig() *exportermetrics.GPUMetricConfig {
 	}
 	return nil
 }
+func (mh *MetricsHandler) GetNICMetricsConfig() *exportermetrics.NICMetricConfig {
+	config := mh.runConf.GetConfig()
+	if config != nil {
+		return config.GetNICConfig()
+	}
+	return nil
+}
 
 func (mh *MetricsHandler) GetAgentAddr() string {
 	return mh.runConf.GetAgentAddr()
