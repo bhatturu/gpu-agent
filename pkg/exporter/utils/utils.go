@@ -19,9 +19,11 @@ package utils
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/globals"
+	"github.com/ROCm/device-metrics-exporter/pkg/exporter/logger"
 )
 
 const (
@@ -111,4 +113,13 @@ func GetHostName() (string, error) {
 		}
 	}
 	return hostname, nil
+}
+
+func StringToUint64(str string) uint64 {
+	val, err := strconv.ParseUint(str, 10, 64)
+	if err != nil {
+		logger.Log.Printf("error converting string to uint64, err: %v", err)
+		return 0
+	}
+	return val
 }
