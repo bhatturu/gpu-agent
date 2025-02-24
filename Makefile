@@ -1,7 +1,11 @@
 TO_GEN := pkg/amdgpu/proto pkg/exporter/proto
 TO_MOCK := pkg/amdgpu/mock
 OUT_DIR := bin
-export BUILD_CONTAINER ?= registry.test.pensando.io:5000/metrics-exporter-bld:1
+export BUILD_CONTAINER ?= registry.test.pensando.io:5000/metrics-exporter-bld:2
+CUR_USER:=$(shell whoami)
+CUR_TIME:=$(shell date +%Y-%m-%d_%H.%M.%S)
+CONTAINER_NAME:=${CUR_USER}_exporter-bld
+CONTAINER_WORKDIR := /import/src/github.com/pensando/device-metrics-exporter
 
 TOP_DIR := $(PWD)
 GEN_DIR := $(TOP_DIR)/pkg/amdgpu/
@@ -211,11 +215,36 @@ mod:
 	@go mod tidy
 	@go mod vendor
 
+.PHONY: docker-shell
 docker-shell:
-	docker run -it --user $(shell id -u):$(shell id -g) --privileged -e "GIT_COMMIT=${GIT_COMMIT}" -e "GIT_VERSION=${GIT_VERSION}" -e "BUILD_DATE=${BUILD_DATE}" -e "GOPATH=/import" -e GOCACHE=/import/src/github.com/pensando/device-metrics-exporter/.cache --rm -v${PWD}/../../../../:/import/ -w /import/src/github.com/pensando/device-metrics-exporter ${BUILD_CONTAINER} bash
+	docker run --rm -it --privileged \
+		--name ${CONTAINER_NAME} \
+		-e "USER_NAME=$(shell whoami)" \
+		-e "USER_UID=$(shell id -u)" \
+		-e "USER_GID=$(shell id -g)" \
+		-e "GIT_COMMIT=${GIT_COMMIT}" \
+		-e "GIT_VERSION=${GIT_VERSION}" \
+		-e "BUILD_DATE=${BUILD_DATE}" \
+		-v $(CURDIR):$(CONTAINER_WORKDIR) \
+		-v $(HOME)/.ssh:/home/$(shell whoami)/.ssh \
+		-w $(CONTAINER_WORKDIR) \
+		$(BUILD_CONTAINER) \
+		bash -c "cd $(CONTAINER_WORKDIR) && git config --global --add safe.directory $(CONTAINER_WORKDIR) && bash"
 
 docker-compile:
-	docker run --user $(shell id -u):$(shell id -g) --privileged -e "GIT_COMMIT=${GIT_COMMIT}" -e "GIT_VERSION=${GIT_VERSION}" -e "BUILD_DATE=${BUILD_DATE}" -e "GOPATH=/import" -e GOCACHE=/import/src/github.com/pensando/device-metrics-exporter/.cache --rm -v${PWD}/../../../../:/import/ ${BUILD_CONTAINER} bash -c "cd /import/src/github.com/pensando/device-metrics-exporter && make all"
+	docker run --rm -it --privileged \
+		--name ${CONTAINER_NAME} \
+		-e "USER_NAME=$(shell whoami)" \
+		-e "USER_UID=$(shell id -u)" \
+		-e "USER_GID=$(shell id -g)" \
+		-e "GIT_COMMIT=${GIT_COMMIT}" \
+		-e "GIT_VERSION=${GIT_VERSION}" \
+		-e "BUILD_DATE=${BUILD_DATE}" \
+		-v $(CURDIR):$(CONTAINER_WORKDIR) \
+		-v $(HOME)/.ssh:/home/$(shell whoami)/.ssh \
+		-w $(CONTAINER_WORKDIR) \
+		$(BUILD_CONTAINER) \
+		bash -c "cd $(CONTAINER_WORKDIR) && source ~/.bashrc && make all"
 
 .PHONY: base-image
 base-image:
@@ -247,4 +276,10 @@ helm-build: helm-lint
 
 .PHONY: slurm-sim
 slurm-sim:
-	${MAKE} -C pkg/amdgpu/scheduler/slurmsim TOP_DIR=$(CURDIR)
+	${MAKE} -C pkg/exporter/scheduler/slurmsim TOP_DIR=$(CURDIR)
+
+# create development build container only if there is changes done on
+# tools/base-image/Dockerfile
+.PHONY: build-dev-container
+build-dev-container:
+	${MAKE} -C tools/base-image all
