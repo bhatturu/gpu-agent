@@ -108,6 +108,18 @@ type metrics struct {
 	rdmaRespTxLocSglInvErr   prometheus.GaugeVec
 
 	rdmaRespRxS0TableErr prometheus.GaugeVec
+
+	//LifStats
+	nicLifStatsRxUnicastPackets       prometheus.GaugeVec
+	nicLifStatsRxUnicastDropPackets   prometheus.GaugeVec
+	nicLifStatsRxMulticastDropPackets prometheus.GaugeVec
+	nicLifStatsRxBroadcastDropPackets prometheus.GaugeVec
+	nicLifStatsRxDMAError             prometheus.GaugeVec
+	nicLifStatsTxUnicastPackets       prometheus.GaugeVec
+	nicLifStatsTxUnicastDropPackets   prometheus.GaugeVec
+	nicLifStatsTxMulticastDropPackets prometheus.GaugeVec
+	nicLifStatsTxBroadcastDropPackets prometheus.GaugeVec
+	nicLifStatsTxDMAError             prometheus.GaugeVec
 }
 
 func (na *NICAgentClient) ResetMetrics() error {
@@ -172,6 +184,17 @@ func (na *NICAgentClient) ResetMetrics() error {
 	na.m.rdmaRespTxLocSglInvErr.Reset()
 
 	na.m.rdmaRespRxS0TableErr.Reset()
+
+	na.m.nicLifStatsRxUnicastPackets.Reset()
+	na.m.nicLifStatsRxUnicastDropPackets.Reset()
+	na.m.nicLifStatsRxMulticastDropPackets.Reset()
+	na.m.nicLifStatsRxBroadcastDropPackets.Reset()
+	na.m.nicLifStatsRxDMAError.Reset()
+	na.m.nicLifStatsTxUnicastPackets.Reset()
+	na.m.nicLifStatsTxUnicastDropPackets.Reset()
+	na.m.nicLifStatsTxMulticastDropPackets.Reset()
+	na.m.nicLifStatsTxBroadcastDropPackets.Reset()
+	na.m.nicLifStatsTxDMAError.Reset()
 
 	return nil
 }
@@ -362,6 +385,17 @@ func (na *NICAgentClient) initFieldMetricsMap() {
 		na.m.rdmaRespTxLocSglInvErr,
 
 		na.m.rdmaRespRxS0TableErr,
+
+		na.m.nicLifStatsRxUnicastPackets,
+		na.m.nicLifStatsRxUnicastDropPackets,
+		na.m.nicLifStatsRxMulticastDropPackets,
+		na.m.nicLifStatsRxBroadcastDropPackets,
+		na.m.nicLifStatsRxDMAError,
+		na.m.nicLifStatsTxUnicastPackets,
+		na.m.nicLifStatsTxUnicastDropPackets,
+		na.m.nicLifStatsTxMulticastDropPackets,
+		na.m.nicLifStatsTxBroadcastDropPackets,
+		na.m.nicLifStatsTxDMAError,
 	}
 }
 
@@ -378,6 +412,7 @@ func (na *NICAgentClient) initPrometheusMetrics() {
 			Help: "Maximum NIC speed in Gbps",
 		}, labels),
 
+		/* Port stats */
 		nicPortStatsFramesRxBadFcs: *prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: strings.ToLower(exportermetrics.NICMetricField_NIC_PORT_STATS_FRAMES_RX_BAD_FCS.String()),
 			Help: "Bad frames received due to a Frame Check Sequence (FCS) error on a network port",
@@ -470,9 +505,10 @@ func (na *NICAgentClient) initPrometheusMetrics() {
 
 		nicPortStatsRsfecChSymbolErrCnt: *prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: strings.ToLower(exportermetrics.NICMetricField_NIC_PORT_STATS_RSFEC_CH_SYMBOL_ERR_CNT.String()),
-			Help: "Total count of channel symbol errors detected by the RS-FEC (Reed-Solomon Forward Error Correction) mechanism.",
+			Help: "Total count of channel symbol errors detected by the RS-FEC (Reed-Solomon Forward Error Correction) mechanism",
 		}, append([]string{LabelPortName, LabelPortID}, labels...)),
 
+		/* RDMA stats */
 		rdmaTxUcastPkts: *prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: strings.ToLower(exportermetrics.NICMetricField_RDMA_TX_UCAST_PKTS.String()),
 			Help: "Tx RDMA Unicast Packets",
@@ -652,6 +688,57 @@ func (na *NICAgentClient) initPrometheusMetrics() {
 			Name: strings.ToLower(exportermetrics.NICMetricField_RDMA_RESP_RX_S0_TABLE_ERR.String()),
 			Help: "Response rx S0 Table error count",
 		}, append([]string{LabelRdmaIfName, LabelRdmaNetDev}, labels...)),
+
+		/* Lif stats */
+		nicLifStatsRxUnicastPackets: *prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: strings.ToLower(exportermetrics.NICMetricField_NIC_LIF_STATS_RX_UNICAST_PACKETS.String()),
+			Help: "Total number of unicast packets received by the NIC",
+		}, append([]string{LabelPortName, LabelLifName}, labels...)),
+
+		nicLifStatsRxUnicastDropPackets: *prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: strings.ToLower(exportermetrics.NICMetricField_NIC_LIF_STATS_RX_UNICAST_DROP_PACKETS.String()),
+			Help: "Number of unicast packets that were dropped during reception",
+		}, append([]string{LabelPortName, LabelLifName}, labels...)),
+
+		nicLifStatsRxMulticastDropPackets: *prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: strings.ToLower(exportermetrics.NICMetricField_NIC_LIF_STATS_RX_MULTICAST_DROP_PACKETS.String()),
+			Help: "Number of multicast packets that were dropped during reception",
+		}, append([]string{LabelPortName, LabelLifName}, labels...)),
+
+		nicLifStatsRxBroadcastDropPackets: *prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: strings.ToLower(exportermetrics.NICMetricField_NIC_LIF_STATS_RX_BROADCAST_DROP_PACKETS.String()),
+			Help: "Number of broadcast packets that were dropped during reception",
+		}, append([]string{LabelPortName, LabelLifName}, labels...)),
+
+		nicLifStatsRxDMAError: *prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: strings.ToLower(exportermetrics.NICMetricField_NIC_LIF_STATS_RX_DMA_ERROR.String()),
+			Help: "Number of errors encountered while performing Direct Memory Access (DMA) during packet reception",
+		}, append([]string{LabelPortName, LabelLifName}, labels...)),
+
+		nicLifStatsTxUnicastPackets: *prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: strings.ToLower(exportermetrics.NICMetricField_NIC_LIF_STATS_TX_UNICAST_PACKETS.String()),
+			Help: "Total number of unicast packets transmitted by the NIC",
+		}, append([]string{LabelPortName, LabelLifName}, labels...)),
+
+		nicLifStatsTxUnicastDropPackets: *prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: strings.ToLower(exportermetrics.NICMetricField_NIC_LIF_STATS_TX_UNICAST_DROP_PACKETS.String()),
+			Help: "Number of unicast packets that were dropped during transmission",
+		}, append([]string{LabelPortName, LabelLifName}, labels...)),
+
+		nicLifStatsTxMulticastDropPackets: *prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: strings.ToLower(exportermetrics.NICMetricField_NIC_LIF_STATS_TX_MULTICAST_DROP_PACKETS.String()),
+			Help: "Number of multicast packets that were dropped during transmission",
+		}, append([]string{LabelPortName, LabelLifName}, labels...)),
+
+		nicLifStatsTxBroadcastDropPackets: *prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: strings.ToLower(exportermetrics.NICMetricField_NIC_LIF_STATS_TX_BROADCAST_DROP_PACKETS.String()),
+			Help: "Number of broadcast packets that were dropped during transmission",
+		}, append([]string{LabelPortName, LabelLifName}, labels...)),
+
+		nicLifStatsTxDMAError: *prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: strings.ToLower(exportermetrics.NICMetricField_NIC_LIF_STATS_TX_DMA_ERROR.String()),
+			Help: "Number of errors encountered while performing Direct Memory Access (DMA) during packet transmission",
+		}, append([]string{LabelPortName, LabelLifName}, labels...)),
 	}
 	na.initFieldMetricsMap()
 }
@@ -746,7 +833,19 @@ func (na *NICAgentClient) getNICs() (map[string]*NIC, error) {
 					ID   string `json:"id"`
 					Name string `json:"name"`
 				} `json:"spec"`
+				Status struct {
+					MACAddress string `json:"mac_address"`
+				} `json:"status"`
 			} `json:"port"`
+			Lif []struct {
+				Spec struct {
+					ID         string `json:"id"`
+					MACAddress string `json:"mac_address"`
+				} `json:"spec"`
+				Status struct {
+					Name string `json:"name"`
+				} `json:"status"`
+			} `json:"lif"`
 		} `json:"nic"`
 	}
 
@@ -790,13 +889,50 @@ func (na *NICAgentClient) getNICs() (map[string]*NIC, error) {
 			nics[nic.ID].Ports = map[string]*Port{}
 			for index, port := range nic.Port {
 				nics[nic.ID].Ports[port.Spec.ID] = &Port{
-					Index: fmt.Sprintf("%v", index),
-					UUID:  port.Spec.ID,
-					Name:  port.Spec.Name,
+					Index:      fmt.Sprintf("%v", index),
+					UUID:       port.Spec.ID,
+					Name:       port.Spec.Name,
+					MACAddress: port.Status.MACAddress,
 				}
 			}
 		}
 	}
 
+	// fetch lif details for each NIC
+	for _, nic := range resp.NIC {
+		cmd := fmt.Sprintf("nicctl show lif --card %s --json", nic.ID)
+		lifResp, err := exec.Command("/bin/bash", "-c", cmd).Output()
+		if err != nil {
+			logger.Log.Printf("NIC: %s, failed to get lif data, err: %+v", nic.ID, err)
+			return nics, err
+		}
+		var resp Response
+		err = json.Unmarshal(lifResp, &resp)
+		if err != nil {
+			logger.Log.Printf("NIC: %s, error unmarshalling lif data: %v", nic.ID, err)
+			return nics, err
+		}
+
+		for _, nic := range resp.NIC {
+			cachedNICObj := nics[nic.ID]
+			for _, port := range cachedNICObj.Ports {
+				lifIndex := 0
+				nics[nic.ID].Ports[port.UUID].Lifs = map[string]*Lif{}
+				nics[nic.ID].LifToPort = map[string]string{}
+				for _, lif := range nic.Lif {
+					if port.MACAddress == lif.Spec.MACAddress {
+						nics[nic.ID].Ports[port.UUID].Lifs[lif.Spec.ID] = &Lif{
+							Index: fmt.Sprintf("%v", lifIndex),
+							UUID:  lif.Spec.ID,
+							Name:  lif.Status.Name,
+						}
+						nics[nic.ID].LifToPort[lif.Spec.ID] = port.UUID
+						lifIndex++
+					}
+				}
+			}
+		}
+
+	}
 	return nics, nil
 }

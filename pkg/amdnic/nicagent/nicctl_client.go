@@ -128,5 +128,64 @@ func (nc *NICCtlClient) UpdatePortStats() error {
 }
 
 func (nc *NICCtlClient) UpdateLifStats() error {
+	nc.Lock()
+	defer nc.Unlock()
+
+	lifStatsOut, err := exec.Command("/bin/bash", "-c", "nicctl show lif statistics --json").Output()
+	if err != nil {
+		logger.Log.Printf("failed to get lif statistics, err: %+v", err)
+		return err
+	}
+
+	var lifStats nicmetrics.LifStatsList
+	err = json.Unmarshal(lifStatsOut, &lifStats)
+	if err != nil {
+		logger.Log.Printf("error unmarshalling lif statistics data, err: %v", err)
+		return err
+	}
+
+	// filter/fetch only stats that nicagent is interested
+	for _, nic := range lifStats.NIC {
+		labels := nc.na.populateLabelsFromNIC(nic.ID)
+		for _, lif := range nic.Lif {
+			portUUID := nc.na.nics[nic.ID].LifToPort[lif.ID]
+			port := nc.na.nics[nic.ID].Ports[portUUID]
+			labels[LabelLifName] = port.Lifs[lif.ID].Name
+			labels[LabelPortName] = port.Name
+
+			var lifStats []*nicmetrics.LStats
+			for index, stats := range lif.Statistics {
+				statName, found := nicmetrics.LifStatsIndexFilter_name[int32(index)]
+				if found && statName != nicmetrics.LifStatsIndexFilter_UNSPECIFIED.String() {
+					lifStats = append(lifStats, stats)
+					val := float64(utils.StringToUint64(stats.Value))
+					switch nicmetrics.LifStatsIndexFilter(nicmetrics.LifStatsIndexFilter_value[statName]) {
+					case nicmetrics.LifStatsIndexFilter_RX_UNICAST_PACKETS:
+						nc.na.m.nicLifStatsRxUnicastPackets.With(labels).Set(val)
+					case nicmetrics.LifStatsIndexFilter_RX_UNICAST_DROP_PACKETS:
+						nc.na.m.nicLifStatsRxUnicastDropPackets.With(labels).Set(val)
+					case nicmetrics.LifStatsIndexFilter_RX_MULTICAST_DROP_PACKETS:
+						nc.na.m.nicLifStatsRxMulticastDropPackets.With(labels).Set(val)
+					case nicmetrics.LifStatsIndexFilter_RX_BROADCAST_DROP_PACKETS:
+						nc.na.m.nicLifStatsRxBroadcastDropPackets.With(labels).Set(val)
+					case nicmetrics.LifStatsIndexFilter_RX_DMA_ERROR:
+						nc.na.m.nicLifStatsRxDMAError.With(labels).Set(val)
+					case nicmetrics.LifStatsIndexFilter_TX_UNICAST_PACKETS:
+						nc.na.m.nicLifStatsTxUnicastPackets.With(labels).Set(val)
+					case nicmetrics.LifStatsIndexFilter_TX_UNICAST_DROP_PACKETS:
+						nc.na.m.nicLifStatsTxUnicastDropPackets.With(labels).Set(val)
+					case nicmetrics.LifStatsIndexFilter_TX_MULTICAST_DROP_PACKETS:
+						nc.na.m.nicLifStatsTxMulticastDropPackets.With(labels).Set(val)
+					case nicmetrics.LifStatsIndexFilter_TX_BROADCAST_DROP_PACKETS:
+						nc.na.m.nicLifStatsTxBroadcastDropPackets.With(labels).Set(val)
+					case nicmetrics.LifStatsIndexFilter_TX_DMA_ERROR:
+						nc.na.m.nicLifStatsTxDMAError.With(labels).Set(val)
+					}
+				}
+			}
+			lif.Statistics = lifStats
+		}
+	}
+
 	return nil
 }

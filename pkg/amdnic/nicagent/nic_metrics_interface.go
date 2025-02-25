@@ -32,11 +32,20 @@ type NIC struct {
 	ProductName  string `json:"product_name"`
 	SerialNumber string `json:"serial_number"`
 	Ports        map[string]*Port
+	LifToPort    map[string]string
 }
 
 // Port represents the network port data
 type Port struct {
+	Index      string
+	UUID       string `json:"id"`
+	Name       string `json:"name"`
+	MACAddress string
+	Lifs       map[string]*Lif
+}
+
+type Lif struct {
 	Index string
-	UUID  string `json:"id"`
-	Name  string `json:"name"`
+	UUID  string
+	Name  string
 }

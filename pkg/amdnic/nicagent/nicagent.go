@@ -18,6 +18,8 @@ package nicagent
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/logger"
@@ -36,15 +38,17 @@ type NICAgentClient struct {
 	cancel       context.CancelFunc
 }
 
-func (na *NICAgentClient) initClients() (err error) {
+func (na *NICAgentClient) initClients() error {
 	logger.Log.Printf("Establishing connection to NIC clients")
+	var errStr []string
 	for _, client := range na.nicClients {
-		if err = client.Init(); err != nil {
-			logger.Log.Printf("%s init err :%+v", client.GetClientName(), err)
-			return err
+		if err := client.Init(); err != nil {
+			errStr = append(errStr, fmt.Sprintf("%s err: %s", client.GetClientName(), err.Error()))
+		} else {
+			logger.Log.Printf("%s init success", client.GetClientName())
 		}
 	}
-	return
+	return fmt.Errorf("%v", strings.Join(errStr, ","))
 }
 
 func NewAgent(mh *metricsutil.MetricsHandler) *NICAgentClient {
@@ -66,8 +70,7 @@ func (na *NICAgentClient) Init() error {
 
 	err := na.initClients()
 	if err != nil {
-		logger.Log.Printf("NIC client init failure err :%v", err)
-		return err
+		logger.Log.Printf("NIC clients init failure err :%v", err)
 	}
 
 	na.mh.RegisterMetricsClient(na)
@@ -78,7 +81,7 @@ func (na *NICAgentClient) Init() error {
 	// fetch all the static data that doesn't change (NIC, Port, Lif, etc.)
 	nics, err := na.getNICs()
 	if err != nil {
-		return err
+		logger.Log.Printf("failed get NICs, Ports and Lifs, err: %v", err)
 	}
 	na.nics = nics
 
