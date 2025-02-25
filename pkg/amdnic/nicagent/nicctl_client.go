@@ -24,6 +24,7 @@ import (
 	"github.com/ROCm/device-metrics-exporter/pkg/amdnic/gen/nicmetrics"
 	"github.com/ROCm/device-metrics-exporter/pkg/amdnic/nicagent/utils"
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/logger"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type NICCtlClient struct {
@@ -131,6 +132,20 @@ func (nc *NICCtlClient) UpdateLifStats() error {
 	nc.Lock()
 	defer nc.Unlock()
 
+	// list of lif stats fields to be filtered from nicctl output and the respective prometheus metric functions to be called
+	lifStatsFilter := map[string]prometheus.GaugeVec{
+		"Rx unicast packets":        nc.na.m.nicLifStatsRxUnicastPackets,
+		"Rx unicast drop packets":   nc.na.m.nicLifStatsRxUnicastDropPackets,
+		"Rx multicast drop packets": nc.na.m.nicLifStatsRxMulticastDropPackets,
+		"Rx broadcast drop packets": nc.na.m.nicLifStatsRxBroadcastDropPackets,
+		"Rx DMA error":              nc.na.m.nicLifStatsRxDMAError,
+		"Tx unicast packets":        nc.na.m.nicLifStatsTxUnicastPackets,
+		"Tx unicast drop packets":   nc.na.m.nicLifStatsTxUnicastDropPackets,
+		"Tx multicast drop packets": nc.na.m.nicLifStatsTxMulticastDropPackets,
+		"Tx broadcast drop packets": nc.na.m.nicLifStatsTxBroadcastDropPackets,
+		"Tx DMA error":              nc.na.m.nicLifStatsTxDMAError,
+	}
+
 	lifStatsOut, err := exec.Command("/bin/bash", "-c", "nicctl show lif statistics --json").Output()
 	if err != nil {
 		logger.Log.Printf("failed to get lif statistics, err: %+v", err)
@@ -153,39 +168,13 @@ func (nc *NICCtlClient) UpdateLifStats() error {
 			labels[LabelLifName] = port.Lifs[lif.ID].Name
 			labels[LabelPortName] = port.Name
 
-			var lifStats []*nicmetrics.LStats
-			for index, stats := range lif.Statistics {
-				statName, found := nicmetrics.LifStatsIndexFilter_name[int32(index)]
-				if found && statName != nicmetrics.LifStatsIndexFilter_UNSPECIFIED.String() {
-					lifStats = append(lifStats, stats)
+			for _, stats := range lif.Statistics {
+				if metricFn, found := lifStatsFilter[stats.Name]; found {
 					val := float64(utils.StringToUint64(stats.Value))
-					switch nicmetrics.LifStatsIndexFilter(nicmetrics.LifStatsIndexFilter_value[statName]) {
-					case nicmetrics.LifStatsIndexFilter_RX_UNICAST_PACKETS:
-						nc.na.m.nicLifStatsRxUnicastPackets.With(labels).Set(val)
-					case nicmetrics.LifStatsIndexFilter_RX_UNICAST_DROP_PACKETS:
-						nc.na.m.nicLifStatsRxUnicastDropPackets.With(labels).Set(val)
-					case nicmetrics.LifStatsIndexFilter_RX_MULTICAST_DROP_PACKETS:
-						nc.na.m.nicLifStatsRxMulticastDropPackets.With(labels).Set(val)
-					case nicmetrics.LifStatsIndexFilter_RX_BROADCAST_DROP_PACKETS:
-						nc.na.m.nicLifStatsRxBroadcastDropPackets.With(labels).Set(val)
-					case nicmetrics.LifStatsIndexFilter_RX_DMA_ERROR:
-						nc.na.m.nicLifStatsRxDMAError.With(labels).Set(val)
-					case nicmetrics.LifStatsIndexFilter_TX_UNICAST_PACKETS:
-						nc.na.m.nicLifStatsTxUnicastPackets.With(labels).Set(val)
-					case nicmetrics.LifStatsIndexFilter_TX_UNICAST_DROP_PACKETS:
-						nc.na.m.nicLifStatsTxUnicastDropPackets.With(labels).Set(val)
-					case nicmetrics.LifStatsIndexFilter_TX_MULTICAST_DROP_PACKETS:
-						nc.na.m.nicLifStatsTxMulticastDropPackets.With(labels).Set(val)
-					case nicmetrics.LifStatsIndexFilter_TX_BROADCAST_DROP_PACKETS:
-						nc.na.m.nicLifStatsTxBroadcastDropPackets.With(labels).Set(val)
-					case nicmetrics.LifStatsIndexFilter_TX_DMA_ERROR:
-						nc.na.m.nicLifStatsTxDMAError.With(labels).Set(val)
-					}
+					metricFn.With(labels).Set(val)
 				}
 			}
-			lif.Statistics = lifStats
 		}
 	}
-
 	return nil
 }

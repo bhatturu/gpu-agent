@@ -139,21 +139,6 @@ message PortStatsList {
 }
 */
 
-// LifStatsIndexFilter lif stats indices that needs to be filtered from nicctl output
-enum LifStatsIndexFilter {
-    UNSPECIFIED                 = 0;  // to be ignored, first enum value must be zero in proto3.
-    RX_UNICAST_PACKETS          = 1;
-    RX_UNICAST_DROP_PACKETS     = 7;
-    RX_MULTICAST_DROP_PACKETS   = 9;
-    RX_BROADCAST_DROP_PACKETS   = 11;
-    RX_DMA_ERROR                = 12;
-    TX_UNICAST_PACKETS          = 14;
-    TX_UNICAST_DROP_PACKETS     = 20;
-    TX_MULTICAST_DROP_PACKETS   = 22;
-    TX_BROADCAST_DROP_PACKETS   = 24;
-    TX_DMA_ERROR                = 25;
-}
-
 // Stats represents a single statistical metric, such as bytes transmitted, packets received, etc.
 message LStats {
     // The name of the statistic (e.g., "Rx unicast bytes")
