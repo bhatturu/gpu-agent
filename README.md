@@ -25,6 +25,45 @@ _Usage of bin/amd-metrics-exporter_
 ## ROCM version
   - ROCM 6.2, 6.3
 
+## Architecture
+
+### Metrics HTTP Server Request Handling
+```mermaid
+sequenceDiagram
+    actor user/client
+    user/client ->> exporter : http /metrics
+    exporter ->> metricHandler: UpdateMetrics
+    metricHandler ->> gpuagentClient : UpdateStaticMetrics
+    gpuagentClient ->> gpuagent : gRPC getGPUs
+    gpuagent ->> amdsmilib : getGPUs statistics
+    amdsmilib -->> gpuagent : getGPUs statistics response
+    gpuagent -->> gpuagentClient : getGPUs response
+    gpuagentClient -->> metricHandler : UpdateStaticMetrics response
+    metricHandler -->> exporter : UpdateMetrics response
+    exporter -->> user/client : http /metrics response
+```
+
+### Health Monitoring And gRPC Service
+```mermaid
+sequenceDiagram
+    exporter ->> metricsvc : start  gRPC service over unix socket
+    metricsvc ->> gpuagentClient : UpdateStaticMetrics
+    gpuagentClient ->> gpuagent : gRPC getGPU
+    gpuagent -->> gpuagentClient : getGPU response
+    gpuagentClient -->> metricsvc : UpdateStaticMetrics response
+    metricsvc ->> metricsvc : evaluate GPU health @ 30s interval
+```
+
+### Health gRPC Request Handling
+```mermaid
+sequenceDiagram
+    actor user/client
+    user/client ->> exporter : gRPC List/GetGPUState
+    exporter ->> metricsvc : GetGPUHealthStates
+    metricsvc -->> exporter : GetGPUHealthStates response
+    exporter -->> user/client : GPUStateResponse
+```
+
 ## Build and Run Instructions
 
 ### Build amdexporter application binary
