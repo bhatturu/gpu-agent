@@ -47,9 +47,14 @@ func prettyPrintGPUState(resp *metricssvc.GPUStateResponse) {
 		fmt.Println(string(jsonData))
 		return
 	}
+	sortOp := make(map[string]*metricssvc.GPUState)
+	for _, gs := range resp.GPUState {
+		sortOp[gs.ID] = gs
+	}
 	fmt.Println("ID\tHealth\tAssociated Workload\t")
 	fmt.Println("------------------------------------------------")
-	for _, gs := range resp.GPUState {
+	for i := 0; i < len(sortOp); i++ {
+		gs := sortOp[fmt.Sprintf("%d", i)]
 		fmt.Printf("%v\t%v\t%+v\t\r\n", gs.ID, gs.Health, gs.AssociatedWorkload)
 	}
 	fmt.Println("------------------------------------------------")
