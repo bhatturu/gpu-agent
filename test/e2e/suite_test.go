@@ -34,8 +34,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	. "gopkg.in/check.v1"
 
-	"github.com/pensando/device-metrics-exporter/pkg/exporter/gen/exportermetrics"
-	testutils "github.com/pensando/device-metrics-exporter/test/utils"
+	"github.com/ROCm/device-metrics-exporter/pkg/exporter/gen/exportermetrics"
+	testutils "github.com/ROCm/device-metrics-exporter/test/utils"
 )
 
 var skipSetup = flag.Bool("skip-setup", false, "skip setting up testbed")

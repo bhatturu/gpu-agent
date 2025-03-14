@@ -84,7 +84,7 @@ end
 env GOPATH: "/usr"
 env GOBIN: "/usr/local/go/bin"
 env GOFLAGS: "-mod=vendor"
-run "git config --global --add safe.directory ${GOPATH}/src/github.com/pensando/device-metrics-exporter"
+run "git config --global --add safe.directory ${GOPATH}/src/github.com/ROCm/device-metrics-exporter"
 
 # A scratch pad file for exporting some host/workspace particulars into container, to be used for
 # recording them into build packaging.

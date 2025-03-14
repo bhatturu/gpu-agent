@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pensando/device-metrics-exporter/test/k8s-e2e/clients"
+	"github.com/ROCm/device-metrics-exporter/test/k8s-e2e/clients"
 	"github.com/stretchr/testify/assert"
 	. "gopkg.in/check.v1"
 	"k8s.io/client-go/tools/clientcmd"

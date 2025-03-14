@@ -1,4 +1,5 @@
-FROM ubuntu:22.04
+ARG BUILD_BASE_IMAGE=ubuntu:22.04
+FROM ${BUILD_BASE_IMAGE}
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -39,12 +40,16 @@ RUN curl -k -LO https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl && \
 RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
     chmod 700 get_helm.sh && ./get_helm.sh
 
-
-RUN mkdir -p /etc/docker && \
-    echo '{ \
-      "insecure-registries": ["registry.test.pensando.io:5000"] \
-    }' > /etc/docker/daemon.json
-
+ARG INSECURE_REGISTRY
+RUN echo "INSECURE_REGISTRY is: $INSECURE_REGISTRY" && \
+    if [ -n "$INSECURE_REGISTRY" ]; then \
+    mkdir -p /etc/docker && \
+    echo "{ \
+    \"insecure-registries\": [\"$INSECURE_REGISTRY\"] \
+    }" > /etc/docker/daemon.json; \
+    else \
+    echo "INSECURE_REGISTRY is not set"; \
+    fi
 
 ADD ./entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

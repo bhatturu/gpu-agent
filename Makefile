@@ -1,11 +1,47 @@
+-include dev.env
+
+## Set all the environment variables here
+# Docker Registry
+DOCKER_REGISTRY ?= docker.io/rocm
+
+# Build Container environment
+DOCKER_BUILDER_TAG ?= v1.0
+BUILD_BASE_IMAGE ?= ubuntu:22.04
+BUILD_CONTAINER ?= $(DOCKER_REGISTRY)/device-metrics-exporter-build:$(DOCKER_BUILDER_TAG)
+
+# Exporter container environment
+EXPORTER_IMAGE_TAG ?= latest
+EXPORTER_IMAGE_NAME ?= device-metrics-exporter
+RHEL_BASE_MIN_IMAGE ?= registry.access.redhat.com/ubi9/ubi-minimal:9.4
+AZURE_BASE_IMAGE ?= mcr.microsoft.com/azurelinux/base/core:3.0
+
+# Test runner container environment
+TESTRUNNER_IMAGE_TAG ?= latest
+TESTRUNNER_IMAGE_NAME ?= test-runner
+RHEL_BASE_IMAGE ?= registry.access.redhat.com/ubi9/ubi:9.4
+# RHEL BaseOS, AppStream, CRB repository base image
+RHEL_REPO_URL ?= https://cdn.redhat.com
+
+# export environment variables used across project
+export DOCKER_REGISTRY
+export BUILD_CONTAINER
+export BUILD_BASE_IMAGE
+export EXPORTER_IMAGE_NAME
+export EXPORTER_IMAGE_TAG
+export TESTRUNNER_IMAGE_NAME
+export TESTRUNNER_IMAGE_TAG
+export RHEL_BASE_IMAGE
+export RHEL_BASE_MIN_IMAGE
+export AZURE_BASE_IMAGE
+export RHEL_REPO_URL
+
 TO_GEN := pkg/amdgpu/proto pkg/exporter/proto
 TO_MOCK := pkg/amdgpu/mock
 OUT_DIR := bin
-export BUILD_CONTAINER ?= registry.test.pensando.io:5000/metrics-exporter-bld:2
 CUR_USER:=$(shell whoami)
 CUR_TIME:=$(shell date +%Y-%m-%d_%H.%M.%S)
 CONTAINER_NAME:=${CUR_USER}_exporter-bld
-CONTAINER_WORKDIR := /import/src/github.com/pensando/device-metrics-exporter
+CONTAINER_WORKDIR := /usr/src/github.com/ROCm/device-metrics-exporter
 
 TOP_DIR := $(PWD)
 GEN_DIR := $(TOP_DIR)/pkg/amdgpu/
@@ -17,7 +53,6 @@ BUILD_DATE ?= $(shell date   +%Y-%m-%dT%H:%M:%S%z)
 GIT_COMMIT ?= $(shell git rev-list -1 HEAD --abbrev-commit)
 VERSION ?=$(RELEASE)
 KUBECONFIG ?= ~/.kube/config
-AZURE_DOCKER_CONTAINER_IMG ?= exporter-latest-azure
 
 export ${GOROOT}
 export ${GOPATH}
@@ -26,7 +61,6 @@ export ${TOP_DIR}
 export ${GOFLAGS}
 export ${GOINSECURE}
 export ${KUBECONFIG}
-export {AZURE_DOCKER_CONTAINER_IMG}
 
 ASSETS_PATH :=${TOP_DIR}/assets
 # 22.04 - jammy
@@ -47,6 +81,46 @@ PKG_LUA_PATH := ${TOP_DIR}/debian/usr/local/etc/metrics/slurm
 
 TO_GEN_TESTRUNNER := pkg/testrunner/proto
 GEN_DIR_TESTRUNNER := $(TOP_DIR)/pkg/testrunner/
+
+##################
+# Makefile targets
+#
+##@ QuickStart
+.PHONY: default
+default: build-dev-container ## Quick start to build everything from docker shell container
+	${MAKE} docker-compile
+
+.PHONY: docker-shell
+docker-shell:
+	docker run --rm -it --privileged \
+		--name ${CONTAINER_NAME} \
+		-e "USER_NAME=$(shell whoami)" \
+		-e "USER_UID=$(shell id -u)" \
+		-e "USER_GID=$(shell id -g)" \
+		-e "GIT_COMMIT=${GIT_COMMIT}" \
+		-e "GIT_VERSION=${GIT_VERSION}" \
+		-e "BUILD_DATE=${BUILD_DATE}" \
+		-v $(CURDIR):$(CONTAINER_WORKDIR) \
+		-v $(HOME)/.ssh:/home/$(shell whoami)/.ssh \
+		-w $(CONTAINER_WORKDIR) \
+		$(BUILD_CONTAINER) \
+		bash -c "cd $(CONTAINER_WORKDIR) && git config --global --add safe.directory $(CONTAINER_WORKDIR) && bash"
+
+.PHONY: docker-compile
+docker-compile:
+	docker run --rm -it --privileged \
+		--name ${CONTAINER_NAME} \
+		-e "USER_NAME=$(shell whoami)" \
+		-e "USER_UID=$(shell id -u)" \
+		-e "USER_GID=$(shell id -g)" \
+		-e "GIT_COMMIT=${GIT_COMMIT}" \
+		-e "GIT_VERSION=${GIT_VERSION}" \
+		-e "BUILD_DATE=${BUILD_DATE}" \
+		-v $(CURDIR):$(CONTAINER_WORKDIR) \
+		-v $(HOME)/.ssh:/home/$(shell whoami)/.ssh \
+		-w $(CONTAINER_WORKDIR) \
+		$(BUILD_CONTAINER) \
+		bash -c "cd $(CONTAINER_WORKDIR) && source ~/.bashrc && git config --global --add safe.directory $(CONTAINER_WORKDIR) && make all"
 
 .PHONY: all
 all:
@@ -175,7 +249,13 @@ docker-cicd: gen amdexporter
 
 .PHONY: docker
 docker: gen amdexporter
-	${MAKE} -C docker TOP_DIR=$(CURDIR) MOCK=$(MOCK)
+	${MAKE} -C docker TOP_DIR=$(CURDIR)
+	${MAKE} -C docker docker-save TOP_DIR=$(CURDIR)
+
+.PHONY: docker-mock
+docker-mock: gen amdexporter
+	${MAKE} -C docker TOP_DIR=$(CURDIR) MOCK=1 EXPORTER_IMAGE_NAME=$(EXPORTER_IMAGE_NAME)-mock
+	${MAKE} -C docker docker-save TOP_DIR=$(CURDIR) EXPORTER_IMAGE_NAME=$(EXPORTER_IMAGE_NAME)-mock
 
 .PHONY: docker-test-runner
 docker-test-runner: gen-test-runner amdtestrunner
@@ -190,11 +270,7 @@ docker-test-runner-cicd: gen-test-runner amdtestrunner
 .PHONY: docker-azure
 docker-azure: gen amdexporter
 	${MAKE} -C docker azure TOP_DIR=$(CURDIR)
-	${MAKE} -C docker docker-save TOP_DIR=$(CURDIR) DOCKER_CONTAINER_IMG=${AZURE_DOCKER_CONTAINER_IMG}
-
-.PHONY: docker-mock
-docker-mock:
-	${MAKE} docker MOCK=1
+	${MAKE} -C docker docker-save TOP_DIR=$(CURDIR) DOCKER_CONTAINER_IMAGE=${EXPORTER_IMAGE_NAME}-${EXPORTER_IMAGE_TAG}-azure
 
 .PHONY:checks
 checks: gen vet
@@ -215,43 +291,12 @@ mod:
 	@go mod tidy
 	@go mod vendor
 
-.PHONY: docker-shell
-docker-shell:
-	docker run --rm -it --privileged \
-		--name ${CONTAINER_NAME} \
-		-e "USER_NAME=$(shell whoami)" \
-		-e "USER_UID=$(shell id -u)" \
-		-e "USER_GID=$(shell id -g)" \
-		-e "GIT_COMMIT=${GIT_COMMIT}" \
-		-e "GIT_VERSION=${GIT_VERSION}" \
-		-e "BUILD_DATE=${BUILD_DATE}" \
-		-v $(CURDIR):$(CONTAINER_WORKDIR) \
-		-v $(HOME)/.ssh:/home/$(shell whoami)/.ssh \
-		-w $(CONTAINER_WORKDIR) \
-		$(BUILD_CONTAINER) \
-		bash -c "cd $(CONTAINER_WORKDIR) && git config --global --add safe.directory $(CONTAINER_WORKDIR) && bash"
-
-docker-compile:
-	docker run --rm -it --privileged \
-		--name ${CONTAINER_NAME} \
-		-e "USER_NAME=$(shell whoami)" \
-		-e "USER_UID=$(shell id -u)" \
-		-e "USER_GID=$(shell id -g)" \
-		-e "GIT_COMMIT=${GIT_COMMIT}" \
-		-e "GIT_VERSION=${GIT_VERSION}" \
-		-e "BUILD_DATE=${BUILD_DATE}" \
-		-v $(CURDIR):$(CONTAINER_WORKDIR) \
-		-v $(HOME)/.ssh:/home/$(shell whoami)/.ssh \
-		-w $(CONTAINER_WORKDIR) \
-		$(BUILD_CONTAINER) \
-		bash -c "cd $(CONTAINER_WORKDIR) && source ~/.bashrc && make all"
-
 .PHONY: base-image
 base-image:
 	${MAKE} -C tools/base-image
 
 copyrights:
-	GOFLAGS=-mod=mod go run tools/build/copyright/main.go && ./tools/build/check-local-files.sh
+	GOFLAGS=-mod=mod go run tools/build/copyright/main.go && ${MAKE} fmt && ./tools/build/check-local-files.sh
 
 .PHONY: e2e-test
 e2e-test:
@@ -282,4 +327,4 @@ slurm-sim:
 # tools/base-image/Dockerfile
 .PHONY: build-dev-container
 build-dev-container:
-	${MAKE} -C tools/base-image all
+	${MAKE} -C tools/base-image all INSECURE_REGISTRY=$(INSECURE_REGISTRY)
