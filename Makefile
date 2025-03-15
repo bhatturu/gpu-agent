@@ -19,8 +19,6 @@ AZURE_BASE_IMAGE ?= mcr.microsoft.com/azurelinux/base/core:3.0
 TESTRUNNER_IMAGE_TAG ?= latest
 TESTRUNNER_IMAGE_NAME ?= test-runner
 RHEL_BASE_IMAGE ?= registry.access.redhat.com/ubi9/ubi:9.4
-# RHEL BaseOS, AppStream, CRB repository base image
-RHEL_REPO_URL ?= https://cdn.redhat.com
 
 # export environment variables used across project
 export DOCKER_REGISTRY
@@ -33,7 +31,6 @@ export TESTRUNNER_IMAGE_TAG
 export RHEL_BASE_IMAGE
 export RHEL_BASE_MIN_IMAGE
 export AZURE_BASE_IMAGE
-export RHEL_REPO_URL
 
 TO_GEN := pkg/amdgpu/proto pkg/exporter/proto
 TO_MOCK := pkg/amdgpu/mock
@@ -259,7 +256,7 @@ docker-mock: gen amdexporter
 
 .PHONY: docker-test-runner
 docker-test-runner: gen-test-runner amdtestrunner
-	${MAKE} -C docker/testrunner TOP_DIR=$(CURDIR) docker
+	${MAKE} -C docker/testrunner TOP_DIR=$(CURDIR) INTERNAL_TESTRUNNER_BUILD=$(INTERNAL_TESTRUNNER_BUILD) docker
 
 .PHOHY: docker-test-runner-cicd
 docker-test-runner-cicd: gen-test-runner amdtestrunner

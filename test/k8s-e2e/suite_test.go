@@ -34,7 +34,7 @@ import (
 var kubeConfig = flag.String("kubeconfig", filepath.Join(homedir.HomeDir(), ".kube", "config"), "absolute path to the kubeconfig file")
 var helmChart = flag.String("helmchart", "", "helmchart")
 var exporterNS = flag.String("namespace", "kube-amd-gpu", "namespace")
-var registry = flag.String("registry", "registry.test.pensando.io:5000/device-metrics-exporter/exporter", "exporter container registry")
+var registry = flag.String("registry", "docker.io/rocm/device-metrics-exporter", "exporter container registry")
 var imageTag = flag.String("imagetag", "latest", "exporter image version/tag")
 var platform = flag.String("platform", "k8s", "k8s/openshift")
 

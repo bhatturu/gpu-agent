@@ -6,9 +6,12 @@ HOURLY_TAG_LABEL ?= latest
 .PHONY: docker
 docker:
 	@echo "building amd testrunner container"
-	@echo "HOURLY_TAG : $(HOURLY_TAG_LABEL)"
 	@cp $(TOP_DIR)/bin/amd-test-runner .
-	@docker build --build-arg BASE_IMAGE=$(RHEL_BASE_IMAGE) --build-arg RHEL_REPO_URL=$(RHEL_REPO_URL) -t ${TESTRUNNER_IMAGE} . -f $(TOP_DIR)/docker/testrunner/Dockerfile
+	@if [ "$(INTERNAL_TESTRUNNER_BUILD)" = "1" ]; then \
+	    docker build --build-arg BASE_IMAGE=$(RHEL_BASE_IMAGE) -t ${TESTRUNNER_IMAGE} . -f $(TOP_DIR)/docker/testrunner/Dockerfile.internal; \
+	else \
+	    echo "WARN: Testrunner builds currently not supported, please use published prebuilt images" ; \
+	fi
 	@rm -rf $(TOP_DIR)/docker/testrunner/amd-test-runner
 
 .PHONY: docker-cicd
@@ -16,7 +19,11 @@ docker-cicd:
 	@echo "building amd testrunner container"
 	@echo "HOURLY_TAG : $(HOURLY_TAG_LABEL)"
 	@cp $(TOP_DIR)/bin/amd-test-runner .
-	@docker build --build-arg BASE_IMAGE=$(RHEL_BASE_IMAGE) --build-arg RHEL_REPO_URL=$(RHEL_REPO_URL) -t ${TESTRUNNER_IMAGE} --label HOURLY_TAG=$(HOURLY_TAG_LABEL) . -f $(TOP_DIR)/docker/testrunner/Dockerfile
+	@if [ "$(INTERNAL_TESTRUNNER_BUILD)" = "1" ]; then \
+	    docker build --build-arg BASE_IMAGE=$(RHEL_BASE_IMAGE) -t ${TESTRUNNER_IMAGE} --label HOURLY_TAG=$(HOURLY_TAG_LABEL) . -f $(TOP_DIR)/docker/testrunner/Dockerfile.internal; \
+	else \
+	    echo "WARN: Testrunner builds currently not supported, please use published prebuilt images" ; \
+	fi
 	@rm -rf $(TOP_DIR)/docker/testrunner/amd-test-runner
 
 .PHONY: docker-save

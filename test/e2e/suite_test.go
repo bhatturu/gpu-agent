@@ -134,6 +134,12 @@ func (s *E2ESuite) SetUpSuite(c *C) {
 		return
 	}
 
+	dockerRegistry := os.Getenv("DOCKER_REGISTRY")
+	exporterImageName := os.Getenv("EXPORTER_IMAGE_NAME")
+	exporterImageTag := os.Getenv("EXPORTER_IMAGE_TAG")
+	exporterImage := dockerRegistry + "/" + exporterImageName + ":" + exporterImageTag
+	log.Printf("Using exporter image: %s", exporterImage)
+
 	var exporterConfigPath string
 	var e2eConfigPath string
 	e2eConfig := E2EConfig{}
@@ -154,6 +160,7 @@ func (s *E2ESuite) SetUpSuite(c *C) {
 		log.Printf("Error unmarshalling JSON: %v", err)
 		return
 	}
+	e2eConfig.ImageURL = exporterImage
 
 	log.Printf("e2econfig : %+v", e2eConfig)
 	s.e2eConfig = &e2eConfig
