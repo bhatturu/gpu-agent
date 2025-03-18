@@ -6,3 +6,5 @@
 bin
 pkg/bin
 pkg/slurm/sim/slurm-sim
+.venv
+_build

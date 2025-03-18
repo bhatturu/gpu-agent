@@ -17,9 +17,17 @@ html_theme = "rocm_docs_theme"
 html_theme_options = {
     "flavor": "instinct"
 }
-extensions = ["rocm_docs"]
+
+extensions = [
+    "rocm_docs",
+    "sphinxcontrib.datatemplates",
+    "sphinx_substitution_extensions"
+]
 
 # Table of contents
 external_toc_path = "./sphinx/_toc.yml"
 
 exclude_patterns = ['.venv']
+
+# Supported linux version numbers
+ubuntu_version_numbers = [('24.04', 'noble'), ('22.04', 'jammy')]
