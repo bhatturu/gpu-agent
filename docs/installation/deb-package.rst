@@ -18,7 +18,7 @@ Each Debian package release of the Standalone Metrics Exporter is dependent on a
    * - Metrics Exporter Debian Version
      - ROCm Version
      - AMDGPU Driver Version
-   * - amdgpu-exporter-v1.2.0-13-1.2.0
+   * - amdgpu-exporter-1.2.0
      - ROCm 6.3.x
      - 6.10.5
 
@@ -72,42 +72,35 @@ Step 2: Install AMDGPU Driver
 Step 3: Install the APT Prerequisites for Metrics Exporter
 -----------------------------------------------------------
 
-1. Update the package list and install necessary tools:
+1. Update the package list and install necessary tools, keyrings and keys:
 
    .. code-block:: bash
 
+      # Install necessary tools  
       sudo apt update
       sudo apt install vim wget gpg
 
-2. Create the keyrings directory with the appropriate permissions:
-
-   .. code-block:: bash
-
+      # Create the keyrings directory with the appropriate permissions:
       sudo mkdir --parents --mode=0755 /etc/apt/keyrings
 
-3. Download the ROCm GPG key and add it to the keyrings:
+      # Download the ROCm GPG key and add it to the keyrings:
+      wget https://repo.radeon.com/rocm/rocm.gpg.key -O - | gpg --dearmor | sudo tee /etc/apt/keyrings/rocm.gpg > /dev/null
+
+2. Edit the sources list to add the Device Metrics Exporter repository:
+
+   **For Ubuntu 22.04**, add the following line:
 
    .. code-block:: bash
 
-      wget https://repo.radeon.com/rocm/rocm.gpg.key -O - | gpg --dearmor | sudo tee /etc/apt/keyrings/rocm.gpg > /dev/null
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/device-metrics-exporter/apt/1.2.0 jammy main
 
-4. Edit the sources list to add the Device Metrics Exporter repository:
+   **For Ubuntu 24.04**, add the following line:
 
-   .. datatemplate:nodata::
+   .. code-block:: bash
 
-    .. tab-item:: Ubuntu
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/device-metrics-exporter/apt/1.2.0 noble main
 
-        .. tab-set::
-
-            {% for (os_version, os_release) in config.html_context['ubuntu_version_numbers'] %}
-            .. tab-item:: {{ os_version }}
-
-                .. code-block:: bash
-                    :substitutions:
-                    deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/device-metrics-exporter/apt/1.2.0 {{ os_release }} main
-            {% endfor %}
-
-5. Update the package list again:
+3. Update the package list again:
 
    .. code-block:: bash
 
@@ -138,9 +131,9 @@ Step 4: Install the Prerequisites for Metrics Exporter
 Metrics Exporter Default Settings
 ====================================
 
-- Metrics endpoint: `http://localhost:5000/metrics`
-- Configuration file: `/etc/metrics/config.json`
-- GPU Agent port (default): 50061
+- **Metrics endpoint:** ``http://localhost:5000/metrics``
+- **Configuration file:** ``/etc/metrics/config.json``
+- **GPU Agent port (default):** ``50061``
 
 The Exporter HTTP port is configurable via the `ServerPort` field in the configuration file.
 
@@ -160,7 +153,7 @@ If you need to customize ports or settings:
 
 2. Make any required changes to your config.json file and ensure the port number you want to use is correct. Example of the first few lines of the config.json shown below:
 
-   .. code-block:: json
+   .. code-block:: bash
 
       {
       "ServerPort": 5000,
@@ -221,6 +214,7 @@ Removing Metrics Exporter and other components
 To remove this application, follow these commands in reverse order:
 
 1. Uninstall the Metrics Exporter:
+
    - Ensure the .deb package is removed:
 
      .. code-block:: bash
