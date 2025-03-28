@@ -29,16 +29,16 @@ builds:
 
   build-device-metrics-exporter-docker-azure:
     commands: ["sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make all && \
-                            EXPORTER_IMAGE_NAME=exporter HOURLY_TAG_LABEL=$RELEASE EXPORTER_IMAGE_TAG=latest make docker-azure"]
+                            HOURLY_TAG_LABEL=$RELEASE EXPORTER_IMAGE_TAG=latest make docker-azure"]
     owners: ["email:prshanmug@amd.com"]
     artifacts:
-        - /device-metrics-exporter/docker/exporter-latest-azure.tar.gz
+        - /device-metrics-exporter/docker/device-metrics-exporter-latest-azure.tar.gz
 
   e2e-build-mock-exporter:
-    commands: ["sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && EXPORTER_IMAGE_TAG=v1 make e2e"]
+    commands: ["sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && EXPORTER_IMAGE_TAG=latest make e2e"]
     owners: ["email:prshanmug@amd.com"]
     artifacts:
-        - /device-metrics-exporter/docker/device-metrics-exporter-mock-v1.tar.gz
+        - /device-metrics-exporter/docker/device-metrics-exporter-mock-latest.tar.gz
 
   build-helm-artifact:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make helm-build"]
