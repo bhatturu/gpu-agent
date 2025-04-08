@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	MaxGPUPerServer     = 16 // current max is 8, gpuagent mock has 16
+	MaxGPUPerServer     = 64 // current max is 64 for partitioned systems
 	NodeGPUHealthPrefix = "metricsexporter.amd.com.gpu.%v.state"
 )
 
