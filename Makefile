@@ -213,7 +213,7 @@ lint: golangci-lint ## Run golangci-lint against code.
 		gofmt -l $(GOFILES_NO_VENDOR); \
 		exit 1; \
 	fi
-	$(GOLANGCI_LINT) run -v --timeout 5m0s
+	$(GOLANGCI_LINT) run -v $(shell find . \( -path "./vendor" -o -path "./libamdsmi" -o -path "./gpuagent" \) -prune -o -type f -name '*.go' -print | xargs -n1 dirname | sort -u)
 
 .PHONY: fmt
 fmt:## Run go fmt against code.
@@ -285,9 +285,7 @@ docker-azure: gen amdexporter
 	${MAKE} -C docker docker-save TOP_DIR=$(CURDIR) DOCKER_CONTAINER_IMAGE=${EXPORTER_IMAGE_NAME}-${EXPORTER_IMAGE_TAG}-azure
 
 .PHONY:checks
-checks: gen vet
-	# TBD: disable lint for avoiding submodule issue
-	#lint
+checks: gen vet lint
 
 .PHONY: docker-publish
 docker-publish:

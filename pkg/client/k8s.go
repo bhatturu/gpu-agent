@@ -216,9 +216,12 @@ func (k *K8sClient) UpdateHealthLabel(nodeName string, newHealthMap map[string]s
 }
 
 func (k *K8sClient) GetAllPods(nodeName string) (*v1.PodList, error) {
-	k.reConnect()
+	if err := k.reConnect(); err != nil {
+		return nil, fmt.Errorf("reconnect failed: %v", err)
+	}
 	k.Lock()
 	defer k.Unlock()
+
 	ctx, cancel := context.WithCancel(k.ctx)
 	defer cancel()
 

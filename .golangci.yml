@@ -1,0 +1,45 @@
+# .golangci.yml
+
+# Global settings for the run
+run:
+  timeout: 5m
+  tests: false       # Exclude test files
+  concurrency: 4
+
+# Enable or disable linters
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - gofmt
+
+  # TODO: Enable these checks after fixing errors
+  disable:
+    - goimports
+    - misspell
+    - unconvert
+    - gocritic
+    - gosec
+    - revive
+    - unused
+
+# Settings for individual linters
+linters-settings:
+  staticcheck:
+    checks: ["all"]
+  gofmt:
+    simplify: true
+  gosec:
+    severity: high
+    confidence: medium
+  misspell:
+    locale: US
+
+issues:
+  exclude-dirs:
+    - vendor
+  exclude-files:
+    - ".*\\.pb\\.go" # Exclude generated protobuf files
+  max-issues-per-linter: 0 # No limit on issues per linter
+  max-same-issues: 0       # No limit on repeated issues
