@@ -296,12 +296,19 @@ unit-test:
 	PATH=$$PATH LOGDIR=$(TOP_DIR)/ go test -v -cover -mod=vendor ./pkg/...
 
 mod:
+	@echo "ignoring submodules gpuagent and libamdsmi"
+	@touch ${TOP_DIR}/gpuagent/go.mod
+	@touch ${TOP_DIR}/libamdsmi/go.mod
 	@echo "setting up go mod packages"
 	@go mod tidy
 	@go mod edit -go=1.24.2
-	#CVE-2024-24790 fix of trivy scan
+	#CVE-2024-24790 - amd-metrics-exporter
 	@go mod edit -replace golang.org/x/net@v0.29.0=golang.org/x/net@v0.36.0
+	#CVE-2025-30204 - amd-test-runner
+	@go mod edit -replace github.com/golang-jwt/jwt/v5@v5.2.1=github.com/golang-jwt/jwt/v5@v5.2.2
 	@go mod vendor
+	@rm ${TOP_DIR}/gpuagent/go.mod
+	@rm ${TOP_DIR}/libamdsmi/go.mod
 
 .PHONY: base-image
 base-image:
