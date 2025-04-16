@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -461,7 +462,8 @@ func getMetrics(input, outAmdSMI string) ([]byte, map[string]*dto.MetricFamily, 
 
 		buf, err := exec.Command("amd-smi", "metric", "--json", "--file", outAmdSMI).CombinedOutput()
 		if err != nil {
-			done <- fmt.Errorf(err.Error() + ": " + string(buf))
+			errs := errors.New(fmt.Sprintf("%v : %v", err.Error(), string(buf)))
+			done <- errs
 			return
 		}
 
@@ -474,19 +476,15 @@ func getMetrics(input, outAmdSMI string) ([]byte, map[string]*dto.MetricFamily, 
 		done <- json.Unmarshal(data, &smiMetric)
 	}()
 
-	var retErr error
+	var retErr []string
 	for i := 0; i < 2; i++ {
 		err := <-done
 		if err == nil {
 			continue
 		}
-		if retErr == nil {
-			retErr = err
-			continue
-		}
-		retErr = fmt.Errorf(retErr.Error() + ": " + err.Error())
+		retErr = append(retErr, err.Error())
 	}
-	return content, exporterMetric, smiMetric, retErr
+	return content, exporterMetric, smiMetric, errors.New(strings.Join(retErr, "; "))
 }
 
 func compareMetricsLastCurrent(last, current map[string]*dto.MetricFamily) (diff [][3]string) {
