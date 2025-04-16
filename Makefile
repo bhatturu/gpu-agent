@@ -298,6 +298,9 @@ unit-test:
 mod:
 	@echo "setting up go mod packages"
 	@go mod tidy
+	@go mod edit -go=1.24.2
+	#CVE-2024-24790 fix of trivy scan
+	@go mod edit -replace golang.org/x/net@v0.29.0=golang.org/x/net@v0.36.0
 	@go mod vendor
 
 .PHONY: base-image
