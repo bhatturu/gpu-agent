@@ -66,7 +66,7 @@ docker run -d \
   -v ./config:/etc/metrics \
   -v /var/run/exporter/:/var/run/exporter/ \
   -p 5000:5000 --name exporter \
-  rocm/device-metrics-exporter:v1.0.0
+  rocm/device-metrics-exporter:v1.2.0
 ```
 
 ## Verification
@@ -154,6 +154,9 @@ Slurm labels are disabled by default. To enable Slurm labels, add the following 
       "GPU_UUID",
       "SERIAL_NUMBER",
       "GPU_ID",
+      "POD",
+      "NAMESPACE",
+      "CONTAINER",
       "JOB_ID",
       "JOB_USER",
       "JOB_PARTITION",
@@ -163,7 +166,10 @@ Slurm labels are disabled by default. To enable Slurm labels, add the following 
       "CARD_VENDOR",
       "DRIVER_VERSION",
       "VBIOS_VERSION",
-      "HOSTNAME"
+      "HOSTNAME",
+      "GPU_PARTITION_ID",
+      "GPU_COMPUTE_PARTITION_TYPE",
+      "GPU_MEMORY_PARTITION_TYPE"
     ]
   }
 }
