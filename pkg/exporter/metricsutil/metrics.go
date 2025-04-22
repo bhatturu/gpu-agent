@@ -82,9 +82,9 @@ func (mh *MetricsHandler) UpdateMetrics() error {
 		go func(client MetricsInterface) {
 			defer wg.Done()
 			if err := client.ResetMetrics(); err != nil {
-				logger.Log.Printf("failed to resetb metrics: %v", err)
+				logger.Log.Printf("failed to reset metrics: %v", err)
 			}
-			if err := client.UpdateStaticMetrics(); err != nil {
+			if err := client.UpdateMetricsStats(); err != nil {
 				logger.Log.Printf("failed to update static metrics: %v", err)
 			}
 		}(client)
