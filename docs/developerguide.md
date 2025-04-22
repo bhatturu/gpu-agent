@@ -93,6 +93,16 @@ To run end-end tests:
 ```bash
 make e2e
 ```
+## E2e Kubenetes Testing
+- The test expects kubeconfig to run the actual exporter on the amd gpu server
+  to test all functionality
+- Running test from TOP direcotry.
+  `KUBECONFIG=~/.kube/config  make k8s-e2e
+- to set more configuration options for the e2e test, run as per below example
+  from TOPDIR/test/k8s-e2e
+  ```
+  go test -helmchart TOPDIR/helm-charts/ -registry <registry_hostname>:<registry_port>/amd/exporter -imagetag test -kubeconfig kubeconfig  -namespace test-exporter -v
+  ```
 
 **Note**: End-end tests run on mock AMD Metrics Exporter image that mocks the metrics generated.
 
