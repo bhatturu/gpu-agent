@@ -112,7 +112,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */`
 	directoryPath := "./"
-	skipDirectory := "vendor" // Replace with the directory name to skip
+	skipDirectory := map[string]bool{ // Replace with the directory name to skip
+		"vendor":            true,
+		"gpuagent":          true,
+		"libamdsmi":         true,
+		"rocprofilerclient": true,
+	}
 
 	// Iterate through all files in the directory
 	err := filepath.Walk(directoryPath, func(path string, info os.FileInfo, err error) error {
@@ -121,8 +126,8 @@ limitations under the License.
 		}
 
 		if info.IsDir() {
-			if info.Name() == skipDirectory {
-				fmt.Printf("Skipping directory: %s\n", skipDirectory)
+			if _, ok := skipDirectory[info.Name()]; ok {
+				fmt.Printf("Skipping directory: %s\n", info.Name())
 				return filepath.SkipDir // Skip the directory and its subdirectories
 			}
 			return nil
