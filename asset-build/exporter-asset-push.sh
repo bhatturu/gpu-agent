@@ -38,7 +38,7 @@ copy_artifacts () {
     # copy docker image azure coreos 3
     cp /device-metrics-exporter/docker/device-metrics-exporter-latest-azure.tar.gz $BUNDLE_DIR/device-metrics-exporter-latest-azure-$RELEASE.tar.gz
     # copy docker mock image
-    cp /device-metrics-exporter/docker/device-metrics-exporter-mock-latest.tgz $BUNDLE_DIR/device-metrics-exporter-mock-latest-$RELEASE.tar.gz
+    cp /device-metrics-exporter/docker/device-metrics-exporter-mock-latest.tar.gz $BUNDLE_DIR/device-metrics-exporter-mock-latest-$RELEASE.tar.gz
     # copy debian ubuntu packages
     cp /device-metrics-exporter/bin/amdgpu-exporter_22.04_amd64.deb  $BUNDLE_DIR/amdgpu-exporter_${DEBIAN_VERSION}~22.04_amd64.deb
     cp /device-metrics-exporter/bin/amdgpu-exporter_24.04_amd64.deb  $BUNDLE_DIR/amdgpu-exporter_${DEBIAN_VERSION}~24.04_amd64.deb
