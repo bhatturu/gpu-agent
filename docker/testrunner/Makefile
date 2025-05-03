@@ -9,7 +9,7 @@ docker:
 	@cp $(TOP_DIR)/bin/amd-test-runner .
 	@cp $(TOP_DIR)/LICENSE .
 	@if [ "$(INTERNAL_TESTRUNNER_BUILD)" = "1" ]; then \
-	    docker build --build-arg BASE_IMAGE=$(RHEL_BASE_IMAGE) -t ${TESTRUNNER_IMAGE} . -f $(TOP_DIR)/docker/testrunner/Dockerfile.internal; \
+	    docker build --build-arg BASE_IMAGE=$(TESTRUNNER_RHEL_BASE_IMAGE) -t ${TESTRUNNER_IMAGE} . -f $(TOP_DIR)/docker/testrunner/Dockerfile.internal; \
 	else \
 	    echo "WARN: Testrunner builds currently not supported, please use published prebuilt images" ; \
 	fi
@@ -23,7 +23,7 @@ docker-cicd:
 	@cp $(TOP_DIR)/bin/amd-test-runner .
 	@cp $(TOP_DIR)/LICENSE .
 	@if [ "$(INTERNAL_TESTRUNNER_BUILD)" = "1" ]; then \
-	    docker build --build-arg BASE_IMAGE=$(RHEL_BASE_IMAGE) -t ${TESTRUNNER_IMAGE} --label HOURLY_TAG=$(HOURLY_TAG_LABEL) . -f $(TOP_DIR)/docker/testrunner/Dockerfile.internal; \
+	    docker build --build-arg BASE_IMAGE=$(TESTRUNNER_RHEL_BASE_IMAGE) -t ${TESTRUNNER_IMAGE} --label HOURLY_TAG=$(HOURLY_TAG_LABEL) . -f $(TOP_DIR)/docker/testrunner/Dockerfile.internal; \
 	else \
 	    echo "WARN: Testrunner builds currently not supported, please use published prebuilt images" ; \
 	fi

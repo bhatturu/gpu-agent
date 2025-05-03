@@ -18,7 +18,7 @@ AZURE_BASE_IMAGE ?= mcr.microsoft.com/azurelinux/base/core:3.0
 # Test runner container environment
 TESTRUNNER_IMAGE_TAG ?= latest
 TESTRUNNER_IMAGE_NAME ?= test-runner
-RHEL_BASE_IMAGE ?= registry.access.redhat.com/ubi9/ubi:9.4
+TESTRUNNER_RHEL_BASE_IMAGE ?= registry.access.redhat.com/ubi9/ubi:9.5
 
 # External repo builders
 GPUAGENT_BASE_IMAGE ?= ubuntu:22.04
@@ -46,7 +46,7 @@ export TESTRUNNER_IMAGE_NAME
 export TESTRUNNER_IMAGE_TAG
 
 # exporter base container images
-export RHEL_BASE_IMAGE
+export TESTRUNNER_RHEL_BASE_IMAGE
 export RHEL_BASE_MIN_IMAGE
 export AZURE_BASE_IMAGE
 

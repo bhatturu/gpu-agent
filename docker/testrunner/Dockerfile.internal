@@ -1,38 +1,17 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi:9.4
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi:9.5
 FROM ${BASE_IMAGE}
 
 LABEL maintainer="AMD Inc"
-LABEL OS="registry.access.redhat.com/ubi9/ubi:9.4"
+LABEL OS="registry.access.redhat.com/ubi9/ubi:9.5"
 
 RUN dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm -y && \
     crb enable && \
-    echo -e "[baseos] \n\
-name=Red Hat Enterprise Linux 9.2 Partners - x86_64 \n\
-baseurl=https://artifactory-cdn.amd.com/artifactory/list/rhel-remote/9.2/x86_64/os/BaseOS \n\
-enabled=1 \n\
-gpgcheck=0 \n\
-\n\
-[appstream] \n\
-name=Red Hat Enterprise Linux 9.2 Partners (AppStream) - x86_64 \n\
-baseurl=https://artifactory-cdn.amd.com/artifactory/list/rhel-remote/9.2/x86_64/os/AppStream \n\
-enabled=1 \n\
-gpgcheck=0 \n\
-\n\
-[crb] \n\
-name=Red Hat Enterprise Linux 9.2 Partners (CRB) - x86_64 \n\
-baseurl=https://artifactory-cdn.amd.com/artifactory/list/rhel-remote/9.2/x86_64/os/CRB \n\
-enabled=1 \n\
-gpgcheck=0"> /etc/yum.repos.d/internal-rhel.repo && \
-    dnf install wget https://artifactory-cdn.amd.com/artifactory/list/amdgpu-rpm/rhel/amdgpu-install-internal-6.4_9-1.noarch.rpm -y && \
-    amdgpu-repo --amdgpu-build=2138173 --rocm-build=compute-rocm-rel-6.4/39 && \
-    dnf clean all
-
-RUN dnf install yaml-cpp rocm-smi-lib rocrand -y && \
-    rm -rf /var/cache/yum && \
-    rm -rf /var/cache/dnf && \
-    dnf clean all
-
-RUN dnf install rocm-validation-suite -y && \
+    dnf install -y 'dnf-command(config-manager)' && \
+    dnf config-manager --add-repo=https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/ && \
+    rpm --import https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official && \
+    dnf update -y && \
+    dnf install https://repo.radeon.com/amdgpu-install/6.4/rhel/9.5/amdgpu-install-6.4.60400-1.el9.noarch.rpm -y && \
+    dnf install rocrand rocm-validation-suite -y && \
     rm -rf /var/cache/yum && \
     rm -rf /var/cache/dnf && \
     dnf clean all

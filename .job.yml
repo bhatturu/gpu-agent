@@ -65,11 +65,11 @@ builds:
     sub-area:
     feature:
 
-#  build-test-runner-docker:
-#    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && HOURLY_TAG_LABEL=$RELEASE TESTRUNNER_IMAGE_TAG=latest make docker-test-runner-cicd"]
-#    owners: ["email:yan.sun3@amd.com"]
-#    artifacts:
-#        - /device-metrics-exporter/docker/testrunner/test-runner-latest.tar.gz
+  build-test-runner-docker:
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && HOURLY_TAG_LABEL=$RELEASE TESTRUNNER_IMAGE_TAG=latest make docker-test-runner-cicd"]
+    owners: ["email:yan.sun3@amd.com"]
+    artifacts:
+        - /device-metrics-exporter/docker/testrunner/test-runner-latest.tar.gz
 
 targets:
   device-metrics-sanity:
@@ -89,16 +89,16 @@ targets:
         - e2e-build-mock-exporter
         - build-all
 
-#  test-runner-sanity:
-#    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter"]
-#    owners: ["email:yan.sun3@amd.com"]
-#    area:
-#    sub-area:
-#    feature:
-#    logfiles:
-#        - /device-metrics-exporter/test-runner.log
-#    build-dependencies:
-#        - build-test-runner-docker
+  test-runner-sanity:
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter"]
+    owners: ["email:yan.sun3@amd.com"]
+    area:
+    sub-area:
+    feature:
+    logfiles:
+        - /device-metrics-exporter/test-runner.log
+    build-dependencies:
+        - build-test-runner-docker
    
   copyright-checks:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make copyrights"]
