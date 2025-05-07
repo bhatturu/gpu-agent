@@ -112,12 +112,27 @@ UBUNTU_VERSION_NUMBER = 24.04
 UBUNTU_LIBDIR = UBUNTU24
 endif
 
-ifeq ($(RELEASE),)
-DEBIAN_VERSION := "1.2.0"
-else
+# set version and run `make update-version` to all docs
+PACKAGE_VERSION ?= "1.3.0"
+ifneq (,$(findstring exporter,$(RELEASE)))
 #remove prefix from main tag
 DEBIAN_VERSION := $(shell echo "$(RELEASE)" | cut -c 10-)
+else ifneq (,$(findstring v,$(RELEASE)))
+#remove prefix for release tag
+DEBIAN_VERSION := $(shell echo "$(RELEASE)" | sed 's/^.//')
+else
+#apt is only released until this version
+DEBIAN_VERSION := "1.2.0"
 endif
+REL_IMAGE_TAG := $(subst $\",,v$(PACKAGE_VERSION))
+
+
+.PHONY: update-version
+update-version:
+	sed -i -e 's|version = .*|version = ${PACKAGE_VERSION}|' docs/conf.py
+	sed -i -e 's|tag:.*|tag: ${REL_IMAGE_TAG}|' helm-charts/values.yaml
+	sed -i -e 's|debian_version = .*|debian_version = ${DEBIAN_VERSION}|' docs/conf.py
+
 
 
 TO_GEN_TESTRUNNER := pkg/testrunner/proto
@@ -187,6 +202,7 @@ clean: pkg-clean
 	rm -rf docker/*.tar
 	rm -rf docker/*.tar.gz
 	rm -rf build
+	rm -rf helm-charts/*.tgz
 
 GOLANGCI_LINT = $(shell pwd)/bin/golangci-lint
 .PHONY: golangci-lint
@@ -344,7 +360,9 @@ helm-lint:
 
 .PHONY: helm-build
 helm-build: helm-lint
-	helm package helm-charts/ --destination ./helm-charts
+	rm -rf helm-charts/device-metrics-exporter-charts*
+	helm package helm-charts/ --destination ./helm-charts --app-version ${HELM_CHART_VERSION} --version ${HELM_CHART_VERSION}
+	cp -vf helm-charts/device-metrics-exporter-charts* helm-charts/device-metrics-exporter-charts.tgz
 
 .PHONY: slurm-sim
 slurm-sim:

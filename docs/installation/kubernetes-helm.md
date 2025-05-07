@@ -41,6 +41,6 @@ serviceMonitor:
 
 ```bash
 helm install exporter \
-  https://github.com/ROCm/device-metrics-exporter/releases/download/v1.2.0/device-metrics-exporter-charts-v1.2.0.tgz \
+  https://github.com/ROCm/device-metrics-exporter/releases/download/v|version|/device-metrics-exporter-charts-v|version|.tgz \
   -n mynamespace -f values.yaml --create-namespace
 ```
