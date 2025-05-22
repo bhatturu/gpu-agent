@@ -170,7 +170,7 @@ func getDeviceMap() {
 	}
 	fmt.Printf("Logical Device Map \n")
 	for k, v := range devices {
-		fmt.Printf("GPU ID[%v] -> Device Name [%v]\n", k, v)
+		fmt.Printf("Render ID [%v] -> Device Name [%v]\n", k, v)
 	}
 	return
 }

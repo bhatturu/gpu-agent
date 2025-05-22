@@ -1416,6 +1416,10 @@ func (ga *GPUAgentClient) InitConfigs() error {
 	return ga.initFieldRegistration()
 }
 
+func getGPURenderId(gpu *amdgpu.GPU) string {
+	return fmt.Sprintf("%v", gpu.Status.DRMRenderId)
+}
+
 func getGPUInstanceID(gpu *amdgpu.GPU) int {
 	return int(gpu.Status.Index)
 }
@@ -1467,8 +1471,8 @@ func (ga *GPUAgentClient) getWorkloadInfo(wls map[string]scheduler.Workload, gpu
 		// return empty if labels are not set to be exportered
 		return nil
 	}
-	gpu_id := fmt.Sprintf("%v", getGPUInstanceID(gpu))
-	deviceName, _ := ga.fsysDeviceHandler.GetDeviceNameFromID(gpu_id)
+	gpuRenderId := getGPURenderId(gpu)
+	deviceName, _ := ga.fsysDeviceHandler.GetDeviceNameFromRenderID(gpuRenderId)
 	// populate with workload info
 	if gpu.Status.PCIeStatus != nil {
 		if workload, ok := wls[strings.ToLower(gpu.Status.PCIeStatus.PCIeBusId)]; ok {
@@ -1479,7 +1483,7 @@ func (ga *GPUAgentClient) getWorkloadInfo(wls map[string]scheduler.Workload, gpu
 		return &workload
 	}
 	// ignore errors as we always expect slurm deployment as default
-	if workload, ok := wls[gpu_id]; ok {
+	if workload, ok := wls[gpuRenderId]; ok {
 		return &workload
 	}
 	return nil
