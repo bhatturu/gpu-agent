@@ -66,7 +66,7 @@ export GPUAGENT_BASE_IMAGE
 export ROCPROFILER_BUILDER_IMAGE
 
 TO_GEN := pkg/amdgpu/proto pkg/exporter/proto
-TO_MOCK := pkg/amdgpu/mock
+TO_MOCK := pkg/amdgpu/mock pkg/exporter/scheduler
 OUT_DIR := bin
 CUR_USER:=$(shell whoami)
 CUR_TIME:=$(shell date +%Y-%m-%d_%H.%M.%S)
