@@ -3,3 +3,4 @@
 # Defines the list of branches into which the changes would need cherry-picking
 cherry_pick_branches:
   - collab-ainic
+  - collab-agfhc
