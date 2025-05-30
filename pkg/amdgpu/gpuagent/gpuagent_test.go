@@ -29,7 +29,7 @@ func TestGpuAgent(t *testing.T) {
 	ga := getNewAgent(t)
 	t.Logf("gpuagent : %+v", ga)
 
-	req, err := ga.getGPUs()
+	req, _, err := ga.getGPUs()
 	assert.Assert(t, err == nil, "expecting nil response")
 
 	t.Logf("req :%+v", req)
