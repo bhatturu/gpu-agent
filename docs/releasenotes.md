@@ -12,6 +12,9 @@
 - **Performance Metrics**
   - Adds more profiler related metrics on supported platforms, with toggle
   	functionality through configmap `ProfilerMetrics`
+- **Custom Prefix for Exporter**
+  - Adds more flexibility to add custome prefix to better identify AMD GPU on
+  	multi cluster deployment, through configmap `CommonConfig`
 
 ### Platform Support
 ROCm 6.4.x
@@ -24,9 +27,6 @@ ROCm 6.4.x
   - Easy integration with Prometheus Operator
 - **K8s Toleration and Selector**
   - Added capability to add tolerations and nodeSelector during helm install
-- **Custom Prefix for Exporter**
-  - Adds more flexibility to add custome prefix to better identify AMD GPU on
-  	multi cluster deployment, through configmap `CommonConfig`
 
 ### Platform Support
 ROCm 6.3.x
