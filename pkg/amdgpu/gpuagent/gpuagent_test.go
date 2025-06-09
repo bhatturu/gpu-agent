@@ -51,6 +51,12 @@ func TestGpuAgent(t *testing.T) {
 	assert.Assert(t, len(wls) == 0, "expecting success 2 workloads on slurm")
 	ga.Close()
 
+	// set k8s nil check test
+	ga.isKubernetes = true
+	wls, err = ga.ListWorkloads()
+	assert.Assert(t, err == nil, "expecting success workload list")
+	assert.Assert(t, len(wls) == 0, "expecting success empty list of workload on k8s and slurm")
+
 }
 
 func TestGpuAgentSlurm(t *testing.T) {
