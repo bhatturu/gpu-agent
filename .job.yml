@@ -11,7 +11,7 @@ builds:
         - /device-metrics-exporter/gpuagent/sw/nic/build/x86_64/sim/bin/gpuagent
 
   build-debian-package-ub22.04:
-    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make pkg"]
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make libcopy-assets-UBUNTU22 pkg"]
     owners: ["email:prshanmug@amd.com"]
     area:
     sub-area:
@@ -20,7 +20,7 @@ builds:
         - /device-metrics-exporter/bin/amdgpu-exporter_22.04_amd64.deb
 
   build-debian-package-ub24.04:
-    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make UBUNTU_VERSION=noble pkg"]
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make UBUNTU_VERSION=noble libcopy-assets-UBUNTU24 pkg"]
     owners: ["email:prshanmug@amd.com"]
     area:
     sub-area:
