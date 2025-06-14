@@ -19,7 +19,6 @@ package gpuagent
 import (
 	"context"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -53,7 +52,7 @@ type GPUAgentClient struct {
 	evtclient              amdgpu.EventSvcClient
 	rocpclient             *rocprofiler.ROCProfilerClient
 	m                      *metrics // client specific metrics
-	k8sLabelClient         *k8sclient.K8sClient
+	k8sApiClient           *k8sclient.K8sClient
 	k8sScheduler           scheduler.SchedulerClient
 	slurmScheduler         scheduler.SchedulerClient
 	isKubernetes           bool
@@ -81,15 +80,13 @@ func initclients(mh *metricsutil.MetricsHandler) (conn *grpc.ClientConn, gpuclie
 	return
 }
 
-func NewAgent(mh *metricsutil.MetricsHandler, enableZmq bool, enableProfiler bool) *GPUAgentClient {
+func NewAgent(mh *metricsutil.MetricsHandler, k8sclient *k8sclient.K8sClient, enableZmq bool) *GPUAgentClient {
 	ga := &GPUAgentClient{mh: mh, enableZmq: enableZmq, computeNodeHealthState: true}
 	ga.healthState = make(map[string]*metricssvc.GPUState)
 	ga.mockEccField = make(map[string]map[string]uint32)
-	if enableProfiler {
-		logger.Log.Printf("Profiler metrics client enabled")
-		ga.rocpclient = rocprofiler.NewRocProfilerClient("rocpclient")
-		ga.enableProfileMetrics = true
-	}
+	ga.rocpclient = rocprofiler.NewRocProfilerClient("rocpclient")
+	ga.enableProfileMetrics = true
+	ga.k8sApiClient = k8sclient
 	ga.fsysDeviceHandler = fsysdevice.GetFsysDeviceHandler()
 	mh.RegisterMetricsClient(ga)
 	return ga
@@ -124,9 +121,6 @@ func (ga *GPUAgentClient) Init() error {
 		return err
 	}
 	ga.slurmScheduler = slurmScl
-	if ga.isKubernetes {
-		ga.k8sLabelClient = k8sclient.NewClient(ga.ctx)
-	}
 
 	if err := ga.populateStaticHostLabels(); err != nil {
 		return fmt.Errorf("error in populating static host labels, %v", err)
@@ -194,7 +188,7 @@ func (ga *GPUAgentClient) sendNodeLabelUpdate() error {
 		gpuHealthStates[gpuid] = hs.Health
 	}
 	ga.Unlock()
-	_ = ga.k8sLabelClient.UpdateHealthLabel(nodeName, gpuHealthStates)
+	_ = ga.k8sApiClient.UpdateHealthLabel(nodeName, gpuHealthStates)
 	return nil
 }
 
@@ -252,10 +246,16 @@ func (ga *GPUAgentClient) getMetricsAll() error {
 		//continue as this may not be available at this time
 		pmetrics = nil
 	}
+	k8PodLabelsMap, err = ga.FetchPodLabelsForNode()
+	if err != nil {
+		logger.Log.Printf("FetchPodLabelsForNode failed with err : %v", err)
+	}
 	usedVRAM, err := ga.fsysDeviceHandler.GetAllUsedVRAM()
 	if err != nil {
 		logger.Log.Printf("GetAllUsedVRAM failed with err : %v", err)
 	}
+	nonGpuLabels := ga.populateLabelsFromGPU(nil, nil, nil)
+	ga.m.gpuNodesTotal.With(nonGpuLabels).Set(float64(len(resp.Response)))
 	for _, gpu := range resp.Response {
 		var gpuProfMetrics map[string]float64
 		// if available use the data
@@ -354,21 +354,6 @@ func (ga *GPUAgentClient) ListWorkloads() (wls map[string]scheduler.Workload, er
 	return
 }
 
-func (ga *GPUAgentClient) checkExportLabels(exportLabels map[string]bool) bool {
-	if ga.isKubernetes {
-		if ga.k8sScheduler != nil && ga.k8sScheduler.CheckExportLabels(exportLabels) {
-			return true
-		}
-	}
-	if ga.slurmScheduler == nil {
-		return false
-	}
-	if ga.slurmScheduler.CheckExportLabels(exportLabels) {
-		return true
-	}
-	return false
-}
-
 func (ga *GPUAgentClient) Close() {
 	ga.Lock()
 	defer ga.Unlock()
@@ -393,24 +378,10 @@ func (ga *GPUAgentClient) Close() {
 	ga.cancel()
 }
 
-func (ga *GPUAgentClient) FetchPodLabelsForNode(nodeName string) (map[PodUniqueKey]map[string]string, error) {
-	// Initialize the resulting map
-	k8PodLabelsMap := make(map[PodUniqueKey]map[string]string)
-
-	pods, err := ga.k8sLabelClient.GetAllPods(nodeName)
-	if err != nil {
-		log.Printf("Error fetching pods for node %v: %v", nodeName, err)
-		return nil, err
+func (ga *GPUAgentClient) FetchPodLabelsForNode() (map[string]map[string]string, error) {
+	listMap := make(map[string]map[string]string)
+	if utils.IsKubernetes() && len(extraPodLabelsMap) > 0 {
+		return ga.k8sApiClient.GetAllPods()
 	}
-
-	// Process each pod and populate the map
-	for _, pod := range pods.Items {
-		podKey := PodUniqueKey{
-			PodName:   pod.Name,
-			Namespace: pod.Namespace,
-		}
-		k8PodLabelsMap[podKey] = pod.Labels
-	}
-
-	return k8PodLabelsMap, nil
+	return listMap, nil
 }

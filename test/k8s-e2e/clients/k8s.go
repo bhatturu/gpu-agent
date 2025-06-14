@@ -20,11 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"log"
-	"net/http"
 
-	testutils "github.com/ROCm/device-metrics-exporter/test/utils"
 	"github.com/prometheus/common/expfmt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -94,16 +90,6 @@ func (k *K8sClient) GetServiceByLabel(ctx context.Context, namespace string, lab
 	return nodeList.Items, nil
 }
 
-func (k *K8sClient) GetEndpointByLabel(ctx context.Context, namespace string, labelMap map[string]string) ([]corev1.Endpoints, error) {
-	nodeList, err := k.client.CoreV1().Endpoints(namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labelMap).String(),
-	})
-	if err != nil {
-		return nil, err
-	}
-	return nodeList.Items, nil
-}
-
 func (k *K8sClient) ValidatePod(ctx context.Context, namespace, podName string) error {
 	pod, err := k.client.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 	if err != nil {
@@ -117,29 +103,6 @@ func (k *K8sClient) ValidatePod(ctx context.Context, namespace, podName string) 
 	}
 
 	return nil
-}
-
-func (k *K8sClient) GetMetricsFromEp(ctx context.Context, port uint, ep *corev1.Endpoints) (payload map[string]*testutils.GPUMetric, err error) {
-	for _, subnet := range ep.Subsets {
-		for _, addr := range subnet.Addresses {
-			resp, err := http.Get(fmt.Sprintf("http://%v:%d/metrics", addr, port))
-			if err != nil {
-				log.Printf("failed to get metrics from %v:%d/metrics, %v", addr, port, err)
-				continue
-			}
-			defer resp.Body.Close()
-			bodyBytes, err := io.ReadAll(resp.Body)
-			if err != nil {
-				continue
-			}
-			payload, err = testutils.ParsePrometheusMetrics(string(bodyBytes))
-			if err != nil {
-				continue
-			}
-			return payload, err
-		}
-	}
-	return nil, fmt.Errorf("ep invalid status or no ip present")
 }
 
 func (k *K8sClient) GetMetricsCmdFromPod(ctx context.Context, rc *restclient.Config, pod *corev1.Pod) (labels []string, fields []string, err error) {

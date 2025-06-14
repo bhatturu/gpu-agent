@@ -185,7 +185,7 @@ func newK8sSchedulerMock() scheduler.SchedulerClient {
 
 func getNewAgent(t *testing.T) *GPUAgentClient {
 	// setup zmq mock port
-	ga := NewAgent(mh, true, false)
+	ga := NewAgent(mh, nil, true)
 	ga.initializeContext()
 	ga.gpuclient = gpuMockCl
 	ga.evtclient = eventMockCl

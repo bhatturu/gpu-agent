@@ -20,6 +20,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter"
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/globals"
@@ -87,6 +89,14 @@ func main() {
 	if enableDebugAPI {
 		logger.Log.Printf("Debug APIs enabled")
 	}
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-sigChan
+		logger.Log.Printf("Received signal: %v, shutting down...", sig)
+		exporterHandler.Close()
+		os.Exit(0)
+	}()
 	exporterHandler.StartMain(enableDebugAPI)
 
 }

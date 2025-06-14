@@ -19,16 +19,21 @@ package k8sclient
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"reflect"
 	"sync"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/logger"
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/utils"
@@ -40,50 +45,55 @@ import (
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 )
 
+// PodUniqueKey - key for uniquely identifying pod
+type PodUniqueKey struct {
+	PodName   string
+	Namespace string
+}
+
+func (p *PodUniqueKey) String() string {
+	return fmt.Sprintf("%v-%v", p.Namespace, p.PodName)
+}
+
 type K8sClient struct {
 	sync.Mutex
-	ctx       context.Context
-	clientset *kubernetes.Clientset
+	ctx          context.Context
+	clientset    kubernetes.Interface
+	nodeName     string
+	stopCh       chan struct{}
+	started      bool
+	nodeInformer cache.SharedIndexInformer
+	podInformer  cache.SharedIndexInformer
 }
 
-func NewClient(ctx context.Context) *K8sClient {
-	return &K8sClient{
-		ctx: ctx,
+func NewClient(ctx context.Context, nodeName string) (*K8sClient, error) {
+
+	if nodeName == "" {
+		return nil, fmt.Errorf("node name cannot be empty")
 	}
-}
-
-func (k *K8sClient) init() error {
-	k.Lock()
-	defer k.Unlock()
-
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		logger.Log.Printf("k8s cluster config error %v", err)
-		return err
+		return nil, err
 	}
 	// creates the clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		logger.Log.Printf("clientset from config failed %v", err)
-		return err
+		return nil, err
 	}
 
-	k.clientset = clientset
-	return nil
-}
-
-func (k *K8sClient) reConnect() error {
-	if k.clientset == nil {
-		return k.init()
+	k8c := &K8sClient{
+		ctx:       ctx,
+		clientset: clientset,
+		nodeName:  nodeName,
+		stopCh:    make(chan struct{}),
+		started:   false,
 	}
-	return nil
+	return k8c, nil
 }
 
 func (k *K8sClient) CreateEvent(evtObj *v1.Event) error {
-	if err := k.reConnect(); err != nil {
-		logger.Log.Printf("err: %v", err)
-		return err
-	}
 	k.Lock()
 	defer k.Unlock()
 	ctx, cancel := context.WithCancel(k.ctx)
@@ -102,33 +112,10 @@ func (k *K8sClient) CreateEvent(evtObj *v1.Event) error {
 	return nil
 }
 
-func (k *K8sClient) GetNodelLabel(nodeName string) (string, error) {
-	if err := k.reConnect(); err != nil {
-		logger.Log.Printf("err: %v", err)
-		return "", err
-	}
+func (k *K8sClient) AddNodeLabel(nodeName string, keys []string, val string) error {
 	k.Lock()
 	defer k.Unlock()
 	ctx, cancel := context.WithCancel(k.ctx)
-	defer cancel()
-
-	node, err := k.clientset.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
-	if err != nil {
-		logger.Log.Printf("k8s internal node get failed %v", err)
-		k.clientset = nil
-		return "", err
-	}
-	return fmt.Sprintf("%+v", node.Labels), nil
-}
-
-func (k *K8sClient) AddNodeLabel(nodeName string, keys []string, val string) error {
-	if err := k.reConnect(); err != nil {
-		logger.Log.Printf("err: %v", err)
-		return err
-	}
-	k.Lock()
-	defer k.Unlock()
-	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	patch := []map[string]interface{}{}
@@ -151,12 +138,9 @@ func (k *K8sClient) AddNodeLabel(nodeName string, keys []string, val string) err
 }
 
 func (k *K8sClient) RemoveNodeLabel(nodeName string, keys []string) error {
-	if err := k.reConnect(); err != nil {
-		return fmt.Errorf("reconnect failed: %v", err)
-	}
 	k.Lock()
 	defer k.Unlock()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(k.ctx)
 	defer cancel()
 	patch := []map[string]interface{}{}
 	for _, key := range keys {
@@ -177,9 +161,6 @@ func (k *K8sClient) RemoveNodeLabel(nodeName string, keys []string) error {
 }
 
 func (k *K8sClient) UpdateHealthLabel(nodeName string, newHealthMap map[string]string) error {
-	if err := k.reConnect(); err != nil {
-		return fmt.Errorf("reconnect failed: %v", err)
-	}
 	k.Lock()
 	defer k.Unlock()
 
@@ -215,22 +196,176 @@ func (k *K8sClient) UpdateHealthLabel(nodeName string, newHealthMap map[string]s
 	return nil
 }
 
-func (k *K8sClient) GetAllPods(nodeName string) (*v1.PodList, error) {
-	if err := k.reConnect(); err != nil {
-		return nil, fmt.Errorf("reconnect failed: %v", err)
-	}
+// Watch starts the label watchers with reconnection support
+func (k *K8sClient) Watch() error {
 	k.Lock()
-	defer k.Unlock()
+	if k.started {
+		k.Unlock()
+		return errors.New("watcher already started")
+	}
+	k.started = true
+	k.Unlock()
 
-	ctx, cancel := context.WithCancel(k.ctx)
-	defer cancel()
+	go k.runWithReconnect()
+	return nil
+}
 
-	pods, err := k.clientset.CoreV1().Pods("").List(ctx, metav1.ListOptions{
-		FieldSelector: fmt.Sprintf("spec.nodeName=%s", nodeName),
+func (k *K8sClient) runWithReconnect() {
+	retryInterval := 5 * time.Second
+	for {
+		if err := k.startWatchers(); err != nil {
+			logger.Log.Printf("Watcher error: %v. Retrying in %s...\n", err, retryInterval)
+		} else {
+			logger.Log.Printf("Watchers stopped. Restarting...")
+		}
+
+		select {
+		case <-time.After(retryInterval):
+			continue
+		case <-k.stopCh:
+			return
+		}
+	}
+}
+
+func (k *K8sClient) startWatchers() error {
+	nodeFactory := informers.NewSharedInformerFactoryWithOptions(
+		k.clientset,
+		0,
+		informers.WithTweakListOptions(func(opt *metav1.ListOptions) {
+			opt.FieldSelector = fields.OneTermEqualSelector("metadata.name", k.nodeName).String()
+		}),
+	)
+	podFactory := informers.NewSharedInformerFactoryWithOptions(
+		k.clientset,
+		0,
+		informers.WithTweakListOptions(func(opt *metav1.ListOptions) {
+			opt.FieldSelector = fields.OneTermEqualSelector("spec.nodeName", k.nodeName).String()
+		}),
+	)
+
+	k.nodeInformer = nodeFactory.Core().V1().Nodes().Informer()
+	k.podInformer = podFactory.Core().V1().Pods().Informer()
+
+	// nolint
+	k.nodeInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			if node, ok := obj.(*v1.Node); ok {
+				logger.Log.Printf("node added with labels: %+v", node.Labels)
+			}
+		},
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			oldNode := oldObj.(*v1.Node)
+			newNode := newObj.(*v1.Node)
+			if !reflect.DeepEqual(oldNode.Labels, newNode.Labels) {
+				logger.Log.Printf("node updated with labels: %+v", newNode.Labels)
+			}
+		},
 	})
+	// nolint
+	k.podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			if pod, ok := obj.(*v1.Pod); ok {
+				logger.Log.Printf("pod[%v-%v] added with labels: %+v",
+					pod.Name, pod.Namespace, pod.Labels)
+			}
+		},
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			oldPod := oldObj.(*v1.Pod)
+			newPod := newObj.(*v1.Pod)
+			if !reflect.DeepEqual(oldPod.Labels, newPod.Labels) {
+				logger.Log.Printf("pod[%v-%v] updated with labels: %+v",
+					newPod.Name, newPod.Namespace, newPod.Labels)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			if pod, ok := obj.(*v1.Pod); ok {
+				logger.Log.Printf("pod[%v-%v] deleted", pod.Name, pod.Namespace)
+			}
+		},
+	})
+
+	// Start and block until synced
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+
+	go k.nodeInformer.Run(stopCh)
+	go k.podInformer.Run(stopCh)
+
+	if !cache.WaitForCacheSync(stopCh, k.nodeInformer.HasSynced, k.podInformer.HasSynced) {
+		return errors.New("cache sync failed")
+	}
+
+	// Block until stop signal received
+	// nolint
+	select {
+	case <-k.stopCh:
+		return nil
+	}
+}
+
+func (k *K8sClient) Stop() {
+	close(k.stopCh)
+}
+
+func (k *K8sClient) GetClientSet() kubernetes.Interface {
+	return k.clientset
+}
+
+func (k *K8sClient) GetNodeLabel() (string, error) {
+	node, err := k.GetNode()
 	if err != nil {
-		log.Printf("Error fetching pods for node %v: %v", nodeName, err)
+		return "", err
+	}
+	return fmt.Sprintf("%+v", node.Labels), nil
+}
+
+func (k *K8sClient) GetAllPods() (map[string]map[string]string, error) {
+	// Initialize the resulting map
+	k8PodLabelsMap := make(map[string]map[string]string)
+
+	pods, err := k.ListPods()
+	if err != nil {
+		log.Printf("Error fetching pods for node %v: %v", k.nodeName, err)
 		return nil, err
+	}
+
+	// Process each pod and populate the map
+	for _, pod := range pods {
+		podKey := PodUniqueKey{
+			PodName:   pod.Name,
+			Namespace: pod.Namespace,
+		}
+		k8PodLabelsMap[podKey.String()] = pod.Labels
+	}
+	return k8PodLabelsMap, nil
+}
+
+func (k *K8sClient) GetNode() (*v1.Node, error) {
+	if k.nodeInformer == nil || !k.nodeInformer.HasSynced() {
+		return nil, errors.New("cache not synced or API server unavailable")
+	}
+	// since we are watching only self node, we can safely assume the first
+	// object in the store is the node we are interested in
+	objs := k.nodeInformer.GetStore().List()
+	if len(objs) == 0 {
+		return nil, errors.New("node not available in cache")
+	}
+	if node, ok := objs[0].(*v1.Node); ok {
+		return node.DeepCopy(), nil
+	}
+	return nil, errors.New("failed to cast object to *v1.Node")
+}
+
+func (k *K8sClient) ListPods() ([]*v1.Pod, error) {
+	if k.podInformer == nil || !k.podInformer.HasSynced() {
+		return nil, errors.New("cache not synced or API server unavailable")
+	}
+	pods := []*v1.Pod{}
+	for _, obj := range k.podInformer.GetStore().List() {
+		if pod, ok := obj.(*v1.Pod); ok {
+			pods = append(pods, pod.DeepCopy())
+		}
 	}
 	return pods, nil
 }
