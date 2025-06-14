@@ -1,8 +1,8 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:9.5
+ARG BASE_IMAGE=redhat/ubi9-minimal:9.6
 FROM ${BASE_IMAGE}
 
 LABEL maintainer="AMD Inc"
-LABEL OS="registry.access.redhat.com/ubi9/ubi-minimal:9.5"
+LABEL OS="redhat/ubi9-minimal:9.6"
 
 ARG ROCM_VERSION=6.4
 ARG AMDGPU_VERSION=6.4
