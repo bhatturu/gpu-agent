@@ -19,7 +19,6 @@ package nicagent
 import (
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/gen/exportermetrics"
@@ -851,7 +850,7 @@ func (na *NICAgentClient) getNICs() (map[string]*NIC, error) {
 
 	nics := map[string]*NIC{}
 
-	nicResp, err := exec.Command("/bin/bash", "-c", "nicctl show card --json").Output()
+	nicResp, err := ExecWithContext("nicctl show card --json")
 	if err != nil {
 		logger.Log.Printf("failed to get nic data, err: %+v", err)
 		return nics, err
@@ -873,16 +872,16 @@ func (na *NICAgentClient) getNICs() (map[string]*NIC, error) {
 		}
 
 		cmd := fmt.Sprintf("nicctl show port --card %s --json", nic.ID)
-		portResp, err := exec.Command("/bin/bash", "-c", cmd).Output()
+		portResp, err := ExecWithContext(cmd)
 		if err != nil {
 			logger.Log.Printf("NIC: %s, failed to get port data, err: %+v", nic.ID, err)
-			return nics, err
+			continue
 		}
 		var resp Response
 		err = json.Unmarshal(portResp, &resp)
 		if err != nil {
 			logger.Log.Printf("NIC: %s, error unmarshalling port data: %v", nic.ID, err)
-			return nics, err
+			continue
 		}
 
 		for _, nic := range resp.NIC {
@@ -901,16 +900,16 @@ func (na *NICAgentClient) getNICs() (map[string]*NIC, error) {
 	// fetch lif details for each NIC
 	for _, nic := range resp.NIC {
 		cmd := fmt.Sprintf("nicctl show lif --card %s --json", nic.ID)
-		lifResp, err := exec.Command("/bin/bash", "-c", cmd).Output()
+		lifResp, err := ExecWithContext(cmd)
 		if err != nil {
 			logger.Log.Printf("NIC: %s, failed to get lif data, err: %+v", nic.ID, err)
-			return nics, err
+			continue
 		}
 		var resp Response
 		err = json.Unmarshal(lifResp, &resp)
 		if err != nil {
 			logger.Log.Printf("NIC: %s, error unmarshalling lif data: %v", nic.ID, err)
-			return nics, err
+			continue
 		}
 
 		for _, nic := range resp.NIC {

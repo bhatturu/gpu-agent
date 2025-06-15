@@ -289,7 +289,10 @@ func (e *Exporter) StartMain(enableDebugAPI bool) {
 
 	logger.Init(utils.IsKubernetes())
 
-	svcHandler := metricsserver.InitSvcs(enableDebugAPI)
+	svcHandler := metricsserver.InitSvcs(
+		metricsserver.WithDebugAPIOption(enableDebugAPI),
+		metricsserver.WithNICAgentEnable(e.enableNICAgent),
+	)
 	go func() {
 		logger.Log.Printf("metrics service starting")
 		if err := svcHandler.Run(); err != nil {
@@ -312,7 +315,7 @@ func (e *Exporter) StartMain(enableDebugAPI bool) {
 
 	e.startWatchers()
 
-	if err := svcHandler.RegisterHealthClient(gpuclient); err != nil {
+	if err := svcHandler.RegisterGPUHealthClient(gpuclient); err != nil {
 		logger.Log.Printf("health client registration err: %+v", err)
 	}
 
@@ -323,6 +326,11 @@ func (e *Exporter) StartMain(enableDebugAPI bool) {
 		if err := nicAgent.Init(); err != nil {
 			logger.Log.Printf("nic client init err :%+v", err)
 		}
+		if err := svcHandler.RegisterNICHealthClient(nicAgent); err != nil {
+			logger.Log.Printf("nic health client registration err: %+v", err)
+		}
+		nicHealth, err := nicAgent.GetNICHealthStates()
+		logger.Log.Printf("NIC health states: %+v, err: %v", nicHealth, err)
 	}
 }
 
