@@ -8,7 +8,7 @@ System Requirements
 Before installing the AMD GPU Metrics Exporter, you need to install the following:
 
 - **Operating System**: Ubuntu 22.04 or Ubuntu 24.04
-- **ROCm Version**: 6.4.1 (specific to each .deb pkg)
+- **ROCm Version**: 6.3.x (specific to each .deb pkg)
 
 Each Debian package release of the Standalone Metrics Exporter is dependent on a specific version of the ROCm amdgpu driver. Please see table below for more information:
 
@@ -91,25 +91,41 @@ Step 3: Install the APT Prerequisites for Metrics Exporter
 
 2. Edit the sources list to add the Device Metrics Exporter repository:
 
-   **For Ubuntu 22.04**, add the following line:
+  .. tab-set::
 
-   .. code-block:: bash
+    .. tab-item:: v1.3.0
+      :sync: v1.3.0-tab
 
-<<<<<<< HEAD
-      deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/device-metrics-exporter/apt/|debian_version| jammy main
-=======
-      deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/device-metrics-exporter/apt/1.3.0 jammy main
->>>>>>> a4d0619... 1. Update rocprofiler dependent libraries and rocprofiler client to 6.4.1 (#492)
+      .. tab-set::
 
-   **For Ubuntu 24.04**, add the following line:
+         .. tab-item:: ubuntu 22.04
 
-   .. code-block:: bash
+            .. code-block:: bash
 
-<<<<<<< HEAD
-      deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/device-metrics-exporter/apt/|debian_version| noble main
-=======
-      deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/device-metrics-exporter/apt/1.3.0 noble main
->>>>>>> a4d0619... 1. Update rocprofiler dependent libraries and rocprofiler client to 6.4.1 (#492)
+              deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/device-metrics-exporter/apt/1.3.0 jammy main
+
+         .. tab-item:: ubuntu 24.04
+
+            .. code-block:: bash
+
+              deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/device-metrics-exporter/apt/1.3.0 noble main
+
+    .. tab-item:: v1.2.0
+      :sync: v1.2.0-tab
+
+      .. tab-set::
+
+         .. tab-item:: ubuntu 22.04
+
+            .. code-block:: bash
+
+              deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/device-metrics-exporter/apt/1.2.0 jammy main
+
+         .. tab-item:: ubuntu 24.04
+
+            .. code-block:: bash
+
+              deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/device-metrics-exporter/apt/1.2.0 noble main
 
 3. Update the package list again:
 
@@ -151,12 +167,12 @@ The Exporter HTTP port is configurable via the `ServerPort` field in the configu
 Metrics Exporter Custom Configuration
 ======================================
 
-Make changes to config.json
+Using a custom config.json
 ---------------------------
 
 If you need to customize ports or settings:
 
-1. Installation creates a default configuration under `/etc/metrics/config.json`. Note that you can change the path to save the config.json file into a different direct. Just be sure to also update the path in the server ExecStart command in step 3.
+1. Download a copy of the default `config.json <https://github.com/ROCm/device-metrics-exporter/blob/main/example/config.json>`_ from the Metrics Exporter Repo. Note that you can change the path to save the config.json file into a different direct. Just be sure to also update the path in the server ExecStart command in step 3.
 
    .. code-block:: bash
 
