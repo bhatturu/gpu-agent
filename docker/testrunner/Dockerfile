@@ -1,8 +1,8 @@
-ARG BASE_IMAGE=redhat/ubi9-minimal:9.6
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:9.6
 FROM ${BASE_IMAGE}
 
 LABEL maintainer="AMD Inc"
-LABEL OS="redhat/ubi9-minimal:9.6"
+LABEL OS="registry.access.redhat.com/ubi9/ubi-minimal:9.6"
 
 ARG ROCM_VERSION=6.4
 ARG AMDGPU_VERSION=6.4
@@ -13,7 +13,7 @@ RUN microdnf clean all && \
     rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
     echo "[amdgpu]" > /etc/yum.repos.d/amdgpu.repo && \
     echo "name=AMDGPU repository" >> /etc/yum.repos.d/amdgpu.repo && \
-    echo "baseurl=${AMDGPU_REPO_URL}/amdgpu/${AMDGPU_VERSION}/rhel/9.4/main/x86_64/" >> /etc/yum.repos.d/amdgpu.repo && \
+    echo "baseurl=${AMDGPU_REPO_URL}/amdgpu/${AMDGPU_VERSION}/rhel/9.6/main/x86_64/" >> /etc/yum.repos.d/amdgpu.repo && \
     echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo && \
     echo "priority=50" >> /etc/yum.repos.d/amdgpu.repo && \
     echo "gpgcheck=1" >> /etc/yum.repos.d/amdgpu.repo && \
