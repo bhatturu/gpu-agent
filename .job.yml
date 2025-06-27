@@ -58,20 +58,6 @@ builds:
     artifacts:
         - /device-metrics-exporter/helm-charts/device-metrics-exporter-charts.tgz
 
-  docs-sanity:
-    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make docs"]
-    owners: ["email:prshanmug@amd.com"]
-    area:
-    sub-area:
-    feature:
-
-  api-checks:
-    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make checks"]
-    owners: ["email:prshanmug@amd.com"]
-    area:
-    sub-area:
-    feature:
-
   build-test-runner-docker:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && HOURLY_TAG_LABEL=$RELEASE TESTRUNNER_IMAGE_TAG=latest make docker-test-runner-cicd"]
     owners: ["email:yan.sun3@amd.com"]
@@ -89,8 +75,6 @@ targets:
     logfiles:
         - /device-metrics-exporter/exporter.log
     build-dependencies:
-        - api-checks
-        - docs-sanity
         - build-helm-artifact
         - build-debian-package-ub22.04
         - build-debian-package-ub24.04
@@ -108,6 +92,20 @@ targets:
     build-dependencies:
         - build-test-runner-docker
    
+  docs-sanity:
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make docs"]
+    owners: ["email:prshanmug@amd.com"]
+    area:
+    sub-area:
+    feature:
+
+  api-checks:
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make checks"]
+    owners: ["email:prshanmug@amd.com"]
+    area:
+    sub-area:
+    feature:
+
   copyright-checks:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make copyrights"]
     owners: ["email:sajmera@amd.com"]
