@@ -4,7 +4,7 @@ When deploying AMD Device Metrics Exporter on Kubernetes, a `ConfigMap` is deplo
 
 ## Configuration parameters
 
-- `ServerPort`: this field is ignored when Device Metrics Exporter is deployed by the [GPU Operator](https://dcgpu.docs.amd.com/projects/gpu-operator/en/latest/) to avoid conflicts with the service node port config.
+- `ServerPort`: this field is ignored when Device Metrics Exporter is deployed by the [GPU Operator](https://instinct.docs.amd.com/projects/gpu-operator/en/latest/) to avoid conflicts with the service node port config.
 - `GPUConfig`:
   - Fields: An array of strings specifying what metrics field to be exported.
   - Labels: `SERIAL_NUMBER`, `GPU_ID`, `POD`, `NAMESPACE`, `CONTAINER`, `JOB_ID`, `JOB_USER`, `JOB_PARTITION`, `CARD_MODEL`, `HOSTNAME`, `GPU_PARTITION_ID`, `GPU_COMPUTE_PARTITION_TYPE`, and `GPU_MEMORY_PARTITION_TYPE` are always set and cannot be removed. Labels supported are available in the provided example `configmap.yml`.
