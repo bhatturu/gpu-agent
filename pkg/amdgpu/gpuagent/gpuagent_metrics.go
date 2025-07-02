@@ -1470,6 +1470,7 @@ func (ga *GPUAgentClient) getWorkloadInfo(wls map[string]scheduler.Workload, gpu
 	if gpu == nil || gpu.Status == nil {
 		return nil
 	}
+	gpuId := fmt.Sprintf("%v", getGPUInstanceID(gpu))
 	gpuRenderId := getGPURenderId(gpu)
 	deviceName, _ := ga.fsysDeviceHandler.GetDeviceNameFromRenderID(gpuRenderId)
 	// populate with workload info
@@ -1483,6 +1484,10 @@ func (ga *GPUAgentClient) getWorkloadInfo(wls map[string]scheduler.Workload, gpu
 	}
 	// ignore errors as we always expect slurm deployment as default
 	if workload, ok := wls[gpuRenderId]; ok {
+		return &workload
+	}
+
+	if workload, ok := wls[gpuId]; ok {
 		return &workload
 	}
 	return nil
