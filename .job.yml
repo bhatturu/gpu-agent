@@ -28,7 +28,14 @@ builds:
     artifacts:
         - /device-metrics-exporter/bin/amdgpu-exporter_24.04_amd64.deb
 
-  build-device-metrics-exporter-docker-ubi9.4:
+  build-device-metrics-exporter-docker-sriov-ubi9.6:
+    commands: ["sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make all && \
+                            HOURLY_TAG_LABEL=$RELEASE EXPORTER_IMAGE_TAG=latest make docker-sriov"]
+    owners: ["email:prshanmug@amd.com"]
+    artifacts:
+        - /device-metrics-exporter/docker/device-metrics-exporter-sriov-latest.tar.gz
+
+  build-device-metrics-exporter-docker-ubi9.6:
     commands: ["sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make all && \
                             HOURLY_TAG_LABEL=$RELEASE EXPORTER_IMAGE_TAG=latest make docker-cicd"]
     owners: ["email:prshanmug@amd.com"]

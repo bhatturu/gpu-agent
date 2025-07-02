@@ -10,7 +10,8 @@ targets:
     build-dependencies:
       - build-debian-package-ub22.04
       - build-debian-package-ub24.04
-      - build-device-metrics-exporter-docker-ubi9.4
+      - build-device-metrics-exporter-docker-ubi9.6
+      - build-device-metrics-exporter-docker-sriov-ubi9.6
       - build-device-metrics-exporter-docker-azure
       - build-helm-artifact
       - e2e-build-mock-exporter
