@@ -67,3 +67,124 @@ func TestGetPCIeBaseAddress(t *testing.T) {
 		})
 	}
 }
+
+func TestIsValueApplicable(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    uint64
+		expected bool
+	}{
+		{
+			name:     "uint64 - na",
+			input:    0xFFFFFFFFFFFFFFFF,
+			expected: false,
+		},
+		{
+			name:     "uint32 - na",
+			input:    4294967295,
+			expected: false,
+		},
+		{
+			name:     "uint32 - na",
+			input:    0xFFFFFFFF,
+			expected: false,
+		},
+		{
+			name:     "uint16 - na",
+			input:    65535,
+			expected: false,
+		},
+		{
+			name:     "uint16 - na",
+			input:    0xFFFF,
+			expected: false,
+		},
+		{
+			name:     "uint8 - na",
+			input:    255,
+			expected: false,
+		},
+		{
+			name:     "uint8 - na",
+			input:    0xFF,
+			expected: false,
+		},
+		{
+			name:     "uint32 - valid",
+			input:    200,
+			expected: true,
+		},
+		{
+			name:     "uint16 - valid",
+			input:    100,
+			expected: true,
+		},
+		{
+			name:     "uint8 - valid",
+			input:    50,
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsValueApplicable(tt.input)
+			if got != tt.expected {
+				t.Errorf("IsApplicable(%v) = %v; want %v", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestNormalize(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    uint64
+		expected float64
+	}{
+		{
+			name:     "uint64 - na",
+			input:    0xFFFFFFFFFFFFFFFF,
+			expected: 0,
+		},
+		{
+			name:     "uint32 - na",
+			input:    0xFFFFFFFF,
+			expected: 0,
+		},
+		{
+			name:     "uint16 - na",
+			input:    0xFFFF,
+			expected: 0,
+		},
+		{
+			name:     "uint8 - na",
+			input:    0xFF,
+			expected: 0,
+		},
+		{
+			name:     "uint32 - valid",
+			input:    200,
+			expected: 200,
+		},
+		{
+			name:     "uint16 - valid",
+			input:    100,
+			expected: 100,
+		},
+		{
+			name:     "uint8 - valid",
+			input:    50,
+			expected: 50,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NormalizeUint64(tt.input)
+			if got != tt.expected {
+				t.Errorf("IsApplicable(%v) = %v; want %v", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
