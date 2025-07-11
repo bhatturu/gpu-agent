@@ -250,6 +250,7 @@ func main() {
 		nodePod      = flag.Bool("npod", false, "get pod labels from node")
 		devMap       = flag.Bool("gpu", false, "show logical gpu device map")
 		eccFile      = flag.String("ecc-file-path", "", "json ecc err file")
+		kubeConfig   = flag.String("kube-config", "", "kubernetes config file")
 	)
 	flag.Parse()
 
@@ -276,7 +277,7 @@ func main() {
 			fmt.Println("not a k8s deployment")
 			return
 		}
-		kc, err := k8sclient.NewClient(context.Background(), nodeName)
+		kc, err := k8sclient.NewClient(context.Background(), *kubeConfig, nodeName)
 		if err != nil {
 			fmt.Printf("err: %+v", err)
 			return
@@ -315,7 +316,7 @@ func main() {
 			fmt.Println("not a k8s deployment")
 			return
 		}
-		kc, err := k8sclient.NewClient(context.Background(), nodeName)
+		kc, err := k8sclient.NewClient(context.Background(), *kubeConfig, nodeName)
 		if err != nil {
 			fmt.Printf("err: %+v", err)
 			return

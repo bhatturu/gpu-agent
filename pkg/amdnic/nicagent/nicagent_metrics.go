@@ -777,6 +777,14 @@ func (na *NICAgentClient) UpdateMetricsStats() error {
 	return na.getMetricsAll()
 }
 
+func (na *NICAgentClient) QueryMetrics() (interface{}, error) {
+	return nil, nil
+}
+
+func (na *NICAgentClient) GetDeviceType() globals.DeviceType {
+	return globals.NICDevice
+}
+
 func GetNICMandatoryLabels() []string {
 	return mandatoryLables
 }

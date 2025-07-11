@@ -69,4 +69,5 @@ fi
 ln -f $TOP_DIR/assets/gpuctl.gobin $TOP_DIR/docker/gpuctl
 ln -f $TOP_DIR/bin/amd-metrics-exporter $TOP_DIR/docker/amd-metrics-exporter
 ln -f $TOP_DIR/bin/metricsclient $TOP_DIR/docker/metricsclient
+ln -f $TOP_DIR/bin/amdgpuhealth $TOP_DIR/docker/amdgpuhealth
 cp $TOP_DIR/LICENSE $TOP_DIR/docker/LICENSE
