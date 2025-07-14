@@ -377,7 +377,7 @@ message GPUStatus {
   // VBIOS version
   string                        VBIOSVersion      = 11;
   // firmware versions of various components
-  repeated GPUFirmwareVersion   FirmwareVersion   = 12;
+  //repeated GPUFirmwareVersion   FirmwareVersion   = 12;
   // memory component vendor
   string                        MemoryVendor      = 13;
   // GPU clock status
