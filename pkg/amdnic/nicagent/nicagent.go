@@ -24,18 +24,35 @@ import (
 
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/logger"
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/metricsutil"
+	"github.com/ROCm/device-metrics-exporter/pkg/exporter/scheduler"
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/utils"
 )
 
 type NICAgentClient struct {
 	sync.Mutex
-	nicClients   []NICInterface
-	mh           *metricsutil.MetricsHandler
-	m            *metrics // client specific metrics
-	isKubernetes bool
-	nics         map[string]*NIC
-	ctx          context.Context
-	cancel       context.CancelFunc
+	nicClients       []NICInterface
+	mh               *metricsutil.MetricsHandler
+	m                *metrics // client specific metrics
+	isKubernetes     bool
+	nics             map[string]*NIC
+	k8sScheduler     scheduler.SchedulerClient
+	staticHostLabels map[string]string // static labels for the host
+	ctx              context.Context
+	cancel           context.CancelFunc
+}
+
+// NICAgentClientOptions defines the options for the NICAgentClient
+type NICAgentClientOptions func(na *NICAgentClient)
+
+// WithK8sSchedulerClient sets the Kubernetes scheduler client for the NICAgentClient
+func WithK8sSchedulerClient(k8sScheduler scheduler.SchedulerClient) NICAgentClientOptions {
+	return func(na *NICAgentClient) {
+		if utils.IsKubernetes() {
+			na.isKubernetes = true
+			logger.Log.Printf("K8sSchedulerClient option set")
+			na.k8sScheduler = k8sScheduler
+		}
+	}
 }
 
 func (na *NICAgentClient) initClients() error {
@@ -48,11 +65,23 @@ func (na *NICAgentClient) initClients() error {
 			logger.Log.Printf("%s init success", client.GetClientName())
 		}
 	}
-	return fmt.Errorf("%v", strings.Join(errStr, ","))
+	if len(errStr) != 0 {
+		return fmt.Errorf("%v", strings.Join(errStr, ","))
+	}
+	return nil
 }
 
-func NewAgent(mh *metricsutil.MetricsHandler) *NICAgentClient {
-	na := &NICAgentClient{mh: mh, nics: make(map[string]*NIC)}
+func NewAgent(mh *metricsutil.MetricsHandler, opts ...NICAgentClientOptions) *NICAgentClient {
+	na := &NICAgentClient{
+		mh:               mh,
+		nics:             make(map[string]*NIC),
+		staticHostLabels: make(map[string]string),
+	}
+
+	for _, o := range opts {
+		o(na)
+	}
+
 	na.nicClients = []NICInterface{}
 	return na
 }
@@ -62,6 +91,7 @@ func (na *NICAgentClient) Init() error {
 	defer na.Unlock()
 	na.initializeContext()
 
+	// create NIC clients and init
 	nicCtlClient := newNICCtlClient(na)
 	na.nicClients = append(na.nicClients, nicCtlClient)
 
@@ -71,21 +101,33 @@ func (na *NICAgentClient) Init() error {
 	err := na.initClients()
 	if err != nil {
 		logger.Log.Printf("NIC clients init failure err :%v", err)
+		return err
 	}
 
 	na.mh.RegisterMetricsClient(na)
-	if utils.IsKubernetes() {
-		na.isKubernetes = true
-	}
 
 	// fetch all the static data that doesn't change (NIC, Port, Lif, etc.)
 	nics, err := na.getNICs()
 	if err != nil {
 		logger.Log.Printf("failed get NICs, Ports and Lifs, err: %v", err)
+		return err
 	}
 	na.nics = nics
 
+	if err := na.populateStaticHostLabels(); err != nil {
+		logger.Log.Printf("failed to populate static host labels, err: %v", err)
+		return err
+	}
+
 	return nil
+}
+
+// ListWorkloads returns the list of workloads by device ID
+func (na *NICAgentClient) ListWorkloads() (map[string]scheduler.Workload, error) {
+	if na.isKubernetes && na.k8sScheduler != nil {
+		return na.k8sScheduler.ListWorkloads()
+	}
+	return nil, fmt.Errorf("scheduler is not initialized")
 }
 
 func (na *NICAgentClient) initializeContext() {
@@ -114,12 +156,17 @@ func (na *NICAgentClient) initLocalCacheIfRequired() {
 func (na *NICAgentClient) getMetricsAll() error {
 	var wg sync.WaitGroup
 	na.initLocalCacheIfRequired()
+
+	workloads, err := na.ListWorkloads()
+	if err != nil {
+		logger.Log.Printf("failed to list workloads, err: %v", err)
+	}
 	for _, client := range na.nicClients {
 		wg.Add(1)
 		go func(client NICInterface) {
 			defer wg.Done()
 			if client.IsActive() {
-				if err := client.UpdateNICStats(); err != nil {
+				if err := client.UpdateNICStats(workloads); err != nil {
 					logger.Log.Printf("failed to update NIC stats, err: %v", err)
 				}
 			}

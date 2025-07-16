@@ -118,6 +118,10 @@ func GetHostName() (string, error) {
 }
 
 func StringToUint64(str string) uint64 {
+	if str == "" {
+		return 0
+	}
+
 	val, err := strconv.ParseUint(str, 10, 64)
 	if err != nil {
 		logger.Log.Printf("error converting string to uint64, err: %v", err)
