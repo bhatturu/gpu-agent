@@ -33,6 +33,8 @@ const (
 	LabelRdmaNetDev = "rdma_net_dev"
 	// Lif name label for Lif metrics
 	LabelLifName = "lif_name"
+	// Queue-Pair ID for QP metrics
+	LabelQPID = "qp_id"
 
 	RDMAClientName   = "RDMA_Stats_Client"
 	NICCtlClientName = "NICCTL_Client"
