@@ -1,15 +1,6 @@
 ---
 version: 2.0
 builds:
-  build-all:
-    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make build-all"]
-    owners: ["email:prshanmug@amd.com"]
-    area:
-    sub-area:
-    feature:
-    artifacts:
-        - /device-metrics-exporter/gpuagent/sw/nic/build/x86_64/sim/bin/gpuagent
-
   build-debian-package-ub22.04:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make libcopy-assets-UBUNTU22 pkg"]
     owners: ["email:prshanmug@amd.com"]
@@ -79,7 +70,6 @@ targets:
         - build-debian-package-ub22.04
         - build-debian-package-ub24.04
         - e2e-build-mock-exporter
-        - build-all
 
   test-runner-sanity:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter"]
@@ -109,6 +99,13 @@ targets:
   copyright-checks:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make copyrights"]
     owners: ["email:sajmera@amd.com"]
+    area:
+    sub-area:
+    feature:
+
+  build-deps-sanity:
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make build-all"]
+    owners: ["email:prshanmug@amd.com"]
     area:
     sub-area:
     feature:
