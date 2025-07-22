@@ -50,10 +50,16 @@ builds:
         - /device-metrics-exporter/helm-charts/device-metrics-exporter-charts.tgz
 
   build-test-runner-docker:
-    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && HOURLY_TAG_LABEL=$RELEASE TESTRUNNER_IMAGE_TAG=latest make docker-test-runner-cicd"]
+    commands: ["/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && HOURLY_TAG_LABEL=$RELEASE AGFHC=0 TESTRUNNER_IMAGE_TAG=latest make docker-test-runner-cicd"]
     owners: ["email:yan.sun3@amd.com"]
     artifacts:
         - /device-metrics-exporter/docker/testrunner/test-runner-latest.tar.gz
+
+  build-test-runner-docker-agfhc:
+    commands: ["/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && HOURLY_TAG_LABEL=$RELEASE AGFHC=1 TESTRUNNER_IMAGE_TAG=agfhc-latest make docker-test-runner-cicd"]
+    owners: ["email:yan.sun3@amd.com"]
+    artifacts:
+        - /device-metrics-exporter/docker/testrunner/test-runner-agfhc-latest.tar.gz
 
 targets:
   device-metrics-sanity:
@@ -81,6 +87,7 @@ targets:
         - /device-metrics-exporter/test-runner.log
     build-dependencies:
         - build-test-runner-docker
+        - build-test-runner-docker-agfhc
    
   docs-sanity:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make docs"]

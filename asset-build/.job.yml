@@ -23,6 +23,7 @@ targets:
     feature:
     build-dependencies:
       - build-test-runner-docker
+      - build-test-runner-docker-agfhc
 
 image:
   bind_dir: "/go/src/github.com/ROCm/device-metrics-exporter"
