@@ -36,17 +36,35 @@ var (
 	Publish   string
 )
 
-var (
-	metricsConfig       = flag.String("amd-metrics-config", globals.AMDMetricsFile, "AMD metrics exporter config file")
-	agentGrpcPort       = flag.Int("agent-grpc-port", globals.GPUAgentPort, "Agent GRPC port")
-	versionOpt          = flag.Bool("version", false, "show version")
-	enableNICMonitoring = flag.Bool("monitor-nic", false, "Enable NIC Monitoring")
-	enableGPUMonitoring = flag.Bool("monitor-gpu", true, "Enable GPU Monitoring (default: true, enabled by default)")
-	sriov               = flag.Bool("sriov-enable", false, "sriov host mode (default: false, disabled by default)")
-)
-
 func main() {
-	flag.Parse()
+	// Check environment variable to determine error handling behavior
+	relaxedMode := os.Getenv("AMD_EXPORTER_RELAXED_FLAGS_PARSING") != ""
+
+	var errorHandling flag.ErrorHandling
+	if relaxedMode {
+		errorHandling = flag.ContinueOnError
+		fmt.Fprintf(os.Stderr, "Info: Relaxed flag parsing enabled via AMD_EXPORTER_RELAXED_FLAGS_PARSING\n")
+	} else {
+		errorHandling = flag.ExitOnError
+	}
+
+	fs := flag.NewFlagSet(os.Args[0], errorHandling)
+
+	// Define our supported flags - these return pointers just like flag.String(), flag.Bool(), etc.
+	metricsConfig := fs.String("amd-metrics-config", globals.AMDMetricsFile, "AMD metrics exporter config file")
+	agentGrpcPort := fs.Int("agent-grpc-port", globals.GPUAgentPort, "Agent GRPC port")
+	versionOpt := fs.Bool("version", false, "show version")
+	enableNICMonitoring := fs.Bool("monitor-nic", false, "Enable NIC Monitoring")
+	enableGPUMonitoring := fs.Bool("monitor-gpu", true, "Enable GPU Monitoring (default: true, enabled by default)")
+	sriov := fs.Bool("sriov-enable", false, "sriov host mode (default: false, disabled by default)")
+	bindAddr := fs.String("bind", "0.0.0.0", "bind address for metrics server (default: 0.0.0.0)")
+
+	// Parse with error handling
+	err := fs.Parse(os.Args[1:])
+	if err != nil {
+		// Log warnings for unsupported flags but continue
+		fmt.Fprintf(os.Stderr, "Warning: %v - continuing with supported flags for backward compatibility\n", err)
+	}
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -92,6 +110,7 @@ func main() {
 		exporter.WithNICMonitoring(*enableNICMonitoring),
 		exporter.WithGPUMonitoring(*enableGPUMonitoring),
 		exporter.WithSRIOV(*sriov),
+		exporter.WithBindAddr(*bindAddr),
 	)
 
 	enableDebugAPI := true // default
