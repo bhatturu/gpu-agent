@@ -4,7 +4,7 @@ FROM ${BASE_IMAGE}
 LABEL maintainer="AMD Inc"
 LABEL OS="registry.access.redhat.com/ubi9/ubi:9.6"
 
-ARG AGFHC_VERSION=1.23.6
+ARG AGFHC_VERSION=1.24.1
 
 # EPEL repo is required to install yaml-cpp, a dependency of rocm-validation-suite package
 RUN dnf clean all && \
@@ -12,7 +12,7 @@ RUN dnf clean all && \
     dnf update -y && \
     dnf install -y wget yum && \
     yum install -y https://artifactory-cdn.amd.com/artifactory/list/amdgpu-rpm/rhel/amdgpu-install-internal-7.0_9-1.noarch.rpm && \
-    amdgpu-repo --rocm-build=compute-rocm-dkms-no-npi-hipclang/16397 && \
+    amdgpu-repo --rocm-build=compute-rocm-rel-7.0/24 && \
     dnf install rocrand rocm-validation-suite -y && \
     rm -rf /var/cache/yum /var/cache/dnf && \
     dnf clean all
@@ -21,9 +21,9 @@ RUN dnf clean all && \
 WORKDIR /agfhc
 
 RUN dnf install tar bzip2 python3-pyyaml wget -y && \
-    wget https://atlartifactory.amd.com:8443/artifactory/HW-AGFHCRelease-REL-LOCAL/${AGFHC_VERSION}/mi300x/agfhc-mi300x_${AGFHC_VERSION}_rhel9.tar.bz2 && \
-    tar -xvjf agfhc-mi300x_${AGFHC_VERSION}_rhel9.tar.bz2 && \
-    rm -rf agfhc-mi300x_${AGFHC_VERSION}_rhel9.tar.bz2 && \
+    wget https://atlartifactory.amd.com:8443/artifactory/HW-AGFHCRelease-REL-LOCAL/${AGFHC_VERSION}/mi300/agfhc-mi300_${AGFHC_VERSION}_rhel9.tar.bz2 && \
+    tar -xvjf agfhc-mi300_${AGFHC_VERSION}_rhel9.tar.bz2 && \
+    rm -rf agfhc-mi300_${AGFHC_VERSION}_rhel9.tar.bz2 && \
     # Use AGFHC official installation script
     ./install && \
     # need to create this symbol link 
