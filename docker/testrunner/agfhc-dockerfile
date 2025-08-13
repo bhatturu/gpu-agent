@@ -20,7 +20,7 @@ RUN dnf clean all && \
 # Install AGFHC
 WORKDIR /agfhc
 
-RUN dnf install tar bzip2 python3-pyyaml wget -y && \
+RUN dnf install tar bzip2 python3-pyyaml wget rocm-smi-lib -y && \
     wget https://atlartifactory.amd.com:8443/artifactory/HW-AGFHCRelease-REL-LOCAL/${AGFHC_VERSION}/mi300/agfhc-mi300_${AGFHC_VERSION}_rhel9.tar.bz2 && \
     tar -xvjf agfhc-mi300_${AGFHC_VERSION}_rhel9.tar.bz2 && \
     rm -rf agfhc-mi300_${AGFHC_VERSION}_rhel9.tar.bz2 && \
