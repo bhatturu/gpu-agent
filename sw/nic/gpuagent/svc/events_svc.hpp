@@ -53,14 +53,19 @@ event_id_to_severity (aga_event_id_t event_id)
 {
     switch (event_id) {
     case AGA_EVENT_ID_VM_PAGE_FAULT:
-        return AGA_EVENT_SEVERITY_DEBUG;
-    case AGA_EVENT_ID_THERMAL_THROTTLE:
-        return AGA_EVENT_SEVERITY_INFO;
     case AGA_EVENT_ID_GPU_PRE_RESET:
         return AGA_EVENT_SEVERITY_INFO;
+    case AGA_EVENT_ID_THERMAL_THROTTLE:
     case AGA_EVENT_ID_GPU_POST_RESET:
-        return AGA_EVENT_SEVERITY_INFO;
-    case AGA_EVENT_ID_RING_HANG:
+    case AGA_EVENT_ID_MIGRATE_START:
+    case AGA_EVENT_ID_MIGRATE_END:
+    case AGA_EVENT_ID_PAGE_FAULT_START:
+    case AGA_EVENT_ID_PAGE_FAULT_END:
+    case AGA_EVENT_ID_QUEUE_EVICTION:
+    case AGA_EVENT_ID_QUEUE_RESTORE:
+    case AGA_EVENT_ID_UNMAP_FROM_GPU:
+    case AGA_EVENT_ID_PROCESS_START:
+    case AGA_EVENT_ID_PROCESS_END:
         return AGA_EVENT_SEVERITY_WARN;
     default:
         break;
@@ -71,20 +76,7 @@ event_id_to_severity (aga_event_id_t event_id)
 static inline aga_event_category_t
 event_id_to_category (aga_event_id_t event_id)
 {
-    switch (event_id) {
-    case AGA_EVENT_ID_VM_PAGE_FAULT:
-        return AGA_EVENT_CATEGORY_NONE;
-    case AGA_EVENT_ID_THERMAL_THROTTLE:
-        return AGA_EVENT_CATEGORY_NONE;
-    case AGA_EVENT_ID_GPU_PRE_RESET:
-        return AGA_EVENT_CATEGORY_NONE;
-    case AGA_EVENT_ID_GPU_POST_RESET:
-        return AGA_EVENT_CATEGORY_NONE;
-    case AGA_EVENT_ID_RING_HANG:
-        return AGA_EVENT_CATEGORY_NONE;
-    default:
-        break;
-    }
+    // as of now events have not been assigned a category
     return AGA_EVENT_CATEGORY_NONE;
 }
 

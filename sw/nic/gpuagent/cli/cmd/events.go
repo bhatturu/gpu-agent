@@ -27,6 +27,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	uuid "github.com/satori/go.uuid"
@@ -79,7 +80,7 @@ var eventGenCmd = &cobra.Command{
 
 func init() {
 	ShowCmd.AddCommand(eventShowCmd)
-	eventShowCmd.Flags().StringVar(&eventList, "event-id", "", "Specify comma separated list of events of interest (1-5)")
+	eventShowCmd.Flags().StringVar(&eventList, "event-id", "", "Specify comma separated list of events of interest (1-13)")
 	eventShowCmd.Flags().StringVarP(&eventGpuId, "gpu", "g", "", "Specify comma separated list of GPU ids")
 	eventShowCmd.Flags().StringVar(&eventSeverityStr, "severity", "debug", "Specify severity of events of interest (debug, info, warn, critical)")
 	eventShowCmd.Flags().Uint32Var(&eventCategoryNum, "category", 0, "Specify category of events of interest")
@@ -88,36 +89,28 @@ func init() {
 
 	debugCmd.AddCommand(eventDebugCmd)
 	eventDebugCmd.AddCommand(eventSubscribeCmd)
-	eventSubscribeCmd.Flags().StringVar(&eventList, "event-id", "", "Specify comma separated list of events of interest (1-5)")
+	eventSubscribeCmd.Flags().StringVar(&eventList, "event-id", "", "Specify comma separated list of events of interest (1-13)")
 	eventSubscribeCmd.Flags().StringVarP(&eventGpuId, "gpu", "g", "", "Specify comma separated list of GPU ids")
 	eventSubscribeCmd.MarkFlagRequired("gpu")
 	eventSubscribeCmd.MarkFlagRequired("event-id")
 
 	DebugCreateCmd.AddCommand(eventGenCmd)
-	eventGenCmd.Flags().StringVarP(&eventList, "event-id", "i", "", "Specify comma separated list of events (1-5)")
+	eventGenCmd.Flags().StringVarP(&eventList, "event-id", "i", "", "Specify comma separated list of events (1-13)")
 	eventGenCmd.Flags().StringVarP(&eventGpuId, "gpu", "g", "", "Specify comma separated list of GPU ids")
 	eventGenCmd.MarkFlagRequired("event-id")
 	eventGenCmd.MarkFlagRequired("gpu")
 }
 
 func stringToEventId(eventIdStr string) (aga.EventId, error) {
-	switch eventIdStr {
-	case "0":
-		return aga.EventId_EVENT_ID_NONE, nil
-	case "1":
-		return aga.EventId_EVENT_ID_VM_PAGE_FAULT, nil
-	case "2":
-		return aga.EventId_EVENT_ID_THERMAL_THROTTLE, nil
-	case "3":
-		return aga.EventId_EVENT_ID_GPU_PRE_RESET, nil
-	case "4":
-		return aga.EventId_EVENT_ID_GPU_POST_RESET, nil
-	case "5":
-		return aga.EventId_EVENT_ID_RING_HANG, nil
-	default:
-		break
+	i64, err := strconv.ParseInt(eventIdStr, 10, 32)
+	if err != nil {
+		return aga.EventId_EVENT_ID_NONE, err
 	}
-	return aga.EventId_EVENT_ID_NONE, fmt.Errorf("invalid_event_id")
+	eventId := int32(i64)
+	if eventId > int32(aga.EventId_EVENT_ID_PROCESS_END) {
+		return aga.EventId_EVENT_ID_NONE, fmt.Errorf("Invalid event ID")
+	}
+	return aga.EventId(eventId), nil
 }
 
 func stringToEventSeverity(eventSeverityStr string) (aga.EventSeverity, error) {

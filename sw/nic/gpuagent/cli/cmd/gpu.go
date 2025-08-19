@@ -64,12 +64,13 @@ var (
 )
 
 const (
-	UINT16_MAX_VAL_UINT16 uint16 = 0xffff
-	UINT16_MAX_VAL_UINT32 uint32 = 0xffff
-	UINT16_MAX_VAL_UINT64 uint64 = 0xffff
-	UINT32_MAX_VAL_UINT32 uint32 = 0xffffffff
-	UINT32_MAX_VAL_UINT64 uint64 = 0xffffffff
-	UINT64_MAX_VAL        uint64 = 0xffffffffffffffff
+	UINT16_MAX_VAL_UINT16 uint16  = 0xffff
+	UINT16_MAX_VAL_UINT32 uint32  = 0xffff
+	UINT16_MAX_VAL_UINT64 uint64  = 0xffff
+	UINT32_MAX_VAL_UINT32 uint32  = 0xffffffff
+	UINT32_MAX_VAL_UINT64 uint64  = 0xffffffff
+	UINT64_MAX_VAL        uint64  = 0xffffffffffffffff
+	FLOAT32_INVALID_VAL   float32 = 65535.0
 )
 
 var gpuShowCmd = &cobra.Command{
@@ -613,8 +614,8 @@ func printGPUSpec(gpu *aga.GPU, specOnly bool) {
 			strings.ToLower(strings.Replace(spec.GetAdminState().String(),
 				"GPU_ADMIN_STATE_", "", -1)))
 	}
-	if spec.GetOverDriveLevel() != 0.0 {
-		fmt.Printf("%-40s : %f\n", "Clock overdrive level",
+	if spec.GetOverDriveLevel() != UINT32_MAX_VAL_UINT32 {
+		fmt.Printf("%-40s : %v\n", "Clock overdrive level",
 			spec.GetOverDriveLevel())
 	}
 	if spec.GetGPUPowerCap() != 0 {
@@ -628,16 +629,19 @@ func printGPUSpec(gpu *aga.GPU, specOnly bool) {
 				"GPU_PERF_LEVEL_", "", -1)))
 	}
 	for _, clockFreq := range spec.GetClockFrequency() {
-		fmt.Printf("%-40s : %s\n", "GPU clock type",
-			strings.Replace(clockFreq.GetClockType().String(),
-				"GPU_CLOCK_TYPE_", "", -1))
-		fmt.Printf("  %-38s : %d - %d\n",
-			"Frequency range (in MHz)",
-			clockFreq.GetLowFrequency(),
-			clockFreq.GetHighFrequency())
+		if clockFreq.GetLowFrequency() != UINT32_MAX_VAL_UINT32 &&
+			clockFreq.GetHighFrequency() != UINT32_MAX_VAL_UINT32 {
+			fmt.Printf("%-40s : %s\n", "GPU clock type",
+				strings.Replace(clockFreq.GetClockType().String(),
+					"GPU_CLOCK_TYPE_", "", -1))
+			fmt.Printf("  %-38s : %d - %d\n",
+				"Frequency range (in MHz)",
+				clockFreq.GetLowFrequency(),
+				clockFreq.GetHighFrequency())
+		}
 	}
-	if spec.GetFanSpeed() != 0.0 {
-		fmt.Printf("%-40s : %f\n", "Fan speed", spec.GetFanSpeed())
+	if spec.GetFanSpeed() != UINT64_MAX_VAL {
+		fmt.Printf("%-40s : %v\n", "Fan speed", spec.GetFanSpeed())
 	}
 	if spec.GetComputePartitionType() !=
 		aga.GPUComputePartitionType_GPU_COMPUTE_PARTITION_TYPE_NONE {
@@ -685,6 +689,9 @@ func printGPUStatus(gpu *aga.GPU, statusOnly bool) {
 		indent = "  "
 	}
 	fmt.Printf(indent+"%-38s : %d\n", "Index", status.GetIndex())
+	fmt.Printf(indent+"%-38s : %d\n", "KFD id", status.GetKFDId())
+	fmt.Printf(indent+"%-38s : %d\n", "DRM render id", status.GetDRMRenderId())
+	fmt.Printf(indent+"%-38s : %d\n", "DRM card id", status.GetDRMCardId())
 	fmt.Printf(indent+"%-38s : 0x%x\n", "GPU handle", status.GetGPUHandle())
 	if status.GetSerialNum() != "" {
 		fmt.Printf(indent+"%-38s : %s\n", "Serial number",
@@ -750,7 +757,10 @@ func printGPUStatus(gpu *aga.GPU, statusOnly bool) {
 		}
 		if clkStatus.GetType() != aga.GPUClockType_GPU_CLOCK_TYPE_NONE &&
 			clkStatus.GetFrequency() != 0 &&
-			clkStatus.GetFrequency() != UINT16_MAX_VAL_UINT32 {
+			clkStatus.GetFrequency() != UINT16_MAX_VAL_UINT32 &&
+			clkStatus.GetFrequency() != UINT32_MAX_VAL_UINT32 &&
+			clkStatus.GetLowFrequency() != UINT32_MAX_VAL_UINT32 &&
+			clkStatus.GetHighFrequency() != UINT32_MAX_VAL_UINT32 {
 			fmt.Printf(indent+"%-38s : %s_%d\n", "GPU clock type", clkStr, idxr)
 			fmt.Printf(indent+"  %-36s : %d\n", "Frequency (in MHz)",
 				clkStatus.GetFrequency())
@@ -782,13 +792,15 @@ func printGPUStatus(gpu *aga.GPU, statusOnly bool) {
 				xgmiStatus.GetErrorStatus().String(), "GPU_XGMI_STATUS_",
 				"", -1)))
 	}
-	if (xgmiStatus.GetWidth() != 0) &&
-		(xgmiStatus.GetWidth() != UINT16_MAX_VAL_UINT64) {
+	if xgmiStatus.GetWidth() != 0 &&
+		xgmiStatus.GetWidth() != UINT16_MAX_VAL_UINT64 &&
+		xgmiStatus.GetWidth() != UINT64_MAX_VAL {
 		fmt.Printf(indent+"%-38s : %v\n", "XGMI link width (in GB/s)",
 			xgmiStatus.GetWidth())
 	}
-	if (xgmiStatus.GetSpeed() != 0) &&
-		(xgmiStatus.GetSpeed() != UINT16_MAX_VAL_UINT64) {
+	if xgmiStatus.GetSpeed() != 0 &&
+		xgmiStatus.GetSpeed() != UINT16_MAX_VAL_UINT64 &&
+		xgmiStatus.GetSpeed() != UINT64_MAX_VAL {
 		fmt.Printf(indent+"%-38s : %v\n", "XGMI link speed (in GB/s)",
 			xgmiStatus.GetSpeed())
 	}
@@ -883,15 +895,12 @@ func printGPUStatus(gpu *aga.GPU, statusOnly bool) {
 				strings.ToLower(strings.Replace(vram.GetType().String(),
 					"VRAM_TYPE_", "", -1)))
 		}
-		if vram.GetVendor() != aga.VRAMVendor_VRAM_VENDOR_NONE {
+		if vram.GetVendor() != "" {
 			printVRAMStatusHdr(indent)
-			if vram.GetVendor() != aga.VRAMVendor_VRAM_VENDOR_UNKNOWN {
-				fmt.Printf(indent+"  %-36s : %s\n", "VRAM vendor",
-					strings.ToLower(strings.Replace(vram.GetVendor().String(),
-						"VRAM_VENDOR_", "", -1)))
-			} else {
-				fmt.Printf(indent+"  %-36s : %s\n", "VRAM vendor", "-")
-			}
+			fmt.Printf(indent+"  %-36s : %s\n", "VRAM vendor",
+				strings.ToLower(vram.GetVendor()))
+		} else {
+			fmt.Printf(indent+"  %-36s : %s\n", "VRAM vendor", "-")
 		}
 		if vram.GetSize_() != 0 {
 			printVRAMStatusHdr(indent)
@@ -965,24 +974,29 @@ func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 	}
 	if stats.GetTemperature() != nil {
 		printHdr = false
-		if stats.GetTemperature().GetEdgeTemperature() != 0 {
+		if stats.GetTemperature().GetEdgeTemperature() != 0 &&
+			stats.GetTemperature().GetEdgeTemperature() != FLOAT32_INVALID_VAL {
 			printTemperatureHdr(indent)
 			fmt.Printf(indent+"  %-36s : %.1f\n", "Edge temperature (in C)",
 				stats.GetTemperature().GetEdgeTemperature())
 		}
-		if stats.GetTemperature().GetJunctionTemperature() != 0 {
+		if stats.GetTemperature().GetJunctionTemperature() != 0 &&
+			stats.GetTemperature().GetJunctionTemperature() !=
+				FLOAT32_INVALID_VAL {
 			printTemperatureHdr(indent)
 			fmt.Printf(indent+"  %-36s : %.1f\n", "Junction temperature (in C)",
 				stats.GetTemperature().GetJunctionTemperature())
 		}
-		if stats.GetTemperature().GetMemoryTemperature() != 0 {
+		if stats.GetTemperature().GetMemoryTemperature() != 0 &&
+			stats.GetTemperature().GetMemoryTemperature() !=
+				FLOAT32_INVALID_VAL {
 			printTemperatureHdr(indent)
 			fmt.Printf(indent+"  %-36s : %.1f\n", "VRAM temperature (in C)",
 				stats.GetTemperature().GetMemoryTemperature())
 		}
 		hbmTemp := stats.GetTemperature().GetHBMTemperature()
 		for index, temp := range hbmTemp {
-			if temp != 0 {
+			if temp != 0 && temp != FLOAT32_INVALID_VAL {
 				printTemperatureHdr(indent)
 				hbmStr := "HBM " + strconv.Itoa(index) + " temperature (in C)"
 				fmt.Printf(indent+"  %-36s : %.1f\n", hbmStr, temp)
@@ -992,19 +1006,22 @@ func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 	if stats.GetUsage() != nil {
 		printHdr = false
 		if stats.GetUsage().GetGFXActivity() != 0 &&
-			stats.GetUsage().GetGFXActivity() != UINT32_MAX_VAL_UINT32 {
+			stats.GetUsage().GetGFXActivity() != UINT32_MAX_VAL_UINT32 &&
+			stats.GetUsage().GetGFXActivity() <= 100 {
 			printUsageHdr(indent)
 			fmt.Printf(indent+"  %-36s : %d\n", "GFX activity",
 				stats.GetUsage().GetGFXActivity())
 		}
 		if stats.GetUsage().GetUMCActivity() != 0 &&
-			stats.GetUsage().GetUMCActivity() != UINT16_MAX_VAL_UINT32 {
+			stats.GetUsage().GetUMCActivity() != UINT16_MAX_VAL_UINT32 &&
+			stats.GetUsage().GetUMCActivity() <= 100 {
 			printUsageHdr(indent)
 			fmt.Printf(indent+"  %-36s : %d\n", "UMC activity",
 				stats.GetUsage().GetUMCActivity())
 		}
 		if stats.GetUsage().GetMMActivity() != 0 &&
-			stats.GetUsage().GetMMActivity() != UINT16_MAX_VAL_UINT32 {
+			stats.GetUsage().GetMMActivity() != UINT16_MAX_VAL_UINT32 &&
+			stats.GetUsage().GetMMActivity() <= 100 {
 			printUsageHdr(indent)
 			fmt.Printf(indent+"  %-36s : %d\n", "MM activity",
 				stats.GetUsage().GetMMActivity())
@@ -1015,13 +1032,11 @@ func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 		for _, vcn := range stats.GetUsage().GetVCNActivity() {
 			// only if at least one of the vcn activities is a valid value do we
 			// print the field
-			if vcn == UINT16_MAX_VAL_UINT32 {
+			if vcn == UINT16_MAX_VAL_UINT32 || vcn > 100 {
 				vStr = fmt.Sprintf("%sN/A ", vStr)
-			} else if vcn == 0 {
-				vStr = fmt.Sprintf("%s%d ", vStr, vcn)
 			} else {
 				validEntry = true
-				vStr = fmt.Sprintf("%s%d ", vStr, vcn)
+				vStr = fmt.Sprintf("%s%d%% ", vStr, vcn)
 			}
 		}
 		if validEntry {
@@ -1033,13 +1048,62 @@ func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 		for i, jpeg := range stats.GetUsage().GetJPEGActivity() {
 			// only if at least one of the jpeg activities is a valid value do
 			// we print the field
-			if jpeg == UINT16_MAX_VAL_UINT32 {
+			if jpeg == UINT16_MAX_VAL_UINT32 || jpeg > 100 {
 				jStr = fmt.Sprintf("%sN/A ", jStr)
-			} else if jpeg == 0 {
-				jStr = fmt.Sprintf("%s%d ", jStr, jpeg)
 			} else {
 				validEntry = true
-				jStr = fmt.Sprintf("%s%d ", jStr, jpeg)
+				jStr = fmt.Sprintf("%s%d%% ", jStr, jpeg)
+			}
+			if (i+1)%8 == 0 {
+				jStr = fmt.Sprintf("%s\n%s%-41s", jStr, indent, "")
+			}
+		}
+		if validEntry {
+			printUsageHdr(indent)
+			fmt.Printf(indent+"%s\n", jStr)
+			validEntry = false
+		}
+		gStr := fmt.Sprintf("  %-36s : ", "GFX utilization")
+		for _, gfx := range stats.GetUsage().GetGFXBusyInst() {
+			// only if at least one of the gfx busy value is a valid value do we
+			// print the field
+			if gfx == UINT16_MAX_VAL_UINT32 || gfx > 100 {
+				gStr = fmt.Sprintf("%sN/A ", gStr)
+			} else {
+				validEntry = true
+				gStr = fmt.Sprintf("%s%d%% ", gStr, gfx)
+			}
+		}
+		if validEntry {
+			printUsageHdr(indent)
+			fmt.Printf(indent+"%s\n", gStr)
+			validEntry = false
+		}
+		vStr = fmt.Sprintf("  %-36s : ", "VCN utilization")
+		for _, vcn := range stats.GetUsage().GetVCNBusyInst() {
+			// only if at least one of the vcn busy value is a valid value do we
+			// print the field
+			if vcn == UINT16_MAX_VAL_UINT32 || vcn > 100 {
+				vStr = fmt.Sprintf("%sN/A ", vStr)
+			} else {
+				validEntry = true
+				vStr = fmt.Sprintf("%s%d%% ", vStr, vcn)
+			}
+		}
+		if validEntry {
+			printUsageHdr(indent)
+			fmt.Printf(indent+"%s\n", vStr)
+			validEntry = false
+		}
+		jStr = fmt.Sprintf("  %-36s : ", "JPEG utilization")
+		for i, jpeg := range stats.GetUsage().GetJPEGBusyInst() {
+			// only if at least one of the jpeg busy value is a valid value do
+			// we print the field
+			if jpeg == UINT16_MAX_VAL_UINT32 || jpeg > 100 {
+				jStr = fmt.Sprintf("%sN/A ", jStr)
+			} else {
+				validEntry = true
+				jStr = fmt.Sprintf("%s%d%% ", jStr, jpeg)
 			}
 			if (i+1)%8 == 0 {
 				jStr = fmt.Sprintf("%s\n%s%-41s", jStr, indent, "")
@@ -1093,13 +1157,15 @@ func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 				p.GetReplayRolloverCount())
 		}
 		if p.GetNACKSentCount() != 0 &&
-			p.GetNACKSentCount() != UINT64_MAX_VAL {
+			p.GetNACKSentCount() != UINT64_MAX_VAL &&
+			p.GetNACKSentCount() != UINT32_MAX_VAL_UINT64 {
 			printPCIeHdr(indent)
 			fmt.Printf(indent+"  %-36s : %d\n", "NACKs sent",
 				p.GetNACKSentCount())
 		}
 		if p.GetNACKReceivedCount() != 0 &&
-			p.GetNACKReceivedCount() != UINT64_MAX_VAL {
+			p.GetNACKReceivedCount() != UINT64_MAX_VAL &&
+			p.GetNACKReceivedCount() != UINT32_MAX_VAL_UINT64 {
 			printPCIeHdr(indent)
 			fmt.Printf(indent+"  %-36s : %d\n", "NACKs received",
 				p.GetNACKReceivedCount())
@@ -1419,19 +1485,34 @@ func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 	}
 	if stats.GetViolationStats() != nil {
 		vStats := stats.GetViolationStats()
-		fmt.Printf(indent+"%-38s : %d\n", "Current accumulated counter",
-			vStats.GetCurrentAccumulatedCounter())
-		fmt.Printf(indent+"%-38s : %d\n", "Processor hot residency accumulated",
-			vStats.GetProcessorHotResidencyAccumulated())
-		fmt.Printf(indent+"%-38s : %d\n", "PPT residency accumulated",
-			vStats.GetPPTResidencyAccumulated())
-		fmt.Printf(indent+"%-38s : %d\n",
-			"Socket thermal residency accumulated",
-			vStats.GetSocketThermalResidencyAccumulated())
-		fmt.Printf(indent+"%-38s : %d\n", "VR thermal residency accumulated",
-			vStats.GetVRThermalResidencyAccumulated())
-		fmt.Printf(indent+"%-38s : %d\n", "HBM thermal residency accumulated",
-			vStats.GetHBMThermalResidencyAccumulated())
+		if vStats.GetCurrentAccumulatedCounter() != UINT64_MAX_VAL {
+			fmt.Printf(indent+"%-38s : %d\n", "Current accumulated counter",
+				vStats.GetCurrentAccumulatedCounter())
+		}
+		if vStats.GetProcessorHotResidencyAccumulated() != UINT64_MAX_VAL {
+			fmt.Printf(indent+"%-38s : %d\n",
+				"Processor hot residency accumulated",
+				vStats.GetProcessorHotResidencyAccumulated())
+		}
+		if vStats.GetPPTResidencyAccumulated() != UINT64_MAX_VAL {
+			fmt.Printf(indent+"%-38s : %d\n", "PPT residency accumulated",
+				vStats.GetPPTResidencyAccumulated())
+		}
+		if vStats.GetSocketThermalResidencyAccumulated() != UINT64_MAX_VAL {
+			fmt.Printf(indent+"%-38s : %d\n",
+				"Socket thermal residency accumulated",
+				vStats.GetSocketThermalResidencyAccumulated())
+		}
+		if vStats.GetVRThermalResidencyAccumulated() != UINT64_MAX_VAL {
+			fmt.Printf(indent+"%-38s : %d\n",
+				"VR thermal residency accumulated",
+				vStats.GetVRThermalResidencyAccumulated())
+		}
+		if vStats.GetVRThermalResidencyAccumulated() != UINT64_MAX_VAL {
+			fmt.Printf(indent+"%-38s : %d\n",
+				"HBM thermal residency accumulated",
+				vStats.GetHBMThermalResidencyAccumulated())
+		}
 	}
 
 	fmt.Printf("\n%s\n", strings.Repeat("-", 80))

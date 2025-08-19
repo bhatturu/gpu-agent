@@ -21,7 +21,9 @@ limitations under the License.
 //----------------------------------------------------------------------------
 
 #include <vector>
+extern "C" {
 #include "nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h"
+}
 #include "nic/gpuagent/core/trace.hpp"
 #include "nic/gpuagent/core/aga_core.hpp"
 #include "nic/gpuagent/core/ipc_msg.hpp"
@@ -46,8 +48,7 @@ namespace event = sdk::event_thread;
             ((1 << AMDSMI_EVT_NOTIF_VMFAULT)          |    \
              (1 << AMDSMI_EVT_NOTIF_THERMAL_THROTTLE) |    \
              (1 << AMDSMI_EVT_NOTIF_GPU_PRE_RESET)    |    \
-             (1 << AMDSMI_EVT_NOTIF_GPU_POST_RESET)   |    \
-             (1 << AMDSMI_EVT_NOTIF_RING_HANG))
+             (1 << AMDSMI_EVT_NOTIF_GPU_POST_RESET))
 /// timeout to wait to gather outstanding events (in milliseconds)
 #define AMDSMI_EVENT_NTFN_TIMEOUT              0
 
@@ -784,6 +785,11 @@ watch_timer_cb_ (event::timer_t *timer)
     aga_task_spec_t task_spec = {};
     static uint16_t timer_ticks = 0;
 
+    // only start updating watch fields once at least one client has subscribed
+    // to a watch group
+    if (!g_smi_state.any_watch_group_subscribed()) {
+        return;
+    }
     // get latest values of all watch fields
     g_smi_state.watcher_update_watch_db(&task_spec.watch_db);
 
@@ -1383,8 +1389,24 @@ event_description_ (aga_event_id_t event_id)
         return "Teset event: GPU reset about to happen";
     case AGA_EVENT_ID_GPU_POST_RESET:
         return "Test event: GPU reset happened";
-    case AGA_EVENT_ID_RING_HANG:
-        return "Test event: GPU command ring hang";
+    case AGA_EVENT_ID_MIGRATE_START:
+        return "Test event: GPU migrate start";
+    case AGA_EVENT_ID_MIGRATE_END:
+        return "Test event: GPU migrate end";
+    case AGA_EVENT_ID_PAGE_FAULT_START:
+        return "Test event: GPU page fault start";
+    case AGA_EVENT_ID_PAGE_FAULT_END:
+        return "Test event: GPU page fault end";
+    case AGA_EVENT_ID_QUEUE_EVICTION:
+        return "Test event: GPU queue eviction";
+    case AGA_EVENT_ID_QUEUE_RESTORE:
+        return "Test event: GPU queue restore";
+    case AGA_EVENT_ID_UNMAP_FROM_GPU:
+        return "Test event: Unmap from GPU";
+    case AGA_EVENT_ID_PROCESS_START:
+        return "Test event: KFD process start";
+    case AGA_EVENT_ID_PROCESS_END:
+        return "Test event: KFD process end";
     default:
         break;
     }
@@ -1411,7 +1433,7 @@ smi_state::process_event_gen_req(aga_event_gen_args_t *args) {
                 gpu_handles_[args->gpu_ids[i]];
             strncpy(event_data[num_elem].message,
                     event_description_(args->events[e]),
-                    MAX_EVENT_NOTIFICATION_MSG_SIZE);
+                    AMDSMI_MAX_STRING_LENGTH);
             num_elem++;
         }
     }

@@ -328,36 +328,6 @@ aga_gpu_vram_type_to_proto (aga_vram_type_t type)
     }
 }
 
-static inline amdgpu::VRAMVendor
-aga_gpu_vram_vendor_to_proto (aga_vram_vendor_t vendor)
-{
-    switch (vendor) {
-    case AGA_VRAM_VENDOR_SAMSUNG:
-        return amdgpu::VRAM_VENDOR_SAMSUNG;
-    case AGA_VRAM_VENDOR_INFINEON:
-        return amdgpu::VRAM_VENDOR_INFINEON;
-    case AGA_VRAM_VENDOR_ELPIDA:
-        return amdgpu::VRAM_VENDOR_ELPIDA;
-    case AGA_VRAM_VENDOR_ETRON:
-        return amdgpu::VRAM_VENDOR_ETRON;
-    case AGA_VRAM_VENDOR_NANYA:
-        return amdgpu::VRAM_VENDOR_NANYA;
-    case AGA_VRAM_VENDOR_HYNIX:
-        return amdgpu::VRAM_VENDOR_HYNIX;
-    case AGA_VRAM_VENDOR_MOSEL:
-        return amdgpu::VRAM_VENDOR_MOSEL;
-    case AGA_VRAM_VENDOR_WINBOND:
-        return amdgpu::VRAM_VENDOR_WINBOND;
-    case AGA_VRAM_VENDOR_ESMT:
-        return amdgpu::VRAM_VENDOR_ESMT;
-    case AGA_VRAM_VENDOR_MICRON:
-        return amdgpu::VRAM_VENDOR_MICRON;
-    case AGA_VRAM_VENDOR_UNKNOWN:
-        return amdgpu::VRAM_VENDOR_UNKNOWN;
-    default:
-        return amdgpu::VRAM_VENDOR_NONE;
-    }
-}
 
 // populate VRAM status proto
 static inline void
@@ -365,7 +335,7 @@ aga_gpu_vram_status_to_proto (GPUVRAMStatus *proto_status,
                               const aga_gpu_vram_status_t *status)
 {
     proto_status->set_type(aga_gpu_vram_type_to_proto(status->type));
-    proto_status->set_vendor(aga_gpu_vram_vendor_to_proto(status->vendor));
+    proto_status->set_vendor(status->vendor);
     proto_status->set_size(status->size);
 }
 
@@ -433,6 +403,10 @@ aga_gpu_api_status_to_proto (GPUStatus *proto_status,
     if (status->physical_gpu.valid()) {
         proto_status->set_physicalgpu(status->physical_gpu.id, OBJ_MAX_KEY_LEN);
     }
+    proto_status->set_kfdid(status->kfd_id);
+    proto_status->set_nodeid(status->node_id);
+    proto_status->set_drmrenderid(status->drm_render_id);
+    proto_status->set_drmcardid(status->drm_card_id);
 }
 
 // populate gpu bad page records proto buf
@@ -525,11 +499,18 @@ aga_gpu_usage_stats_to_proto (GPUUsage *proto_stats,
     proto_stats->set_gfxactivity(stats->gfx_activity);
     proto_stats->set_umcactivity(stats->umc_activity);
     proto_stats->set_mmactivity(stats->mm_activity);
-    for (uint16_t i = 0; i < stats->num_vcn; i++) {
+    for (uint16_t i = 0; i < AGA_GPU_MAX_VCN; i++) {
         proto_stats->add_vcnactivity(stats->vcn_activity[i]);
+        proto_stats->add_vcnbusyinst(stats->vcn_busy[i]);
     }
-    for (uint16_t i = 0; i < stats->num_jpeg; i++) {
+    for (uint16_t i = 0; i < AGA_GPU_MAX_JPEG; i++) {
         proto_stats->add_jpegactivity(stats->jpeg_activity[i]);
+    }
+    for (uint16_t i = 0; i < AGA_GPU_MAX_JPEG_ENG; i++) {
+        proto_stats->add_jpegbusyinst(stats->jpeg_busy[i]);
+    }
+    for (uint16_t i = 0; i < AGA_GPU_MAX_XCC; i++) {
+        proto_stats->add_gfxbusyinst(stats->gfx_busy_inst[i]);
     }
 }
 

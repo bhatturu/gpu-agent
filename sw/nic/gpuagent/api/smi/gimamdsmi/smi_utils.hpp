@@ -1,0 +1,408 @@
+//
+// Copyright(C) Advanced Micro Devices, Inc. All rights reserved.
+//
+// You may not use this software and documentation (if any) (collectively,
+// the "Materials") except in compliance with the terms and conditions of
+// the Software License Agreement included with the Materials or otherwise as
+// set forth in writing and signed by you and an authorized signatory of AMD.
+// If you do not have a copy of the Software License Agreement, contact your
+// AMD representative for a copy.
+//
+// You agree that you will not reverse engineer or decompile the Materials,
+// in whole or in part, except as allowed by applicable law.
+//
+// THE MATERIALS ARE DISTRIBUTED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR
+// REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+//
+//----------------------------------------------------------------------------
+///
+/// \file
+/// smi layer helper functions
+///
+//----------------------------------------------------------------------------
+
+#ifndef __AGA_API_SMI_UTILS_HPP__
+#define __AGA_API_SMI_UTILS_HPP__
+
+extern "C" {
+#include "nic/third-party/rocm/gim_amd_smi_lib/include/amd_smi/amdsmi.h"
+}
+#include "nic/sdk/include/sdk/base.hpp"
+#include "nic/gpuagent/api/include/aga_event.hpp"
+#include "nic/gpuagent/api/include/aga_gpu.hpp"
+
+namespace aga {
+
+/// \defgroup AGA_SMI - smi module APIs
+/// \ingroup AGA
+/// @{
+
+/// \brief convert amdsmi VRAM type to aga VRAM type
+/// \param[in] vram_type    amdsmi VRAM type
+/// \return    aga VRAM type
+static inline aga_vram_type_t
+smi_to_aga_vram_type (amdsmi_vram_type_t vram_type)
+{
+    switch (vram_type) {
+    case AMDSMI_VRAM_TYPE_HBM:
+        return AGA_VRAM_TYPE_HBM;
+    case AMDSMI_VRAM_TYPE_HBM2:
+        return AGA_VRAM_TYPE_HBM2;
+    case AMDSMI_VRAM_TYPE_HBM2E:
+        return AGA_VRAM_TYPE_HBM2E;
+    case AMDSMI_VRAM_TYPE_HBM3:
+        return AGA_VRAM_TYPE_HBM3;
+    case AMDSMI_VRAM_TYPE_DDR2:
+        return AGA_VRAM_TYPE_DDR2;
+    case AMDSMI_VRAM_TYPE_DDR3:
+        return AGA_VRAM_TYPE_DDR3;
+    case AMDSMI_VRAM_TYPE_DDR4:
+        return AGA_VRAM_TYPE_DDR4;
+    case AMDSMI_VRAM_TYPE_GDDR1:
+        return AGA_VRAM_TYPE_GDDR1;
+    case AMDSMI_VRAM_TYPE_GDDR2:
+        return AGA_VRAM_TYPE_GDDR2;
+    case AMDSMI_VRAM_TYPE_GDDR3:
+        return AGA_VRAM_TYPE_GDDR3;
+    case AMDSMI_VRAM_TYPE_GDDR4:
+        return AGA_VRAM_TYPE_GDDR4;
+    case AMDSMI_VRAM_TYPE_GDDR5:
+        return AGA_VRAM_TYPE_GDDR5;
+    case AMDSMI_VRAM_TYPE_GDDR6:
+        return AGA_VRAM_TYPE_GDDR6;
+    case AMDSMI_VRAM_TYPE_GDDR7:
+        return AGA_VRAM_TYPE_GDDR7;
+    case AMDSMI_VRAM_TYPE_UNKNOWN:
+        return AGA_VRAM_TYPE_UNKNOWN;
+    default:
+        break;
+    }
+    return AGA_VRAM_TYPE_NONE;
+}
+
+/// \brief convert amdsmi VRAM vendor to aga VRAM vendor
+/// \param[in] vendor    amdsmi vendor
+/// \return    aga vendor
+static inline aga_vram_vendor_t
+smi_to_aga_vram_vendor (amdsmi_vram_vendor_t vendor)
+{
+    switch (vendor) {
+    case AMDSMI_VRAM_VENDOR_SAMSUNG:
+        return AGA_VRAM_VENDOR_SAMSUNG;
+    case AMDSMI_VRAM_VENDOR_INFINEON:
+        return AGA_VRAM_VENDOR_INFINEON;
+    case AMDSMI_VRAM_VENDOR_ELPIDA:
+        return AGA_VRAM_VENDOR_ELPIDA;
+    case AMDSMI_VRAM_VENDOR_ETRON:
+        return AGA_VRAM_VENDOR_ETRON;
+    case AMDSMI_VRAM_VENDOR_NANYA:
+        return AGA_VRAM_VENDOR_NANYA;
+    case AMDSMI_VRAM_VENDOR_HYNIX:
+        return AGA_VRAM_VENDOR_HYNIX;
+    case AMDSMI_VRAM_VENDOR_MOSEL:
+        return AGA_VRAM_VENDOR_MOSEL;
+    case AMDSMI_VRAM_VENDOR_WINBOND:
+        return AGA_VRAM_VENDOR_WINBOND;
+    case AMDSMI_VRAM_VENDOR_ESMT:
+        return AGA_VRAM_VENDOR_ESMT;
+    case AMDSMI_VRAM_VENDOR_MICRON:
+        return AGA_VRAM_VENDOR_MICRON;
+    case AMDSMI_VRAM_VENDOR_UNKNOWN:
+        return AGA_VRAM_VENDOR_UNKNOWN;
+    default:
+        break;
+    }
+    return AGA_VRAM_VENDOR_NONE;
+}
+
+/// \brief convert amdsmi VRAM vendor to string
+/// \param[in]  vendor      amdsmi vendor
+/// \param[out] vendor_str  amdsmi vendor string
+/// \param[in]  str_size    amdsmi vendor string maximum size
+static inline void
+smi_vram_vendor_to_string (amdsmi_vram_vendor_t vendor, char *vendor_str,
+                           uint32_t str_size)
+{
+    switch (vendor) {
+    case AMDSMI_VRAM_VENDOR_SAMSUNG:
+        strncpy(vendor_str, "samsung", str_size);
+        break;
+    case AMDSMI_VRAM_VENDOR_INFINEON:
+        strncpy(vendor_str, "infineon", str_size);
+        break;
+    case AMDSMI_VRAM_VENDOR_ELPIDA:
+        strncpy(vendor_str, "elpida", str_size);
+        break;
+    case AMDSMI_VRAM_VENDOR_ETRON:
+        strncpy(vendor_str, "etron", str_size);
+        break;
+    case AMDSMI_VRAM_VENDOR_NANYA:
+        strncpy(vendor_str, "nanya", str_size);
+        break;
+    case AMDSMI_VRAM_VENDOR_HYNIX:
+        strncpy(vendor_str, "hynix", str_size);
+        break;
+    case AMDSMI_VRAM_VENDOR_MOSEL:
+        strncpy(vendor_str, "mosel", str_size);
+        break;
+    case AMDSMI_VRAM_VENDOR_WINBOND:
+        strncpy(vendor_str, "winbond", str_size);
+        break;
+    case AMDSMI_VRAM_VENDOR_ESMT:
+        strncpy(vendor_str, "esmt", str_size);
+        break;
+    case AMDSMI_VRAM_VENDOR_MICRON:
+        strncpy(vendor_str, "micron", str_size);
+        break;
+    case AMDSMI_VRAM_VENDOR_UNKNOWN:
+        strncpy(vendor_str, "unknown", str_size);
+        break;
+    default:
+        strncpy(vendor_str, "-", str_size);
+        break;
+    }
+}
+
+/// \brief convert amdsmi clock type to aga clock type
+/// \param[in] clock_type    amdsmi clock type
+/// \return    aga clock type
+static inline aga_gpu_clock_type_t
+smi_to_aga_gpu_clock_type (amdsmi_clk_type_t clock_type)
+{
+    switch (clock_type) {
+    case AMDSMI_CLK_TYPE_GFX:
+        return AGA_GPU_CLOCK_TYPE_SYSTEM;
+    case AMDSMI_CLK_TYPE_DF:
+        return AGA_GPU_CLOCK_TYPE_FABRIC;
+    case AMDSMI_CLK_TYPE_DCEF:
+        return AGA_GPU_CLOCK_TYPE_DCE;
+    case AMDSMI_CLK_TYPE_SOC:
+        return AGA_GPU_CLOCK_TYPE_SOC;
+    case AMDSMI_CLK_TYPE_MEM:
+        return AGA_GPU_CLOCK_TYPE_MEMORY;
+    case AMDSMI_CLK_TYPE_PCIE:
+        return AGA_GPU_CLOCK_TYPE_PCIE;
+    case AMDSMI_CLK_TYPE_VCLK0:
+    case AMDSMI_CLK_TYPE_VCLK1:
+        return AGA_GPU_CLOCK_TYPE_VIDEO;
+    case AMDSMI_CLK_TYPE_DCLK0:
+    case AMDSMI_CLK_TYPE_DCLK1:
+        return AGA_GPU_CLOCK_TYPE_DATA;
+    default:
+        break;
+    }
+    return AGA_GPU_CLOCK_TYPE_NONE;
+}
+
+/// \brief convert aga clock type to amdsmi clock type
+/// \param[in]  clock_type          aga clock type
+/// \param[out] amdsmi_clock_type   amdsmi clock type
+/// \return SDK_RET_OK or error status in case of failure
+static inline sdk_ret_t
+aga_to_smi_gpu_clock_type (aga_gpu_clock_type_t clock_type,
+                           amdsmi_clk_type_t *amdsmi_clock_type)
+{
+    switch (clock_type) {
+    case AGA_GPU_CLOCK_TYPE_SYSTEM:
+        *amdsmi_clock_type =  AMDSMI_CLK_TYPE_GFX;
+        break;
+    case AGA_GPU_CLOCK_TYPE_FABRIC:
+        *amdsmi_clock_type =  AMDSMI_CLK_TYPE_DF;
+        break;
+    case AGA_GPU_CLOCK_TYPE_DCE:
+        *amdsmi_clock_type =  AMDSMI_CLK_TYPE_DCEF;
+        break;
+    case AGA_GPU_CLOCK_TYPE_SOC:
+        *amdsmi_clock_type =  AMDSMI_CLK_TYPE_SOC;
+        break;
+    case AGA_GPU_CLOCK_TYPE_MEMORY:
+        *amdsmi_clock_type =  AMDSMI_CLK_TYPE_MEM;
+        break;
+    case AGA_GPU_CLOCK_TYPE_PCIE:
+        *amdsmi_clock_type =  AMDSMI_CLK_TYPE_PCIE;
+        break;
+    case AGA_GPU_CLOCK_TYPE_VIDEO:
+        *amdsmi_clock_type =  AMDSMI_CLK_TYPE_VCLK0;
+        break;
+    case AGA_GPU_CLOCK_TYPE_DATA:
+        *amdsmi_clock_type =  AMDSMI_CLK_TYPE_DCLK0;
+        break;
+    default:
+        return SDK_RET_INVALID_ARG;
+    }
+    return SDK_RET_OK;
+}
+
+/// \brief convert amdsmi PCIe slot type to aga slot type
+/// \param[in] slot type    amdsmi slot type
+/// \return    aga slot type
+static inline aga_pcie_slot_type_t
+smi_to_aga_pcie_slot_type (amdsmi_card_form_factor_t slot_type)
+{
+    switch (slot_type) {
+    case AMDSMI_CARD_FORM_FACTOR_PCIE:
+        return AGA_PCIE_SLOT_TYPE_PCIE;
+    case AMDSMI_CARD_FORM_FACTOR_OAM:
+        return AGA_PCIE_SLOT_TYPE_OAM;
+    case AMDSMI_CARD_FORM_FACTOR_CEM:
+        return AGA_PCIE_SLOT_TYPE_CEM;
+    case AMDSMI_CARD_FORM_FACTOR_UNKNOWN:
+        return AGA_PCIE_SLOT_TYPE_UNKNOWN;
+    default:
+        break;
+    }
+    return AGA_PCIE_SLOT_TYPE_NONE;
+}
+
+/// \brief convert amdsmi partition type string to aga comptue partition type
+/// \param[in] acceleerator partition type
+/// \return    aga gpu compute partition type
+static inline aga_gpu_compute_partition_type_t
+smi_to_aga_gpu_compute_partition_type (
+    amdsmi_accelerator_partition_type_t partition_type)
+{
+    switch (partition_type) {
+    case AMDSMI_ACCELERATOR_PARTITION_SPX:
+        return AGA_GPU_COMPUTE_PARTITION_TYPE_SPX;
+    case AMDSMI_ACCELERATOR_PARTITION_DPX:
+        return AGA_GPU_COMPUTE_PARTITION_TYPE_DPX;
+    case AMDSMI_ACCELERATOR_PARTITION_TPX:
+        return AGA_GPU_COMPUTE_PARTITION_TYPE_TPX;
+    case AMDSMI_ACCELERATOR_PARTITION_QPX:
+        return AGA_GPU_COMPUTE_PARTITION_TYPE_QPX;
+    case AMDSMI_ACCELERATOR_PARTITION_CPX:
+        return AGA_GPU_COMPUTE_PARTITION_TYPE_CPX;
+    default:
+        break;
+    }
+
+    return AGA_GPU_COMPUTE_PARTITION_TYPE_NONE;
+}
+
+/// \brief convert aga compute partition to amdsmi accelerator partition type
+/// \param[in] partition_type aga compute partition type
+/// \return    amdsmi gpu accelerator partition type
+static inline amdsmi_accelerator_partition_type_t
+aga_to_smi_gpu_compute_partition_type (
+    aga_gpu_compute_partition_type_t partition_type)
+{
+    switch (partition_type) {
+    case AGA_GPU_COMPUTE_PARTITION_TYPE_SPX:
+        return AMDSMI_ACCELERATOR_PARTITION_SPX;
+    case AGA_GPU_COMPUTE_PARTITION_TYPE_DPX:
+        return AMDSMI_ACCELERATOR_PARTITION_DPX;
+    case AGA_GPU_COMPUTE_PARTITION_TYPE_TPX:
+        return AMDSMI_ACCELERATOR_PARTITION_TPX;
+    case AGA_GPU_COMPUTE_PARTITION_TYPE_QPX:
+        return AMDSMI_ACCELERATOR_PARTITION_QPX;
+    case AGA_GPU_COMPUTE_PARTITION_TYPE_CPX:
+        return AMDSMI_ACCELERATOR_PARTITION_CPX;
+    default:
+        break;
+    }
+    return AMDSMI_ACCELERATOR_PARTITION_INVALID;
+}
+
+/// \brief convert amdsmi memory partition type to aga memory partition type
+/// \param[in] partition_type amdsmi memory partition type
+/// \return    aga gpu memory partition type
+static inline aga_gpu_memory_partition_type_t
+smi_to_aga_gpu_memory_partition_type (
+    amdsmi_memory_partition_type_t partition_type)
+{
+    switch (partition_type) {
+    case AMDSMI_MEMORY_PARTITION_NPS1:
+        return AGA_GPU_MEMORY_PARTITION_TYPE_NPS1;
+    case AMDSMI_MEMORY_PARTITION_NPS2:
+        return AGA_GPU_MEMORY_PARTITION_TYPE_NPS2;
+    case AMDSMI_MEMORY_PARTITION_NPS4:
+        return AGA_GPU_MEMORY_PARTITION_TYPE_NPS4;
+    case AMDSMI_MEMORY_PARTITION_NPS8:
+        return AGA_GPU_MEMORY_PARTITION_TYPE_NPS8;
+    default:
+        break;
+    }
+
+    return AGA_GPU_MEMORY_PARTITION_TYPE_NONE;
+}
+
+/// \brief convert aga memory partition type to amdsmi memory partition type
+/// \param[in] partition_type aga memory partition type
+/// \return    amdsmi gpu memory partition type
+static inline amdsmi_memory_partition_type_t
+aga_to_smi_gpu_memory_partition_type (
+    aga_gpu_memory_partition_type_t partition_type)
+{
+    switch (partition_type) {
+    case AGA_GPU_MEMORY_PARTITION_TYPE_NPS1:
+        return AMDSMI_MEMORY_PARTITION_NPS1;
+    case AGA_GPU_MEMORY_PARTITION_TYPE_NPS2:
+        return AMDSMI_MEMORY_PARTITION_NPS2;
+    case AGA_GPU_MEMORY_PARTITION_TYPE_NPS4:
+        return AMDSMI_MEMORY_PARTITION_NPS4;
+    case AGA_GPU_MEMORY_PARTITION_TYPE_NPS8:
+        return AMDSMI_MEMORY_PARTITION_NPS8;
+    default:
+        break;
+    }
+    return AMDSMI_MEMORY_PARTITION_UNKNOWN;
+}
+
+/// \brief     convert amdsmi return status to sdk return status
+/// \param[in] amdsmi_ret amdsmi return status
+/// \return    sdk return status
+static inline sdk_ret_t
+amdsmi_ret_to_sdk_ret (amdsmi_status_t amdsmi_ret)
+{
+    switch (amdsmi_ret) {
+    case AMDSMI_STATUS_SUCCESS:
+        return SDK_RET_OK;
+    case AMDSMI_STATUS_INVAL:
+        return SDK_RET_INVALID_ARG;
+    case AMDSMI_STATUS_NOT_SUPPORTED:
+        return SDK_RET_OP_NOT_SUPPORTED;
+    case AMDSMI_STATUS_FILE_ERROR:
+        return SDK_RET_FILE_ERR;
+    case AMDSMI_STATUS_NO_PERM:
+        return SDK_RET_PERMISSION_ERR;
+    case AMDSMI_STATUS_OUT_OF_RESOURCES:
+        return SDK_RET_OOM;
+    case AMDSMI_STATUS_INTERNAL_EXCEPTION:
+        return SDK_RET_INTERNAL_EXCEPTION_ERR;
+    case AMDSMI_STATUS_INPUT_OUT_OF_BOUNDS:
+        return SDK_RET_OOB;
+    case AMDSMI_STATUS_INIT_ERROR:
+        return SDK_RET_INIT_ERR;
+    case AMDSMI_STATUS_NOT_YET_IMPLEMENTED:
+        return SDK_RET_OP_NOT_SUPPORTED;
+    case AMDSMI_STATUS_NOT_FOUND:
+        return SDK_RET_ENTRY_NOT_FOUND;
+    case AMDSMI_STATUS_INSUFFICIENT_SIZE:
+        return SDK_RET_NO_RESOURCE;
+    case AMDSMI_STATUS_INTERRUPT:
+        return SDK_RET_INTERRUPT;
+    case AMDSMI_STATUS_UNEXPECTED_SIZE:
+        return SDK_RET_UNEXPECTED_DATA_SIZE_ERR;
+    case AMDSMI_STATUS_NO_DATA:
+        return SDK_RET_NO_DATA_ERR;
+    case AMDSMI_STATUS_UNEXPECTED_DATA:
+        return SDK_RET_UNEXPECTED_DATA_ERR;
+    case AMDSMI_STATUS_BUSY:
+        return SDK_RET_IN_USE;
+    case AMDSMI_STATUS_REFCOUNT_OVERFLOW:
+        return SDK_RET_REFCOUNT_OVERFLOW_ERR;
+    case AMDSMI_STATUS_SETTING_UNAVAILABLE:
+        return SDK_RET_SETTING_UNAVAILABLE_ERR;
+    case AMDSMI_STATUS_AMDGPU_RESTART_ERR:
+        return SDK_RET_RESTART_ERR;
+    default:
+        break;
+    }
+    return SDK_RET_ERR;
+}
+
+/// \@}
+
+}    // namespace aga
+
+#endif    // __AGA_API_SMI_UTILS_HPP__

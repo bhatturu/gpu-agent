@@ -27,12 +27,20 @@ limitations under the License.
 #include "nic/gpuagent/api/include/aga_init.hpp"
 #include "nic/gpuagent/api/include/aga_gpu.hpp"
 #include "nic/gpuagent/api/include/aga_task.hpp"
-#ifndef ROCM_SMI
-#include "nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h"
+#ifdef ROCM_SMI
+typedef uint32_t aga_gpu_handle_t;
+#elif defined(GIM_AMD_SMI)
+extern "C" {
+#include "nic/third-party/rocm/gim_amd_smi_lib/include/amd_smi/amdsmi.h"
+}
 
 typedef amdsmi_processor_handle aga_gpu_handle_t;
-#else
-typedef uint32_t aga_gpu_handle_t;
+#elif defined(AMD_SMI)
+extern "C" {
+#include "nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h"
+}
+
+typedef amdsmi_processor_handle aga_gpu_handle_t;
 #endif
 
 namespace aga {
@@ -55,18 +63,24 @@ sdk_ret_t smi_gpu_fill_spec(aga_gpu_handle_t handle,
 
 /// \brief    fill gpu object operational status
 /// \param[in] handle    GPU handle
+/// \param[in] spec      GPU operational spec
 /// \param[out] status    operational status to be filled
 /// \return     SDK_RET_OK or error code in case of failure
 sdk_ret_t smi_gpu_fill_status(aga_gpu_handle_t handle, uint32_t id,
-                              aga_gpu_status_t *status);
+                              aga_gpu_spec_t *spec, aga_gpu_status_t *status);
 
 /// \brief    fill gpu object statistics
 /// \param[in] handle                   GPU handle
+/// \param[in] partition_capable        platform partition supported bool
+/// \param[in] partition_id             partition id (or 0 in case of
+///                                     non-partitioned GPU)
 /// \param[in] main_partition_handle    in case of GPU partitions, handle of the
 ///                                     first partition, else, GPU handle
 /// \param[out] stats    gpu object stats to be filled
 /// \return     SDK_RET_OK or error code in case of failure
 sdk_ret_t smi_gpu_fill_stats(aga_gpu_handle_t handle,
+                             bool partition_capable,
+                             uint32_t partition_id,
                              aga_gpu_handle_t first_partition_handle,
                              aga_gpu_stats_t *stats);
 
@@ -128,6 +142,26 @@ sdk_ret_t smi_gpu_get_bad_page_records(void *gpu_obj,
 /// \param[out] partition_id partition id of the GPU
 sdk_ret_t smi_get_gpu_partition_id(aga_gpu_handle_t gpu_handle,
                                    uint32_t *partition_id);
+
+/// \brief function to get GPU partition information
+/// \param[in]  gpu_handle    handle of GPU device
+/// \param[out] partition_capable   true if platform supports partitioning
+/// \param[out] compute_partition   compute partition type
+/// \param[out] memory_partition    memory partition type
+/// \return SDK_RET_OK or error code in case of failure
+sdk_ret_t smi_get_gpu_partition_info(aga_gpu_handle_t gpu_handle,
+              bool *partition_capable,
+              aga_gpu_compute_partition_type_t *compute_partition,
+              aga_gpu_memory_partition_type_t *memory_partition);
+
+/// \brief function to fill immutable attributes in GPU spec and status
+/// \param[in]  gpu_handle    handle of GPU device
+/// \param[out] spec          GPU spec
+/// \param[out] status        GPU status
+/// \return SDK_RET_OK or error code in case of failure
+sdk_ret_t smi_gpu_init_immutable_attrs(aga_gpu_handle_t gpu_handle,
+                                       aga_gpu_spec_t *spec,
+                                       aga_gpu_status_t *status);
 
 /// \@}
 

@@ -41,13 +41,15 @@ limitations under the License.
 #define AGA_GPU_DATA_MAX_CLOCK                 4
 #define AGA_GPU_MAX_VCN                        4
 #define AGA_GPU_MAX_JPEG                       32
+#define AGA_GPU_MAX_JPEG_ENG                   40
+#define AGA_GPU_MAX_XCC                        8
 #define AGA_GPU_MAX_XGMI_LINKS                 8
 #define AGA_GPU_MAX_BAD_PAGE_RECORD            64
 #define AGA_GPU_INVALID_PARTITION_ID           0xFFFFFFFF
 #define AGA_GPU_MAX_PARTITION                  8
 /// number of clocks that can not be configured - AGA_GPU_CLOCK_TYPE_FABRIC,
-/// AGA_GPU_CLOCK_TYPE_SOC, AGA_GPU_CLOCK_TYPE_DCE, AGA_GPU_CLOCK_TYPE_PCIE
-#define AGA_GPU_NUM_NON_CFG_CLOCK_TYPES        4
+/// AGA_GPU_CLOCK_TYPE_SOC (4), AGA_GPU_CLOCK_TYPE_DCE, AGA_GPU_CLOCK_TYPE_PCIE
+#define AGA_GPU_NUM_NON_CFG_CLOCK_TYPES        7
 /// clock frequency range are per clock type; as of now it is only set for
 /// clocks of type AGA_GPU_CLOCK_TYPE_SYSTEM, AGA_GPU_CLOCK_TYPE_MEMORY,
 /// AGA_GPU_CLOCK_TYPE_VIDEO and AGA_GPU_CLOCK_TYPE_DATA
@@ -241,10 +243,11 @@ typedef struct aga_gpu_usage_s {
     uint32_t gfx_activity;
     uint32_t umc_activity;
     uint32_t mm_activity;
-    uint16_t num_vcn;
     uint16_t vcn_activity[AGA_GPU_MAX_VCN];
-    uint16_t num_jpeg;
     uint16_t jpeg_activity[AGA_GPU_MAX_JPEG];
+    uint32_t gfx_busy_inst[AGA_GPU_MAX_XCC];
+    uint16_t jpeg_busy[AGA_GPU_MAX_JPEG_ENG];
+    uint16_t vcn_busy[AGA_GPU_MAX_VCN];
 } aga_gpu_usage_t;
 
 /// \brief GPU current memory usage
@@ -386,7 +389,7 @@ typedef struct aga_gpu_vram_status_s {
     /// VRAM type
     aga_vram_type_t type;
     /// VRAM vendor
-    aga_vram_vendor_t vendor;
+    char vendor[AGA_MAX_STR_LEN + 1];
     /// VRAM size (in MB)
     uint64_t size;
 } aga_gpu_vram_status_t;
@@ -474,6 +477,14 @@ typedef struct aga_gpu_status_s {
     /// NOTE:
     /// only valid for GPU partitions (child GPUs)
     aga_obj_key_t physical_gpu;
+    // GPU KFD id
+    uint64_t kfd_id;
+    // GPU node id
+    uint32_t node_id;
+    // GPU driver DRM render id
+    uint32_t drm_render_id;
+    // GPU driver DRM card id
+    uint32_t drm_card_id;
 } aga_gpu_status_t;
 
 /// \brief GPU PCIe statistics

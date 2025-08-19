@@ -41,8 +41,24 @@ aga_event_id_proto_to_api_spec (amdgpu::EventId id)
         return AGA_EVENT_ID_GPU_PRE_RESET;
     case amdgpu::EVENT_ID_GPU_POST_RESET:
         return AGA_EVENT_ID_GPU_POST_RESET;
-    case amdgpu::EVENT_ID_RING_HANG:
-        return AGA_EVENT_ID_RING_HANG;
+    case amdgpu::EVENT_ID_MIGRATE_START:
+        return AGA_EVENT_ID_MIGRATE_START;
+    case amdgpu::EVENT_ID_MIGRATE_END:
+        return AGA_EVENT_ID_MIGRATE_END;
+    case amdgpu::EVENT_ID_PAGE_FAULT_START:
+        return AGA_EVENT_ID_PAGE_FAULT_START;
+    case amdgpu::EVENT_ID_PAGE_FAULT_END:
+        return AGA_EVENT_ID_PAGE_FAULT_END;
+    case amdgpu::EVENT_ID_QUEUE_EVICTION:
+        return AGA_EVENT_ID_QUEUE_EVICTION;
+    case amdgpu::EVENT_ID_QUEUE_RESTORE:
+        return AGA_EVENT_ID_QUEUE_RESTORE;
+    case amdgpu::EVENT_ID_UNMAP_FROM_GPU:
+        return AGA_EVENT_ID_UNMAP_FROM_GPU;
+    case amdgpu::EVENT_ID_PROCESS_START:
+        return AGA_EVENT_ID_PROCESS_START;
+    case amdgpu::EVENT_ID_PROCESS_END:
+        return AGA_EVENT_ID_PROCESS_END;
     default:
         break;
     }

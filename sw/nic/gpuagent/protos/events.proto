@@ -82,10 +82,10 @@ enum EventId {
                                                       (Severity)    = EVENT_SEVERITY_DEBUG,
                                                       (Description) = "Invalid event"];
   EVENT_ID_VM_PAGE_FAULT                      = 1    [(Category)    = EVENT_CATEGORY_NONE,
-                                                      (Severity)    = EVENT_SEVERITY_DEBUG,
+                                                      (Severity)    = EVENT_SEVERITY_INFO,
                                                       (Description) = "VM page fault occured"];
   EVENT_ID_THERMAL_THROTTLE                   = 2    [(Category)    = EVENT_CATEGORY_NONE,
-                                                      (Severity)    = EVENT_SEVERITY_INFO,
+                                                      (Severity)    = EVENT_SEVERITY_WARN,
                                                       (Description) = "Clock frequency has decreased due to temperature rise"];
   EVENT_ID_GPU_PRE_RESET                      = 3    [(Category)    = EVENT_CATEGORY_NONE,
                                                       (Severity)    = EVENT_SEVERITY_INFO,
@@ -93,9 +93,33 @@ enum EventId {
   EVENT_ID_GPU_POST_RESET                     = 4    [(Category)    = EVENT_CATEGORY_NONE,
                                                       (Severity)    = EVENT_SEVERITY_WARN,
                                                       (Description) = "GPU reset happened"];
-  EVENT_ID_RING_HANG                          = 5    [(Category)    = EVENT_CATEGORY_NONE,
+  EVENT_ID_MIGRATE_START                      = 5    [(Category)    = EVENT_CATEGORY_NONE,
                                                       (Severity)    = EVENT_SEVERITY_WARN,
-                                                      (Description) = "GPU command ring hang"];
+                                                      (Description) = "GPU migrate start"];
+  EVENT_ID_MIGRATE_END                        = 6    [(Category)    = EVENT_CATEGORY_NONE,
+                                                      (Severity)    = EVENT_SEVERITY_WARN,
+                                                      (Description) = "GPU migrate end"];
+  EVENT_ID_PAGE_FAULT_START                   = 7    [(Category)    = EVENT_CATEGORY_NONE,
+                                                      (Severity)    = EVENT_SEVERITY_WARN,
+                                                      (Description) = "GPU page fault start"];
+  EVENT_ID_PAGE_FAULT_END                     = 8    [(Category)    = EVENT_CATEGORY_NONE,
+                                                      (Severity)    = EVENT_SEVERITY_WARN,
+                                                      (Description) = "GPU page fault end"];
+  EVENT_ID_QUEUE_EVICTION                     = 9    [(Category)    = EVENT_CATEGORY_NONE,
+                                                      (Severity)    = EVENT_SEVERITY_WARN,
+                                                      (Description) = "GPU queue eviction"];
+  EVENT_ID_QUEUE_RESTORE                      = 10   [(Category)    = EVENT_CATEGORY_NONE,
+                                                      (Severity)    = EVENT_SEVERITY_WARN,
+                                                      (Description) = "GPU queue restore"];
+  EVENT_ID_UNMAP_FROM_GPU                     = 11   [(Category)    = EVENT_CATEGORY_NONE,
+                                                      (Severity)    = EVENT_SEVERITY_WARN,
+                                                      (Description) = "Unmapped from GPU"];
+  EVENT_ID_PROCESS_START                      = 12   [(Category)    = EVENT_CATEGORY_NONE,
+                                                      (Severity)    = EVENT_SEVERITY_WARN,
+                                                      (Description) = "KFD process start"];
+  EVENT_ID_PROCESS_END                        = 13   [(Category)    = EVENT_CATEGORY_NONE,
+                                                      (Severity)    = EVENT_SEVERITY_WARN,
+                                                      (Description) = "KFD process end"];
 }
 
 // list of events

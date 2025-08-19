@@ -138,6 +138,18 @@ public:
         handle_ = handle;
     }
 
+    /// \brief  return first GPU partition handle
+    /// \return GPU handle
+    aga_gpu_handle_t first_partition_handle(void) const {
+        return first_partition_handle_;
+    }
+
+    /// \brief  set first partition GPU handle
+    /// \param[in] GPU handle
+    void set_first_partition_handle(aga_gpu_handle_t handle) {
+        first_partition_handle_ = handle;
+    }
+
     /// \brief return number of GPU watch objects watchnig this GPU
     /// \return     number of GPU watch objects watching this GPU
     uint32_t num_gpu_watch(void) const {
@@ -154,10 +166,8 @@ public:
         num_gpu_watch_--;
     }
 
-    /// \brief  initialize GPU spec
-    void init_spec(void) {
-        fill_spec_(&spec_);
-    }
+    /// \brief  initialize immutable attributes in GPU spec and status
+    void init_immutable_attrs(void);
 
     /// \brief  return parent GPU uuid
     /// \return parent gpu uuid
@@ -249,6 +259,19 @@ public:
     /// \return gpu stats
     sdk_ret_t fill_gpu_watch_stats(aga_gpu_watch_attrs_t *stats);
 
+
+    /// \brief        set GPU partition capability
+    /// \param[in]    GPU partition capability state
+    void set_partition_capability(bool partition_capable) {
+        partition_capable_ = partition_capable;
+    }
+
+    /// \brief return gpu partition capability
+    /// \return true if platform supports gpu partition, false otherwise
+    bool is_partionable(void) {
+        return partition_capable_;
+    }
+
 private:
     /// \brief constructor
     gpu_entry();
@@ -261,8 +284,9 @@ private:
     void fill_spec_(aga_gpu_spec_t *spec);
 
     /// \brief      fill the gpu operational status
+    /// \param[in]  spec config specification
     /// \param[out] status operational status
-    void fill_status_(aga_gpu_status_t *status);
+    void fill_status_(aga_gpu_spec_t *spec, aga_gpu_status_t *status);
 
     /// \brief      fill the gpu statistics
     /// \param[out] stats statistics
@@ -275,14 +299,22 @@ private:
     aga_obj_key_t parent_gpu_;
     /// partition id, valid only when parent_gpu_ is valid
     uint32_t partition_id_;
+    /// GPU partition capability;
+    bool partition_capable_;
     /// vector containing child GPU uuids; used only for parent GPU
     std::vector<aga_obj_key_t> child_gpus_;
     /// GPU id (aka. index)
     uint8_t id_;
     /// GPU handle
     aga_gpu_handle_t handle_;
+    /// first GPU partition's handle; we store it because some statistics are
+    /// only accessible from the first partition
+    aga_gpu_handle_t first_partition_handle_;
     /// GPU spec
     aga_gpu_spec_t spec_;
+    /// GPU status; we set static fields in the status at init time to avoid
+    /// repeat api calls for static fields
+    aga_gpu_status_t status_;
     /// GPU watch stats
     aga_gpu_watch_fields_t stats_;
     /// number of GPU watch objects watching this GPU
