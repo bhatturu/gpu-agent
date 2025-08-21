@@ -40,7 +40,7 @@ copy_artifacts () {
     # copy docker image ubi9.4
     cp /device-metrics-exporter/docker/device-metrics-exporter-sriov-latest.tar.gz $BUNDLE_DIR/device-metrics-exporter-sriov-latest-$RELEASE.tar.gz
     # copy docker image azure coreos 3
-    cp /device-metrics-exporter/docker/device-metrics-exporter-latest-azure.tar.gz $BUNDLE_DIR/device-metrics-exporter-latest-azure-$RELEASE.tar.gz
+    #cp /device-metrics-exporter/docker/device-metrics-exporter-latest-azure.tar.gz $BUNDLE_DIR/device-metrics-exporter-latest-azure-$RELEASE.tar.gz
     # copy docker mock image
     cp /device-metrics-exporter/docker/device-metrics-exporter-mock-latest.tar.gz $BUNDLE_DIR/device-metrics-exporter-mock-latest-$RELEASE.tar.gz
     # copy debian ubuntu packages
@@ -65,11 +65,11 @@ docker_push () {
     docker push $EXPORTER_IMAGE_URL:$tag
 
     # azurelinux3 image push
-    azuretag="$tag-azl3"
-    docker load -i /device-metrics-exporter/docker/device-metrics-exporter-latest-azure.tar.gz
-    docker inspect $EXPORTER_IMAGE_URL:latest | grep "HOURLY"
-    docker tag $EXPORTER_IMAGE_URL:latest $EXPORTER_IMAGE_URL:$azuretag
-    docker push $EXPORTER_IMAGE_URL:$azuretag
+    #azuretag="$tag-azl3"
+    #docker load -i /device-metrics-exporter/docker/device-metrics-exporter-latest-azure.tar.gz
+    #docker inspect $EXPORTER_IMAGE_URL:latest | grep "HOURLY"
+    #docker tag $EXPORTER_IMAGE_URL:latest $EXPORTER_IMAGE_URL:$azuretag
+    #docker push $EXPORTER_IMAGE_URL:$azuretag
 
     # rhel 9 sriov image push
     docker load -i /device-metrics-exporter/docker/device-metrics-exporter-latest.tar.gz
@@ -90,8 +90,8 @@ docker_push () {
       docker tag $EXPORTER_SRIOV_IMAGE_URL:$tag amdpsdo/device-metrics-exporter-sriov:$RELEASE
       docker push amdpsdo/device-metrics-exporter-sriov:$RELEASE
       # azure linux3
-      docker tag $EXPORTER_IMAGE_URL:$azuretag amdpsdo/device-metrics-exporter:$RELEASE-azl3
-      docker push amdpsdo/device-metrics-exporter:$RELEASE-azl3
+      #docker tag $EXPORTER_IMAGE_URL:$azuretag amdpsdo/device-metrics-exporter:$RELEASE-azl3
+      #docker push amdpsdo/device-metrics-exporter:$RELEASE-azl3
     fi
 }
 
