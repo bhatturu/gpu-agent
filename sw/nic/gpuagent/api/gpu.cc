@@ -87,6 +87,9 @@ gpu_entry::create_handler(api_params_base *api_params) {
 
     key_ = spec->key;
     parent_gpu_ = spec->parent_gpu;
+    spec_.key = spec->key;
+    spec_.compute_partition_type = spec->compute_partition_type;
+    spec_.memory_partition_type = spec->memory_partition_type;
     return SDK_RET_OK;
 }
 
@@ -146,9 +149,6 @@ gpu_entry::update_handler(api_params_base *api_params) {
 
 void
 gpu_entry::fill_stats_(aga_gpu_stats_t *stats) {
-    gpu_entry *parent_gpu;
-    aga_gpu_handle_t first_partition_handle;
-
     // fill stats only for non-parent GPUs
     if (child_gpus_.size()) {
         return;
@@ -211,33 +211,14 @@ gpu_entry::fill_stats_(aga_gpu_stats_t *stats) {
     stats->xgmi_neighbor4_tx_throughput = stats_.xgmi_neighbor4_tx_throughput;
     stats->xgmi_neighbor5_tx_throughput = stats_.xgmi_neighbor5_tx_throughput;
 
-    // initialize first partition handle to be the same as current GPUs handle
-    first_partition_handle = handle_;
-    // if partitioned GPU, get handle of first partition
-    if (parent_gpu_.valid()) {
-        // get parent GPU
-        parent_gpu = gpu_db()->find(&parent_gpu_);
-        if (!parent_gpu || !parent_gpu->child_gpus().size()) {
-            AGA_TRACE_ERR("Failed to find first GPU partition for GPU {}",
-                          key_.str());
-            return;
-        }
-        // get first child GPU
-        auto child_gpus = parent_gpu->child_gpus();
-        for (uint32_t i = 0; i < child_gpus.size(); i++) {
-            auto child = gpu_db()->find(&child_gpus[i]);
-            if (child && !child->partition_id()) {
-                first_partition_handle = child->handle();
-                break;
-            }
-        }
-    }
     // fetch stats from smi apis
-    smi_gpu_fill_stats(handle_, first_partition_handle, stats);
+    smi_gpu_fill_stats(handle_, partition_capable_,
+        (partition_id_ == AGA_GPU_INVALID_PARTITION_ID) ? 0 : partition_id_,
+        first_partition_handle_, stats);
 }
 
 void
-gpu_entry::fill_status_(aga_gpu_status_t *status) {
+gpu_entry::fill_status_(aga_gpu_spec_t *spec, aga_gpu_status_t *status) {
     if (child_gpus_.size()) {
         status->num_gpu_partition = child_gpus_.size();
         // for parent GPUs get uuids of all children
@@ -245,13 +226,23 @@ gpu_entry::fill_status_(aga_gpu_status_t *status) {
             status->gpu_partition[i] = child_gpus_[i];
         }
     } else {
-        // get additional details only for non-parent GPUs
-        status->handle = handle_;
+        // copy information that we got at init time
+        memcpy(status, &status_, sizeof(aga_gpu_status_t));
         if (parent_gpu_.valid()) {
             status->physical_gpu = parent_gpu_;
         }
-        smi_gpu_fill_status(handle_, id_, status);
+        smi_gpu_fill_status(handle_, id_, spec, status);
     }
+}
+
+void
+gpu_entry::init_immutable_attrs(void) {
+    // stash information already available
+    status_.index = id_;
+    status_.handle = handle_;
+    status_.partition_id = partition_id_;
+    // fill other immutable attributes that we can get from API calls
+    smi_gpu_init_immutable_attrs(handle_, &spec_, &status_);
 }
 
 void
@@ -259,6 +250,8 @@ gpu_entry::fill_spec_(aga_gpu_spec_t *spec) {
     spec->key = key_;
     // get additional details only for non-parent GPUs
     if (!child_gpus_.size()) {
+        // copy information that we got at init time
+        memcpy(spec, &spec_, sizeof(aga_gpu_spec_t));
         smi_gpu_fill_spec(handle_, spec);
     }
 }
@@ -266,7 +259,7 @@ gpu_entry::fill_spec_(aga_gpu_spec_t *spec) {
 sdk_ret_t
 gpu_entry::read(aga_gpu_info_t *info) {
     fill_spec_(&info->spec);
-    fill_status_(&info->status);
+    fill_status_(&info->spec, &info->status);
     fill_stats_(&info->stats);
     return SDK_RET_OK;
 }

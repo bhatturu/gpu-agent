@@ -63,6 +63,8 @@ typedef enum aga_event_mach_type_e {
 } aga_event_match_type_t;
 
 /// \brief    event identifiers
+/// NOTE:
+/// needs to be kept in sync with amdsmi_evt_notification_type_t
 typedef enum aga_event_id_e {
     AGA_EVENT_ID_NONE             = 0,
     /// VM page fault event
@@ -73,9 +75,25 @@ typedef enum aga_event_id_e {
     AGA_EVENT_ID_GPU_PRE_RESET    = 3,
     /// PU reset happened
     AGA_EVENT_ID_GPU_POST_RESET   = 4,
-    /// GPU command ring hang
-    AGA_EVENT_ID_RING_HANG        = 5,
-    AGA_EVENT_ID_MAX              = AGA_EVENT_ID_RING_HANG,
+    /// migrate start
+    AGA_EVENT_ID_MIGRATE_START    = 5,
+    /// migrate end
+    AGA_EVENT_ID_MIGRATE_END      = 6,
+    /// page fault start
+    AGA_EVENT_ID_PAGE_FAULT_START = 7,
+    /// page fault end
+    AGA_EVENT_ID_PAGE_FAULT_END   = 8,
+    /// queue eviction
+    AGA_EVENT_ID_QUEUE_EVICTION   = 9,
+    /// queue restore
+    AGA_EVENT_ID_QUEUE_RESTORE    = 10,
+    /// unmap from GPU
+    AGA_EVENT_ID_UNMAP_FROM_GPU   = 11,
+    /// KFD process start
+    AGA_EVENT_ID_PROCESS_START    = 12,
+    /// KFD process end
+    AGA_EVENT_ID_PROCESS_END      = 13,
+    AGA_EVENT_ID_MAX              = AGA_EVENT_ID_PROCESS_END,
 } aga_event_id_t;
 
 /// \brief    event get/subscribe filter

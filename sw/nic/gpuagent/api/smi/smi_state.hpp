@@ -124,6 +124,14 @@ public:
      /// \return SDK_RET_OK or error status in case of failure
      sdk_ret_t watcher_update_watch_db(aga_gpu_watch_db_t *watch_db);
 
+     /// \brief    function to check if there are any watch groups which have
+     ///           had subscribers
+     /// \return true if there is a watch group which has had subscribers, false
+     ///         otherwise
+     bool any_watch_group_subscribed(void) {
+        return (gpu_watch_subscriber_db_.gpu_watch_map.size() > 0);
+     }
+
 private:
     /// \brief spawn event monitor thread
     /// \return SDK_RET_OK or error status in case of failure

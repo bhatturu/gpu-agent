@@ -24,12 +24,20 @@ limitations under the License.
 #define __AGA_API_SMI_HPP__
 
 #include "nic/sdk/include/sdk/base.hpp"
-#ifndef ROCM_SMI
-#include "nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h"
+#ifdef ROCM_SMI
+typedef uint32_t aga_gpu_handle_t;
+#elif defined(GIM_AMD_SMI)
+extern "C" {
+#include "nic/third-party/rocm/gim_amd_smi_lib/include/amd_smi/amdsmi.h"
+}
 
 typedef amdsmi_processor_handle aga_gpu_handle_t;
-#else
-typedef uint32_t aga_gpu_handle_t;
+#elif defined(AMD_SMI)
+extern "C" {
+#include "nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h"
+}
+
+typedef amdsmi_processor_handle aga_gpu_handle_t;
 #endif
 
 #endif    // __AGA_API_SMI_HPP__

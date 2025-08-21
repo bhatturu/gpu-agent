@@ -14,9 +14,6 @@
 # THE MATERIALS ARE DISTRIBUTED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR
 # REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-export PIPELINE              := rudra
-export P4_PROGRAM            := pulsar
-export ASIC                  := salina
 export TOPDIR                := ${realpath ../..}
 export ABS_DIR               := /usr/src/github.com/ROCm/gpu-agent/sw
 export ARCH                  ?= x86_64
@@ -76,18 +73,30 @@ SRC_C := $(shell find $(TOPDIR) -type d \( -path $(EXCLUDE_DIRS) \) -prune -o \
                                 -type d \( -path $(EXCLUDE_VENDOR) \) -prune -o \
                                 -type d \( -path $(BLD_DIR) \) -prune -o \
                                 -type f -name "*.c" -print)
-INC   := $(TOPDIR) $(BLD_ARCH_DIR) $(BLD_PROTOGEN_DIR) \
-         $(TOPDIR)/nic/sdk/ $(OTHER_THIRD_PARTY_INC) \
-         ${BLD_DIR}/include \
-         ${TOPDIR}/nic/third-party/rocm/rocm_smi_lib/include \
-         ${TOPDIR}/nic/third-party/rocm/amd_smi_lib/include/
+INC_COMMON   := $(TOPDIR) $(BLD_ARCH_DIR) $(BLD_PROTOGEN_DIR) \
+                $(TOPDIR)/nic/sdk/ $(OTHER_THIRD_PARTY_INC) \
+                ${BLD_DIR}/include
+INC_AMD_SMI  := ${TOPDIR}/nic/third-party/rocm/amd_smi_lib/include/
+INC_GIM_SMI  := ${TOPDIR}/nic/third-party/rocm/gim_amd_smi_lib/include/
 
 # SMI sources
-SMI_CC_SRCS     := $(wildcard ${SMI_SRC_DIR}/*.cc)
-SMI_MOCK_SRCS   := $(wildcard ${SMI_SRC_DIR}/*mock*.cc)
-SMI_CC_SRCS     += $(wildcard ${SMI_SRC_DIR}/amdsmi/*.cc)
-SMI_MOCK_SRCS   += $(wildcard ${SMI_SRC_DIR}/amdsmi/*mock*.cc)
-SRC             += $(filter-out $(SMI_MOCK_SRCS), $(SMI_CC_SRCS))
+SMI_CC_SRCS     	:= $(wildcard ${SMI_SRC_DIR}/*.cc)
+SMI_MOCK_SRCS   	:= $(wildcard ${SMI_SRC_DIR}/*mock*.cc)
+
+# amdsmi sources
+AMD_SMI_CC_SRCS    	:= $(wildcard ${SMI_SRC_DIR}/amdsmi/*.cc)
+AMD_SMI_MOCK_SRCS   := $(wildcard ${SMI_SRC_DIR}/amdsmi/*mock*.cc)
+AMD_SMI_SRC         := $(SRC) $(filter-out $(SMI_MOCK_SRCS), $(SMI_CC_SRCS)) \
+                       $(filter-out $(AMD_SMI_MOCK_SRCS), $(AMD_SMI_CC_SRCS))
+
+# gim amdsmi sources
+GIM_SMI_CC_SRCS    	:= $(wildcard ${SMI_SRC_DIR}/gimamdsmi/*.cc)
+GIM_SMI_MOCK_SRCS   := $(wildcard ${SMI_SRC_DIR}/gimamdsmi/*mock*.cc)
+GIM_SMI_SRC         := $(SRC) $(filter-out $(SMI_MOCK_SRCS), $(SMI_CC_SRCS)) \
+                       $(filter-out $(GIM_SMI_MOCK_SRCS), $(GIM_SMI_CC_SRCS))
+
+# amdsmi mock sources
+AMD_SMI_MOCK_SRC    := $(SRC) $(SMI_MOCK_SRCS) $(AMD_SMI_MOCK_SRCS)
 
 PROTO_INCS      := ${GPUAGENT_PROTO_DIR} \
                    ${TOPDIR}/vendor/github.com/gogo/protobuf/protobuf \
@@ -101,14 +110,23 @@ PROTOC_PY_OPTS  := --plugin=protoc-gen-grpc=${GRPC_PY_PLUGIN}
 PROTO_PROTOC_GOFAST_OPTS = --gogofast_out=Mgogo.proto=github.com/gogo/protobuf/gogoproto,plugins=grpc:${GPUAGENT_PROTO_DIR}
 
 OBJ_DIR         := $(BLD_OUT_DIR)/$(TARGET)_bin
-OBJ             := $(patsubst $(TOPDIR)/%, $(OBJ_DIR)/%, $(SRC:.cc=.o))
+OBJ             := $(patsubst $(TOPDIR)/%, $(OBJ_DIR)/%, $(AMD_SMI_SRC:.cc=.o))
 OBJ             += $(patsubst $(TOPDIR)/%, $(OBJ_DIR)/%, $(SRC_C:.c=.o))
-INCS            := $(addprefix -I,${INC})
-LDFLAGS         := -pthread -rdynamic -no-canonical-prefixes -Wl,--gc-sections \
+OBJ_DIR_GIM     := $(BLD_OUT_DIR)/$(TARGET)_gim_bin
+OBJ_GIM         := $(patsubst $(TOPDIR)/%, $(OBJ_DIR_GIM)/%, $(GIM_SMI_SRC:.cc=.o))
+OBJ_GIM         += $(patsubst $(TOPDIR)/%, $(OBJ_DIR_GIM)/%, $(SRC_C:.c=.o))
+OBJ_DIR_MOCK    := $(BLD_OUT_DIR)/$(TARGET)_mock_bin
+OBJ_MOCK        := $(patsubst $(TOPDIR)/%, $(OBJ_DIR_MOCK)/%, $(AMD_SMI_MOCK_SRC:.cc=.o))
+OBJ_MOCK        += $(patsubst $(TOPDIR)/%, $(OBJ_DIR_MOCK)/%, $(SRC_C:.c=.o))
+
+INCS_AMD_SMI    := $(addprefix -I,${INC_COMMON} ${INC_AMD_SMI})
+INCS_GIM_SMI    := $(addprefix -I,${INC_COMMON} ${INC_GIM_SMI})
+INCS_MOCK       := $(addprefix -I,${INC_COMMON})
+
+LDFLAGS_COMMON  := -pthread -rdynamic -no-canonical-prefixes -Wl,--gc-sections \
                    -Wl,-z,relro,-z,now -Wl,--build-id=md5 -Wl,--hash-style=gnu \
-                   -L$(BLD_LIB_DIR) -L${TOPDIR}/nic/third-party/rocm/amd_smi_lib/x86_64/lib/ \
-                   -Wl,-rpath,$(BLD_LIB_DIR) -Wl,-rpath-link,$(BLD_LIB_DIR) \
-                   -L${BLD_DIR}/lib -L${BLD_DIR}/lib64 \
+                   -L$(BLD_LIB_DIR) -Wl,-rpath,$(BLD_LIB_DIR) \
+				   -Wl,-rpath-link,$(BLD_LIB_DIR) -L${BLD_DIR}/lib -L${BLD_DIR}/lib64 \
                    -l:libprotobuf.a -lgrpc++_reflection -lgrpc++ -lgrpc -lgpr -lupb -lcares \
                    -laddress_sorting -l:libgrpc.a -l:libre2.a -labsl_synchronization -labsl_periodic_sampler -labsl_time \
                    -labsl_time_zone -labsl_int128 -labsl_bad_optional_access -labsl_bad_any_cast_impl -labsl_bad_variant_access\
@@ -127,19 +145,49 @@ LDFLAGS         := -pthread -rdynamic -no-canonical-prefixes -Wl,--gc-sections \
                    -labsl_flags_private_handle_accessor -labsl_flags_marshalling -labsl_flags_program_name \
                    -labsl_flags_config -labsl_flags_internal -labsl_flags_reflection -labsl_flags -labsl_flags_usage_internal \
                    -labsl_flags_usage -labsl_flags_parse -lpthread -lz -lm -lrt -ldl -l:libev.a -l:libzmq.a \
-                   -l:libssl.a -l:libcrypto.a -l:libamd_smi.so
+                   -l:libssl.a -l:libcrypto.a
+LDFLAGS_AMD_SMI := ${LDFLAGS_COMMON} \
+                   -L${TOPDIR}/nic/third-party/rocm/amd_smi_lib/x86_64/lib/ \
+                   -l:libamd_smi.so
+LDFLAGS_GIM_SMI := ${LDFLAGS_COMMON} \
+                   -L${TOPDIR}/nic/third-party/rocm/gim_amd_smi_lib/x86_64/lib/ \
+                   -l:libgim_amd_smi.so
+LDFLAGS_MOCK    := ${LDFLAGS_COMMON}
 
 $(TARGET): build-libs gogo-protos gen-protos $(OBJ)
 	mkdir -p $(BLD_BIN_DIR)
-	$(CC) $(OBJ) $(LDFLAGS) -o $(BLD_BIN_DIR)/$(TARGET)
-	$(CC) $(OBJ) $(LDFLAGS) -o $(BLD_BIN_DIR)/$(TARGET)_mock
+	$(CC) $(OBJ) $(LDFLAGS_AMD_SMI) -o $(BLD_BIN_DIR)/$(TARGET)
 	${MAKE} gpuctl
+
+$(TARGET)_mock: build-libs gogo-protos gen-protos $(OBJ_MOCK)
+	mkdir -p $(BLD_BIN_DIR)
+	$(CC) $(OBJ_MOCK) $(LDFLAGS_MOCK) -o $(BLD_BIN_DIR)/$(TARGET)_mock
+	${MAKE} gpuctl
+
+$(TARGET)_gim: build-libs gogo-protos gen-protos $(OBJ_GIM)
+	mkdir -p $(BLD_BIN_DIR)
+	$(CC) $(OBJ_GIM) $(LDFLAGS_GIM_SMI) -o $(BLD_BIN_DIR)/$(TARGET)_gim
+	${MAKE} gpuctl
+
+.PHONY: all
+all: build-libs gogo-protos gen-protos $(OBJ) $(OBJ_GIM) $(OBJ_MOCK)
+	mkdir -p $(BLD_BIN_DIR)
+	$(CC) $(OBJ) $(LDFLAGS_AMD_SMI) -o $(BLD_BIN_DIR)/$(TARGET)
+	$(CC) $(OBJ_GIM) $(LDFLAGS_GIM_SMI) -o $(BLD_BIN_DIR)/$(TARGET)_gim
+	$(CC) $(OBJ_MOCK) $(LDFLAGS_MOCK) -o $(BLD_BIN_DIR)/$(TARGET)_mock
+	${MAKE} gpuctl
+
+BUILD_LIBS_STAMP := $(BLD_OUT_DIR)/.build_libs_done
 
 # these are maintained in seperate file to keep the variables and settings
 # contained (TBD, clean up later)
-.PHONY: build-libs
-build-libs:
+$(BUILD_LIBS_STAMP):
+	@mkdir -p $(dir $@)
 	$(MAKE) -f Makefile.lib third-party-libs
+	@touch $@
+
+build-libs: $(BUILD_LIBS_STAMP)
+
 
 gen-protos:
 	@mkdir -p ${GPUAGENT_PROTO_GEN_DIR}
@@ -160,14 +208,30 @@ gogo-protos:
 
 $(OBJ_DIR)/%.o: $(TOPDIR)/%.cc
 	@mkdir -p $(dir $@)  # Create the necessary subdirectories in temp
-	$(CC) $(CFLAGS) $(DEFS) $(INCS) -D__FNAME__=__FILE__ -c $< -o $@
+	$(CC) $(CFLAGS) $(DEFS) $(INCS_AMD_SMI) -DAMD_SMI -D__FNAME__=__FILE__ -c $< -o $@
 
 $(OBJ_DIR)/%.o: $(TOPDIR)/%.c
 	@mkdir -p $(dir $@)  # Create the necessary subdirectories in temp
-	$(CC) $(CFLAGS)  $(INCS) -D__FNAME__=__FILE__ -c $< -o $@
+	$(CC) $(CFLAGS)  $(INCS_AMD_SMI) -DAMD_SMI -D__FNAME__=__FILE__ -c $< -o $@
 
+$(OBJ_DIR_GIM)/%.o: $(TOPDIR)/%.cc
+	@mkdir -p $(dir $@)  # Create the necessary subdirectories in temp
+	$(CC) $(CFLAGS) $(DEFS) $(INCS_GIM_SMI) -DGIM_AMD_SMI -D__FNAME__=__FILE__ -c $< -o $@
+
+$(OBJ_DIR_GIM)/%.o: $(TOPDIR)/%.c
+	@mkdir -p $(dir $@)  # Create the necessary subdirectories in temp
+	$(CC) $(CFLAGS)  $(INCS_GIM_SMI) -DGIM_AMD_SMI -D__FNAME__=__FILE__ -c $< -o $@
+
+$(OBJ_DIR_MOCK)/%.o: $(TOPDIR)/%.cc
+	@mkdir -p $(dir $@)  # Create the necessary subdirectories in temp
+	$(CC) $(CFLAGS) $(DEFS) $(INCS_MOCK) -DAMD_SMI -D__FNAME__=__FILE__ -c $< -o $@
+
+$(OBJ_DIR_MOCK)/%.o: $(TOPDIR)/%.c
+	@mkdir -p $(dir $@)  # Create the necessary subdirectories in temp
+	$(CC) $(CFLAGS)  $(INCS_MOCK) -DAMD_SMI -D__FNAME__=__FILE__ -c $< -o $@
 
 clean:
-	rm -rf $(BLD_BIN_DIR) $(OBJ_DIR) $(BLD_PROTOGEN_DIR); \
+	rm -rf $(BLD_BIN_DIR) $(OBJ_DIR) $(OBJ_DIR_GIM) $(OBJ_DIR_MOCK) $(BLD_PROTOGEN_DIR); \
 	rm -rf $(GRPC_DIR)/cmake/build; \
+	rm -rf $(BLD_OUT_DIR)/.build_libs_done \
 	rm -rf $(ABSEIL_DIR)/cmake/build; sync

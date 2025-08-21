@@ -59,8 +59,9 @@ trace_init (void)
     // initialize the gpuagent logger
     logfile = utils::log_file(non_persistent_dir,
                               (non_persistent_dir ? "/gpu-agent.log" :
-                                   "/var/run/gpu-agent.log"));
-    err_logfile = utils::log_file(persistent_dir, "/var/run/gpu-agent-err.log");
+                                   "/var/log/gpu-agent.log"));
+    err_logfile = utils::log_file(persistent_dir,
+        (persistent_dir ? "/gpu-agent-err.log" : "/var/log/gpu-agent-err.log"));
 
     // agent general log file
     if (logfile.empty() || err_logfile.empty()) {
@@ -82,7 +83,7 @@ trace_init (void)
     logstash_dir = std::getenv("LOGSTASH_DIR");
     logfile = utils::log_file(logstash_dir,
                               (logstash_dir ? "/gpu-agent-api.log" :
-                                   "/var/run/gpu-agent-api.log"));
+                                   "/var/log/gpu-agent-api.log"));
     params.name = "gpu-agent-api";
     params.cores_mask = 0x1;
     params.sync_mode = true;

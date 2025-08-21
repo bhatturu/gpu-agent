@@ -38,12 +38,12 @@ aga_event_api_spec_to_proto (amdgpu::Event *proto_event,
     case AGA_EVENT_ID_VM_PAGE_FAULT:
         proto_event->set_id(amdgpu::EVENT_ID_VM_PAGE_FAULT);
         proto_event->set_category(amdgpu::EVENT_CATEGORY_NONE);
-        proto_event->set_severity(amdgpu::EVENT_SEVERITY_DEBUG);
+        proto_event->set_severity(amdgpu::EVENT_SEVERITY_INFO);
         break;
     case AGA_EVENT_ID_THERMAL_THROTTLE:
         proto_event->set_id(amdgpu::EVENT_ID_THERMAL_THROTTLE);
         proto_event->set_category(amdgpu::EVENT_CATEGORY_NONE);
-        proto_event->set_severity(amdgpu::EVENT_SEVERITY_INFO);
+        proto_event->set_severity(amdgpu::EVENT_SEVERITY_WARN);
         break;
     case AGA_EVENT_ID_GPU_PRE_RESET:
         proto_event->set_id(amdgpu::EVENT_ID_GPU_PRE_RESET);
@@ -53,10 +53,50 @@ aga_event_api_spec_to_proto (amdgpu::Event *proto_event,
     case AGA_EVENT_ID_GPU_POST_RESET:
         proto_event->set_id(amdgpu::EVENT_ID_GPU_POST_RESET);
         proto_event->set_category(amdgpu::EVENT_CATEGORY_NONE);
-        proto_event->set_severity(amdgpu::EVENT_SEVERITY_INFO);
+        proto_event->set_severity(amdgpu::EVENT_SEVERITY_WARN);
         break;
-    case AGA_EVENT_ID_RING_HANG:
-        proto_event->set_id(amdgpu::EVENT_ID_RING_HANG);
+    case AGA_EVENT_ID_MIGRATE_START:
+        proto_event->set_id(amdgpu::EVENT_ID_MIGRATE_START);
+        proto_event->set_category(amdgpu::EVENT_CATEGORY_NONE);
+        proto_event->set_severity(amdgpu::EVENT_SEVERITY_WARN);
+        break;
+    case AGA_EVENT_ID_MIGRATE_END:
+        proto_event->set_id(amdgpu::EVENT_ID_MIGRATE_END);
+        proto_event->set_category(amdgpu::EVENT_CATEGORY_NONE);
+        proto_event->set_severity(amdgpu::EVENT_SEVERITY_WARN);
+        break;
+    case AGA_EVENT_ID_PAGE_FAULT_START:
+        proto_event->set_id(amdgpu::EVENT_ID_PAGE_FAULT_START);
+        proto_event->set_category(amdgpu::EVENT_CATEGORY_NONE);
+        proto_event->set_severity(amdgpu::EVENT_SEVERITY_WARN);
+        break;
+    case AGA_EVENT_ID_PAGE_FAULT_END:
+        proto_event->set_id(amdgpu::EVENT_ID_PAGE_FAULT_END);
+        proto_event->set_category(amdgpu::EVENT_CATEGORY_NONE);
+        proto_event->set_severity(amdgpu::EVENT_SEVERITY_WARN);
+        break;
+    case AGA_EVENT_ID_QUEUE_EVICTION:
+        proto_event->set_id(amdgpu::EVENT_ID_QUEUE_EVICTION);
+        proto_event->set_category(amdgpu::EVENT_CATEGORY_NONE);
+        proto_event->set_severity(amdgpu::EVENT_SEVERITY_WARN);
+        break;
+    case AGA_EVENT_ID_QUEUE_RESTORE:
+        proto_event->set_id(amdgpu::EVENT_ID_QUEUE_RESTORE);
+        proto_event->set_category(amdgpu::EVENT_CATEGORY_NONE);
+        proto_event->set_severity(amdgpu::EVENT_SEVERITY_WARN);
+        break;
+    case AGA_EVENT_ID_UNMAP_FROM_GPU:
+        proto_event->set_id(amdgpu::EVENT_ID_UNMAP_FROM_GPU);
+        proto_event->set_category(amdgpu::EVENT_CATEGORY_NONE);
+        proto_event->set_severity(amdgpu::EVENT_SEVERITY_WARN);
+        break;
+    case AGA_EVENT_ID_PROCESS_START:
+        proto_event->set_id(amdgpu::EVENT_ID_PROCESS_START);
+        proto_event->set_category(amdgpu::EVENT_CATEGORY_NONE);
+        proto_event->set_severity(amdgpu::EVENT_SEVERITY_WARN);
+        break;
+    case AGA_EVENT_ID_PROCESS_END:
+        proto_event->set_id(amdgpu::EVENT_ID_PROCESS_END);
         proto_event->set_category(amdgpu::EVENT_CATEGORY_NONE);
         proto_event->set_severity(amdgpu::EVENT_SEVERITY_WARN);
         break;

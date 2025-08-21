@@ -30,6 +30,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	yaml "gopkg.in/yaml.v2"
 
 	"github.com/ROCm/gpu-agent/sw/nic/gpuagent/cli/utils"
 	aga "github.com/ROCm/gpu-agent/sw/nic/gpuagent/gen/go"
@@ -58,6 +59,7 @@ func init() {
 		"Show number of hops between devices")
 	deviceTopologyShowCmd.Flags().BoolP("detail", "d", false,
 		"Show device topology in detail")
+	deviceTopologyShowCmd.Flags().BoolP("yaml", "y", false, "Output in yaml")
 }
 
 func deviceTopologyShowCmdPreRunE(cmd *cobra.Command, args []string) error {
@@ -174,7 +176,10 @@ func deviceTopologyShowCmdHandler(cmd *cobra.Command, args []string) error {
 	if resp.ApiStatus != aga.ApiStatus_API_STATUS_OK {
 		return fmt.Errorf("Operation failed with %v error", resp.ApiStatus)
 	}
-	if cmd.Flags().Changed("detail") {
+	if cmd.Flags().Changed("yaml") {
+		yamlArr, _ := yaml.Marshal(resp.DeviceTopology)
+		fmt.Println(string(yamlArr))
+	} else if cmd.Flags().Changed("detail") {
 		printTopologyMatrix(resp, TOPO_PRINT_LINK_TYPE)
 		printTopologyMatrix(resp, TOPO_PRINT_LINK_WEIGHT)
 		printTopologyMatrix(resp, TOPO_PRINT_NUM_HOPS)

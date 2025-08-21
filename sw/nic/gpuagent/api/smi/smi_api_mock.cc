@@ -73,6 +73,14 @@ smi_fill_gpu_clock_frequency_spec_ (aga_gpu_handle_t gpu_handle,
 }
 
 sdk_ret_t
+smi_gpu_init_immutable_attrs (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec,
+                              aga_gpu_status_t *status)
+{
+    // no need to do anything for mock
+    return SDK_RET_OK;
+}
+
+sdk_ret_t
 smi_gpu_fill_spec (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec)
 {
     spec->overdrive_level = 0;
@@ -81,6 +89,21 @@ smi_gpu_fill_spec (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec)
     // fill gpu and memory clock frequencies
     smi_fill_gpu_clock_frequency_spec_(gpu_handle, spec);
     spec->compute_partition_type = AGA_GPU_COMPUTE_PARTITION_TYPE_SPX;
+    return SDK_RET_OK;
+}
+
+/// \brief    fill GPU enumeration ids info using the given GPU
+/// \param[in] gpu_handle    GPU handle
+/// \param[out] status    operational status to be filled
+/// \return SDK_RET_OK or error code in case of failure
+static sdk_ret_t
+smi_fill_gpu_enumeration_id_status_ (aga_gpu_handle_t gpu_handle,
+                                     aga_gpu_status_t *status)
+{
+    status->kfd_id = 58934;
+    status->node_id = 3;
+    status->drm_render_id = 128;
+    status->drm_card_id = 3;
     return SDK_RET_OK;
 }
 
@@ -151,22 +174,22 @@ smi_fill_clock_status_ (aga_gpu_handle_t gpu_handle, aga_gpu_status_t *status)
 
 sdk_ret_t
 smi_gpu_fill_status (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
-                     aga_gpu_status_t *status)
+                     aga_gpu_spec_t *spec, aga_gpu_status_t *status)
 {
     status->index = gpu_id;
     status->handle = gpu_handle;
     // fill the GPU serial number
     strncpy(status->serial_num, "PCB046982-0071", AGA_MAX_STR_LEN);
     // fill the GPU card series
-    strncpy(status->card_series, "AMD INSTINCT MI200 (MCM) OAM AC MBA MSFT",
+    strncpy(status->card_series, "AMD INSTINCT MI300 (MCM) OAM AC MBA MSFT",
             AGA_MAX_STR_LEN);
     // fill the GPU card model
-    strncpy(status->card_model, "0x0b0c", AGA_MAX_STR_LEN);
+    strncpy(status->card_model, "102-G30211-00", AGA_MAX_STR_LEN);
     // fill the GPU vendor information
     strncpy(status->card_vendor, "Advanced Micro Devices, Inc. [AMD/ATI]",
             AGA_MAX_STR_LEN);
     // fill the driver version
-    strncpy(status->driver_version, "6.3.6", AGA_MAX_STR_LEN);
+    strncpy(status->driver_version, "7.0.0", AGA_MAX_STR_LEN);
     // fill the vbios part number
     strncpy(status->vbios_part_number, "113-D65205-107", AGA_MAX_STR_LEN);
     // fill the vbios version
@@ -193,7 +216,7 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
     status->pcie_status.bandwidth = 315;
     // fill VRAM status
     status->vram_status.type = AGA_VRAM_TYPE_HBM;
-    status->vram_status.vendor = AGA_VRAM_VENDOR_HYNIX;
+    strcpy(status->vram_status.vendor, "hynix");
     status->vram_status.size = 196592;
     // fill the xgmi error count
     status->xgmi_status.error_status = AGA_GPU_XGMI_STATUS_NO_ERROR;
@@ -201,11 +224,14 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
     // fill kfd pid info
     smi_fill_gpu_kfd_pid_status_(gpu_handle, status);
     status->partition_id = 0;
+    smi_fill_gpu_enumeration_id_status_(gpu_handle, status);
     return SDK_RET_OK;
 }
 
 sdk_ret_t
 smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
+                    bool partition_capable,
+                    uint32_t partition_id,
                     aga_gpu_handle_t first_partition_handle,
                     aga_gpu_stats_t *stats)
 {
@@ -218,7 +244,7 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
     // fill the current package power
     stats->package_power = 90 + distr(gen) - distr(gen);
     // fill the GPU usage
-    stats->usage.gfx_activity = 21282136 + distr(gen) - distr(gen);
+    stats->usage.gfx_activity = distr(gen) % 100;
     // fill VRAM usage
     stats->vram_usage.total_vram = 196592;
     stats->vram_usage.used_vram = 1273;
@@ -235,38 +261,41 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
         stats->vram_usage.total_gtt - stats->vram_usage.used_gtt;
     // fill the energy consumed
     stats->energy_consumed = 25293978861568 + distr(gen) - distr(gen);
+    for (uint16_t i = 0; i < AMDSMI_MAX_NUM_XCC; i++) {
+        stats->usage.gfx_busy_inst[i] = distr(gen) % 100 ;
+    }
     return SDK_RET_OK;
 }
 
 typedef struct gpu_event_cb_ctxt_s {
     aga_event_read_cb_t cb;
+    void *ctxt;
 } gpu_event_cb_ctxt_t;
 
+// generate one event for each GPU
 static inline bool
 gpu_event_read_cb (void *obj, void *ctxt)
 {
-    aga_event_t event;
+    timespec_t ts;
+    aga_event_t event = {};
+    aga_event_id_t event_id;
+    void *event_buffer = event_get();
     gpu_entry *gpu = (gpu_entry *)obj;
     gpu_event_cb_ctxt_t *walk_ctxt = (gpu_event_cb_ctxt_t *)ctxt;
 
-    auto& event_map = g_gpu_event_db[gpu->handle()].event_map;
-    // lock the event map for this device
-    SDK_SPINLOCK_LOCK(&g_gpu_event_db[gpu->handle()].slock);
-    for (auto it = event_map.begin(); it != event_map.end(); it++) {
-        event = {};
-        auto& event_record = it->second;
+    event_id = event_buffer_get_event_id(event_buffer, 0);
 
-        // fill the event information
-        event.id = it->first;
-        event.timestamp = event_record.timestamp;
-        event.gpu = gpu->key();
-        strncpy(event.message, event_record.message, AGA_MAX_EVENT_STR);
-        event.message[AGA_MAX_EVENT_STR] = '\0';
-        // call the callback now
-        walk_ctxt->cb(&event, ctxt);
-    }
-    // unlock the event map for this device
-    SDK_SPINLOCK_UNLOCK(&g_gpu_event_db[gpu->handle()].slock);
+    // get current time
+    clock_gettime(CLOCK_REALTIME, &ts);
+    // fill the event information
+    event.id = event_id;
+    event.timestamp = ts;
+    event.gpu = gpu->key();
+    strncpy(event.message, event_buffer_get_message(event_buffer, 0),
+            AGA_MAX_EVENT_STR);
+    event.message[AGA_MAX_EVENT_STR] = '\0';
+    // call the callback now
+    walk_ctxt->cb(&event, walk_ctxt->ctxt);
     return false;
 }
 
@@ -276,6 +305,7 @@ event_read (aga_event_read_cb_t cb, void *ctxt)
     gpu_event_cb_ctxt_t event_ctxt;
 
     event_ctxt.cb = cb;
+    event_ctxt.ctxt = ctxt;
     gpu_db()->walk(gpu_event_read_cb, &event_ctxt);
     return SDK_RET_OK;
 }
@@ -572,6 +602,17 @@ sdk_ret_t
 smi_get_gpu_partition_id (aga_gpu_handle_t gpu_handle, uint32_t *partition_id)
 {
     *partition_id = 0;
+    return SDK_RET_OK;
+}
+
+sdk_ret_t
+smi_get_gpu_partition_info (aga_gpu_handle_t gpu_handle, bool *capable,
+                            aga_gpu_compute_partition_type_t *compute_partition,
+                            aga_gpu_memory_partition_type_t *memory_partition)
+{
+    *capable = true;
+    *compute_partition = AGA_GPU_COMPUTE_PARTITION_TYPE_SPX;
+    *memory_partition = AGA_GPU_MEMORY_PARTITION_TYPE_NPS1;
     return SDK_RET_OK;
 }
 

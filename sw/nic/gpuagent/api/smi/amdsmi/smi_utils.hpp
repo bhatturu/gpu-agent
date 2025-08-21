@@ -23,7 +23,11 @@ limitations under the License.
 #ifndef __AGA_API_SMI_UTILS_HPP__
 #define __AGA_API_SMI_UTILS_HPP__
 
+#include <vector>
+#include <algorithm>
+extern "C" {
 #include "nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h"
+}
 #include "nic/sdk/include/sdk/base.hpp"
 #include "nic/gpuagent/api/include/aga_event.hpp"
 #include "nic/gpuagent/api/include/aga_gpu.hpp"
@@ -33,6 +37,44 @@ namespace aga {
 /// \defgroup AGA_SMI - smi module APIs
 /// \ingroup AGA
 /// @{
+
+/// \brief function to get the low and high frequencies for a clock type
+/// \param[in] freq    supported frequencies struct from amdsmi
+/// \param[out] min    minimum supported frequency in MHz
+/// \param[out] max    maximum supported frequency in MHz
+static inline void
+find_low_high_frequency (amdsmi_frequencies_t *freq,
+                         uint32_t *min, uint32_t *max)
+{
+    // create a vector of the valid frequencies
+    std::vector<uint64_t> f(freq->frequency,
+                            freq->frequency + freq->num_supported);
+
+    // sort vector
+    std::sort(f.begin(), f.end());
+
+    // set default values
+    *min = 0xffffffff;
+    *max = 0xffffffff;
+
+    if (freq->has_deep_sleep) {
+        // lowest supported freq will be deep sleep value; set the second lowest
+        // frequency to be the minimum
+        if (f.size() > 1) {
+            *min = (uint32_t)(f[1]/1000000);
+        }
+    } else {
+        // lowest supported frequency
+        if (f.size() >= 1) {
+            *min = (uint32_t)(f[0]/1000000);
+        }
+    }
+    if (f.size() >= 1) {
+        // largest supported frequency
+        *max = (uint32_t)(f[f.size() - 1]/1000000);
+    }
+    return;
+}
 
 /// \brief convert amdsmi VRAM type to aga VRAM type
 /// \param[in] vram_type    amdsmi VRAM type
@@ -75,41 +117,6 @@ smi_to_aga_vram_type (amdsmi_vram_type_t vram_type)
         break;
     }
     return AGA_VRAM_TYPE_NONE;
-}
-
-/// \brief convert amdsmi VRAM vendor to aga VRAM vendor
-/// \param[in] vendor    amdsmi vendor
-/// \return    aga vendor
-static inline aga_vram_vendor_t
-smi_to_aga_vram_vendor (amdsmi_vram_vendor_type_t vendor)
-{
-    switch (vendor) {
-    case AMDSMI_VRAM_VENDOR_SAMSUNG:
-        return AGA_VRAM_VENDOR_SAMSUNG;
-    case AMDSMI_VRAM_VENDOR_INFINEON:
-        return AGA_VRAM_VENDOR_INFINEON;
-    case AMDSMI_VRAM_VENDOR_ELPIDA:
-        return AGA_VRAM_VENDOR_ELPIDA;
-    case AMDSMI_VRAM_VENDOR_ETRON:
-        return AGA_VRAM_VENDOR_ETRON;
-    case AMDSMI_VRAM_VENDOR_NANYA:
-        return AGA_VRAM_VENDOR_NANYA;
-    case AMDSMI_VRAM_VENDOR_HYNIX:
-        return AGA_VRAM_VENDOR_HYNIX;
-    case AMDSMI_VRAM_VENDOR_MOSEL:
-        return AGA_VRAM_VENDOR_MOSEL;
-    case AMDSMI_VRAM_VENDOR_WINBOND:
-        return AGA_VRAM_VENDOR_WINBOND;
-    case AMDSMI_VRAM_VENDOR_ESMT:
-        return AGA_VRAM_VENDOR_ESMT;
-    case AMDSMI_VRAM_VENDOR_MICRON:
-        return AGA_VRAM_VENDOR_MICRON;
-    case AMDSMI_VRAM_VENDOR_UNKNOWN:
-        return AGA_VRAM_VENDOR_UNKNOWN;
-    default:
-        break;
-    }
-    return AGA_VRAM_VENDOR_NONE;
 }
 
 /// \brief convert amdsmi clock type to aga clock type
@@ -263,21 +270,7 @@ aga_to_smi_gpu_perf_level (aga_gpu_perf_level_t perf_level)
 static inline aga_event_id_t
 aga_event_id_from_smi_event_id (amdsmi_evt_notification_type_t amdsmi_event)
 {
-    switch (amdsmi_event) {
-    case AMDSMI_EVT_NOTIF_VMFAULT:
-        return AGA_EVENT_ID_VM_PAGE_FAULT;
-    case AMDSMI_EVT_NOTIF_THERMAL_THROTTLE:
-        return AGA_EVENT_ID_THERMAL_THROTTLE;
-    case AMDSMI_EVT_NOTIF_GPU_PRE_RESET:
-        return AGA_EVENT_ID_GPU_PRE_RESET;
-    case AMDSMI_EVT_NOTIF_GPU_POST_RESET:
-        return AGA_EVENT_ID_GPU_POST_RESET;
-    case AMDSMI_EVT_NOTIF_RING_HANG:
-        return AGA_EVENT_ID_RING_HANG;
-    default:
-        break;
-    }
-    return AGA_EVENT_ID_NONE;
+    return (aga_event_id_t)amdsmi_event;
 }
 
 /// \brief      convert aga event id to amdsmi event id
@@ -300,9 +293,6 @@ aga_event_id_to_smi_event_id (aga_event_id_t event,
         break;
     case AGA_EVENT_ID_GPU_POST_RESET:
         *amdsmi_event = AMDSMI_EVT_NOTIF_GPU_POST_RESET;
-        break;
-    case AGA_EVENT_ID_RING_HANG:
-        *amdsmi_event = AMDSMI_EVT_NOTIF_RING_HANG;
         break;
     default:
         return SDK_RET_INVALID_ARG;

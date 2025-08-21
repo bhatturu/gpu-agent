@@ -20,7 +20,9 @@ limitations under the License.
 ///
 //----------------------------------------------------------------------------
 
+extern "C" {
 #include "nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h"
+}
 #include "nic/sdk/include/sdk/base.hpp"
 #include "nic/gpuagent/core/trace.hpp"
 #include "nic/gpuagent/api/gpu.hpp"
@@ -34,7 +36,18 @@ limitations under the License.
 
 namespace aga {
 
+#define AMDSMI_INVALID_PARTITION_COUNT  0xffff
+#define AMDSMI_INVALID_UINT16           0xffff
+#define AMDSMI_INVALID_UINT32           0xffffffff
 #define AMDSMI_DEEP_SLEEP_THRESHOLD     140
+#define AMDSMI_COUNTER_RESOLUTION       15.3
+
+/// cache GPU metrics so that we don't do repeated calls while filling spec,
+/// status and statistics
+std::unordered_map<aga_gpu_handle_t, amdsmi_gpu_metrics_t> g_gpu_metrics;
+/// counter resolution in uJ; this is a constant value that we get once during
+/// init time and use whenever we want to calculate energy accumalated
+float g_energy_counter_resolution;
 
 /// \brief struct to be used as ctxt when walking GPU db to build topology
 typedef struct gpu_topo_walk_ctxt_s {
@@ -53,63 +66,60 @@ smi_fill_gpu_clock_frequency_spec_ (aga_gpu_handle_t gpu_handle,
 {
     uint32_t clk_cnt = 0;
     amdsmi_status_t amdsmi_ret;
-    amdsmi_clk_info_t info = {};
+    amdsmi_frequencies_t freq = {};
+    amdsmi_clk_info_t clock_info = {};
     aga_gpu_clock_freq_range_t *clock_spec;
 
-    amdsmi_ret = amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_GFX,
-                                       &info);
+    // gfx clock
+    clock_spec = &spec->clock_freq[clk_cnt];
+    clock_spec->clock_type = smi_to_aga_gpu_clock_type(AMDSMI_CLK_TYPE_GFX);
+    amdsmi_ret = amdsmi_get_clk_freq(gpu_handle, AMDSMI_CLK_TYPE_GFX, &freq);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get system clock info for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
+        AGA_TRACE_ERR("Failed to get system clock frequencies for GPU {}, "
+                      "err {}", gpu_handle, amdsmi_ret);
     } else {
-        clock_spec = &spec->clock_freq[clk_cnt];
-        clock_spec->clock_type = smi_to_aga_gpu_clock_type(AMDSMI_CLK_TYPE_GFX);
         // min and max frequencies are per clock type
-        clock_spec->lo = info.min_clk;
-        clock_spec->hi = info.max_clk;
-        clk_cnt++;
+        find_low_high_frequency(&freq, &clock_spec->lo, &clock_spec->hi);
     }
-    amdsmi_ret = amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_MEM,
-                                       &info);
+    clk_cnt++;
+    // memory clock
+    clock_spec = &spec->clock_freq[clk_cnt];
+    clock_spec->clock_type = smi_to_aga_gpu_clock_type(AMDSMI_CLK_TYPE_MEM);
+    amdsmi_ret = amdsmi_get_clk_freq(gpu_handle, AMDSMI_CLK_TYPE_MEM, &freq);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get memory clock info for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
+        AGA_TRACE_ERR("Failed to get memory clock frequencies for GPU {}, "
+                      "err {}", gpu_handle, amdsmi_ret);
     } else {
-        clock_spec = &spec->clock_freq[clk_cnt];
-        clock_spec->clock_type = smi_to_aga_gpu_clock_type(AMDSMI_CLK_TYPE_MEM);
         // min and max frequencies are per clock type
-        clock_spec->lo = info.min_clk;
-        clock_spec->hi = info.max_clk;
-        clk_cnt++;
+        find_low_high_frequency(&freq, &clock_spec->lo, &clock_spec->hi);
     }
+    clk_cnt++;
+    // video clock
+    clock_spec = &spec->clock_freq[clk_cnt];
+    clock_spec->clock_type = smi_to_aga_gpu_clock_type(AMDSMI_CLK_TYPE_VCLK0);
     amdsmi_ret = amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_VCLK0,
-                                       &info);
+                                       &clock_info);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get video clock info for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
+        AGA_TRACE_ERR("Failed to get video clock information for GPU {}, "
+                      "err {}", gpu_handle, amdsmi_ret);
     } else {
-        clock_spec = &spec->clock_freq[clk_cnt];
-        clock_spec->clock_type =
-            smi_to_aga_gpu_clock_type(AMDSMI_CLK_TYPE_VCLK0);
-        // min and max frequencies are per clock type
-        clock_spec->lo = info.min_clk;
-        clock_spec->hi = info.max_clk;
-        clk_cnt++;
+        clock_spec->lo = clock_info.min_clk;
+        clock_spec->hi = clock_info.max_clk;
     }
+    clk_cnt++;
+    // data clock
+    clock_spec = &spec->clock_freq[clk_cnt];
+    clock_spec->clock_type = smi_to_aga_gpu_clock_type(AMDSMI_CLK_TYPE_DCLK0);
     amdsmi_ret = amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_DCLK0,
-                                       &info);
+                                       &clock_info);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get data clock info for GPU {}, err {}",
+        AGA_TRACE_ERR("Failed to get data clock information for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
     } else {
-        clock_spec = &spec->clock_freq[clk_cnt];
-        clock_spec->clock_type =
-            smi_to_aga_gpu_clock_type(AMDSMI_CLK_TYPE_DCLK0);
-        // min and max frequencies are per clock type
-        clock_spec->lo = info.min_clk;
-        clock_spec->hi = info.max_clk;
-        clk_cnt++;
+        clock_spec->lo = clock_info.min_clk;
+        clock_spec->hi = clock_info.max_clk;
     }
+    clk_cnt++;
     spec->num_clock_freqs = clk_cnt;
     return SDK_RET_OK;
 }
@@ -120,9 +130,20 @@ smi_gpu_fill_spec (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec)
     uint32_t value_32;
     amdsmi_status_t amdsmi_ret;
     amdsmi_dev_perf_level_t perf_level = {};
-    char partition_type[AGA_MAX_STR_LEN + 1];
+    amdsmi_gpu_metrics_t metrics_info = { 0 };
     amdsmi_power_cap_info_t power_cap_info = {};
 
+    // clear cached responses
+    g_gpu_metrics.clear();
+
+    amdsmi_ret = amdsmi_get_gpu_metrics_info(gpu_handle, &metrics_info);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
+    } else {
+        // cache response
+        g_gpu_metrics[gpu_handle] = metrics_info;
+    }
     // fill the overdrive level
     amdsmi_ret = amdsmi_get_gpu_overdrive_level(gpu_handle, &value_32);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
@@ -130,14 +151,6 @@ smi_gpu_fill_spec (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec)
                       gpu_handle, amdsmi_ret);
     } else {
         spec->overdrive_level = value_32;
-    }
-    // fill the power cap
-    amdsmi_ret = amdsmi_get_power_cap_info(gpu_handle, 0, &power_cap_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get power cap information for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        spec->gpu_power_cap = power_cap_info.power_cap/1000000;
     }
     // fill the perf level
     amdsmi_ret = amdsmi_get_gpu_perf_level(gpu_handle, &perf_level);
@@ -147,34 +160,13 @@ smi_gpu_fill_spec (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec)
     } else {
         spec->perf_level = smi_to_aga_gpu_perf_level(perf_level);
     }
-    // fill the fan speed
-    amdsmi_ret = amdsmi_get_gpu_fan_speed(gpu_handle, 0,
-                                          (int64_t *)&spec->fan_speed);
+    // fill the power cap
+    amdsmi_ret = amdsmi_get_power_cap_info(gpu_handle, 0, &power_cap_info);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get fan speed GPU {}, err {}", gpu_handle,
-                      amdsmi_ret);
-    }
-    // fill gpu and memory clock frequencies
-    smi_fill_gpu_clock_frequency_spec_(gpu_handle, spec);
-    // fill compute partition type
-    amdsmi_ret = amdsmi_get_gpu_compute_partition(gpu_handle,
-                     partition_type, AGA_MAX_STR_LEN + 1);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get compute partition for GPU {}, err {}",
+        AGA_TRACE_ERR("Failed to get power cap information for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
     } else {
-        spec->compute_partition_type =
-            smi_to_aga_gpu_compute_partition_type(partition_type);
-    }
-    // fill memory partition type
-    amdsmi_ret = amdsmi_get_gpu_memory_partition(gpu_handle,
-                     partition_type, AGA_MAX_STR_LEN + 1);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get memory partition for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        spec->memory_partition_type =
-            smi_to_aga_gpu_memory_partition_type(partition_type);
+        spec->gpu_power_cap = power_cap_info.power_cap/1000000;
     }
     // TODO: get admin_state
     // TODO: get RAS spec
@@ -344,6 +336,8 @@ gpu_fw_block_name_str_ (amdsmi_fw_block_t block)
         return "PM";
     case AMDSMI_FW_ID_DMCU:
         return "DMCU";
+    case AMDSMI_FW_ID_PLDM_BUNDLE:
+        return "PLDM_BUNDLE";
     default:
         return (std::string("FW_ID_")+ std::to_string(block)).c_str();
     }
@@ -412,6 +406,37 @@ gpu_get_sku_from_vbios_ (char *sku, char *vbios)
         return;
     }
     strncpy(sku, token, AGA_MAX_STR_LEN);
+}
+
+/// \brief    fill GPU enumeration ids info using the given GPU
+/// \param[in] gpu_handle    GPU handle
+/// \param[out] status    operational status to be filled
+/// \return SDK_RET_OK or error code in case of failure
+static sdk_ret_t
+smi_fill_gpu_enumeration_id_status_ (aga_gpu_handle_t gpu_handle,
+                                     aga_gpu_status_t *status)
+{
+    amdsmi_kfd_info_t k_info;
+    amdsmi_status_t amdsmi_ret;
+    amdsmi_enumeration_info_t e_info;
+
+    amdsmi_ret = amdsmi_get_gpu_kfd_info(gpu_handle, &k_info);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get kfd info for GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
+        return amdsmi_ret_to_sdk_ret(amdsmi_ret);
+    }
+    amdsmi_ret = amdsmi_get_gpu_enumeration_info(gpu_handle, &e_info);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get enumeration info for GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
+        return amdsmi_ret_to_sdk_ret(amdsmi_ret);
+    }
+    status->kfd_id = k_info.kfd_id;
+    status->node_id = k_info.node_id;
+    status->drm_render_id = e_info.drm_render;
+    status->drm_card_id = e_info.drm_card;
+    return SDK_RET_OK;
 }
 
 /// \brief    fill list of pids using the given GPU
@@ -490,174 +515,173 @@ smi_fill_gpu_kfd_pid_status_ (aga_gpu_handle_t gpu_handle,
 /// \return SDK_RET_OK or error code in case of failure
 static sdk_ret_t
 smi_fill_clock_status_ (aga_gpu_handle_t gpu_handle,
-                        aga_gpu_status_t *status,
+                        aga_gpu_spec_t *spec, aga_gpu_status_t *status,
                         amdsmi_gpu_metrics_t *metrics_info)
 {
     uint32_t clk_cnt = 0;
     amdsmi_status_t amdsmi_ret;
-    amdsmi_clk_info_t clock_info;
+    uint32_t low_freq, high_freq;
+    amdsmi_frequencies_t freq = {};
     aga_gpu_clock_status_t *clock_status;
+    aga_gpu_clock_freq_range_t *mem_clock_spec = NULL;
+    aga_gpu_clock_freq_range_t *gfx_clock_spec = NULL;
+    aga_gpu_clock_freq_range_t *data_clock_spec = NULL;
+    aga_gpu_clock_freq_range_t *video_clock_spec = NULL;
 
-    // fill up information available from metrics info
-    if (metrics_info) {
-        // gfx clocks
-        for (uint32_t i = 0; i < AMDSMI_MAX_NUM_GFX_CLKS; i++) {
+    // get clock specs for different clock types
+    for (uint32_t i = 0; i < spec->num_clock_freqs; i++) {
+        if (spec->clock_freq[i].clock_type == AGA_GPU_CLOCK_TYPE_SYSTEM) {
+            gfx_clock_spec = &spec->clock_freq[i];
+            break;
+        }
+    }
+    for (uint32_t i = 0; i < spec->num_clock_freqs; i++) {
+        if (spec->clock_freq[i].clock_type == AGA_GPU_CLOCK_TYPE_MEMORY) {
+            mem_clock_spec = &spec->clock_freq[i];
+            break;
+        }
+    }
+    for (uint32_t i = 0; i < spec->num_clock_freqs; i++) {
+        if (spec->clock_freq[i].clock_type == AGA_GPU_CLOCK_TYPE_VIDEO) {
+            video_clock_spec = &spec->clock_freq[i];
+            break;
+        }
+    }
+    for (uint32_t i = 0; i < spec->num_clock_freqs; i++) {
+        if (spec->clock_freq[i].clock_type == AGA_GPU_CLOCK_TYPE_DATA) {
+            data_clock_spec = &spec->clock_freq[i];
+            break;
+        }
+    }
+    clk_cnt = 0;
+    // gfx clock
+    for (uint32_t i = 0; i < AMDSMI_MAX_NUM_GFX_CLKS; i++) {
+        if (gfx_clock_spec) {
             clock_status = &status->clock_status[clk_cnt];
             clock_status->clock_type = AGA_GPU_CLOCK_TYPE_SYSTEM;
             clock_status->frequency = metrics_info->current_gfxclks[i];
+            clock_status->low_frequency = gfx_clock_spec->lo;
+            clock_status->high_frequency = gfx_clock_spec->hi;
             clock_status->locked =
                 metrics_info->gfxclk_lock_status & (1 << i);
             clock_status->deep_sleep =
-                (clock_status->frequency < AMDSMI_DEEP_SLEEP_THRESHOLD);
-            clk_cnt++;
+                (clock_status->frequency < clock_status->low_frequency);
         }
-        // memory clock
+        clk_cnt++;
+    }
+    // memory clock
+    if (mem_clock_spec) {
         clock_status = &status->clock_status[clk_cnt];
         clock_status->clock_type = AGA_GPU_CLOCK_TYPE_MEMORY;
         clock_status->frequency = metrics_info->current_uclk;
+        clock_status->low_frequency = mem_clock_spec->lo;
+        clock_status->high_frequency = mem_clock_spec->hi;
         // locked is N/A for memory clock
         clock_status->deep_sleep =
-            (clock_status->frequency < AMDSMI_DEEP_SLEEP_THRESHOLD);
-        clk_cnt++;
-        // video clocks
-        for (uint32_t i = 0; i < AMDSMI_MAX_NUM_CLKS; i++) {
+            (clock_status->frequency < clock_status->low_frequency);
+    }
+    clk_cnt++;
+    // video clocks
+    for (uint32_t i = 0; i < AMDSMI_MAX_NUM_CLKS; i++) {
+        if (video_clock_spec) {
             clock_status = &status->clock_status[clk_cnt];
             clock_status->clock_type = AGA_GPU_CLOCK_TYPE_VIDEO;
             clock_status->frequency = metrics_info->current_vclk0s[i];
+            clock_status->low_frequency = video_clock_spec->lo;
+            clock_status->high_frequency = video_clock_spec->hi;
             // locked is N/A for video clocks
             clock_status->deep_sleep =
-                (clock_status->frequency < AMDSMI_DEEP_SLEEP_THRESHOLD);
-            clk_cnt++;
+                (clock_status->frequency < clock_status->low_frequency);
         }
-        // data clocks
-        for (uint32_t i = 0; i < AMDSMI_MAX_NUM_CLKS; i++) {
+        clk_cnt++;
+    }
+    // data clocks
+    for (uint32_t i = 0; i < AMDSMI_MAX_NUM_CLKS; i++) {
+        if (data_clock_spec) {
             clock_status = &status->clock_status[clk_cnt];
             clock_status->clock_type = AGA_GPU_CLOCK_TYPE_DATA;
             clock_status->frequency = metrics_info->current_dclk0s[i];
+            clock_status->low_frequency = data_clock_spec->lo;
+            clock_status->high_frequency = data_clock_spec->hi;
             // locked is N/A for data clocks
             clock_status->deep_sleep =
-                (clock_status->frequency < AMDSMI_DEEP_SLEEP_THRESHOLD);
-            clk_cnt++;
+                (clock_status->frequency < clock_status->low_frequency);
         }
-    }
-    // get additional clock status information from amdsmi_get_clock_info
-    clk_cnt = 0;
-    // gfx clocks
-    amdsmi_ret = amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_GFX,
-                                       &clock_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get system clock info for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        for (uint32_t i = 0; i < AMDSMI_MAX_NUM_GFX_CLKS; i++) {
-            clock_status = &status->clock_status[clk_cnt];
-            clock_status->low_frequency = clock_info.min_clk;
-            clock_status->high_frequency = clock_info.max_clk;
-            clk_cnt++;
-        }
-    }
-    // memory clock
-    amdsmi_ret = amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_MEM,
-                                       &clock_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get memory clock info for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        clock_status = &status->clock_status[clk_cnt];
-        clock_status->low_frequency = clock_info.min_clk;
-        clock_status->high_frequency = clock_info.max_clk;
         clk_cnt++;
     }
-    // video clocks
-    amdsmi_ret = amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_VCLK0,
-                                       &clock_info);
+    // SOC clock
+    amdsmi_ret = amdsmi_get_clk_freq(gpu_handle, AMDSMI_CLK_TYPE_SOC, &freq);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get video clock info for GPU {}, err {}",
+        AGA_TRACE_ERR("Failed to get SOC clock frequencies for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
     } else {
+        low_freq = high_freq = 0;
+        // min and max frequencies are per clock type
+        find_low_high_frequency(&freq, &low_freq, &high_freq);
         for (uint32_t i = 0; i < AMDSMI_MAX_NUM_CLKS; i++) {
             clock_status = &status->clock_status[clk_cnt];
-            clock_status->low_frequency = clock_info.min_clk;
-            clock_status->high_frequency = clock_info.max_clk;
-            clk_cnt++;
-        }
-    }
-    // data clocks
-    amdsmi_ret = amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_DCLK0,
-                                       &clock_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get data clock info for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        for (uint32_t i = 0; i < AMDSMI_MAX_NUM_CLKS; i++) {
-            clock_status = &status->clock_status[clk_cnt];
-            clock_status->low_frequency = clock_info.min_clk;
-            clock_status->high_frequency = clock_info.max_clk;
+            clock_status->clock_type = AGA_GPU_CLOCK_TYPE_SOC;
+            clock_status->frequency = metrics_info->current_socclks[i];
+            clock_status->low_frequency = low_freq;
+            clock_status->high_frequency = high_freq;
+            // locked is N/A for SOC clocks
+            clock_status->deep_sleep =
+                (clock_status->frequency < clock_status->low_frequency);
             clk_cnt++;
         }
     }
     // data fabric clock
-    amdsmi_ret = amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_DF,
-                                       &clock_info);
+    amdsmi_ret = amdsmi_get_clk_freq(gpu_handle, AMDSMI_CLK_TYPE_DF, &freq);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get fabric clock info for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
+        AGA_TRACE_ERR("Failed to get data fabric clock frequencies for GPU {}, "
+                      "err {}", gpu_handle, amdsmi_ret);
     } else {
+        low_freq = high_freq = 0;
         clock_status = &status->clock_status[clk_cnt];
+        // min and max frequencies are per clock type
+        find_low_high_frequency(&freq,
+                                &clock_status->low_frequency,
+                                &clock_status->high_frequency);
         clock_status->clock_type = AGA_GPU_CLOCK_TYPE_FABRIC;
-        clock_status->frequency = clock_info.clk;
-        clock_status->low_frequency = clock_info.min_clk;
-        clock_status->high_frequency = clock_info.max_clk;
-        clock_status->locked = clock_info.clk_locked;
-        clock_status->deep_sleep = clock_info.clk_deep_sleep;
+        clock_status->frequency = freq.frequency[freq.current]/1000000;
+        clock_status->deep_sleep =
+            (clock_status->frequency < clock_status->low_frequency);
         clk_cnt++;
     }
     // DCE clock
-    amdsmi_ret = amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_DCEF,
-                                       &clock_info);
+    amdsmi_ret = amdsmi_get_clk_freq(gpu_handle, AMDSMI_CLK_TYPE_DCEF, &freq);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get DCE clock info for GPU {}, err {}",
+        AGA_TRACE_ERR("Failed to get DCE clock frequencies for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
     } else {
+        low_freq = high_freq = 0;
         clock_status = &status->clock_status[clk_cnt];
+        // min and max frequencies are per clock type
+        find_low_high_frequency(&freq,
+                                &clock_status->low_frequency,
+                                &clock_status->high_frequency);
         clock_status->clock_type = AGA_GPU_CLOCK_TYPE_DCE;
-        clock_status->frequency = clock_info.clk;
-        clock_status->low_frequency = clock_info.min_clk;
-        clock_status->high_frequency = clock_info.max_clk;
-        clock_status->locked = clock_info.clk_locked;
-        clock_status->deep_sleep = clock_info.clk_deep_sleep;
-        clk_cnt++;
-    }
-    // SOC clock
-    amdsmi_ret = amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_SOC,
-                                       &clock_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get SOC clock info for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        clock_status = &status->clock_status[clk_cnt];
-        clock_status->clock_type = AGA_GPU_CLOCK_TYPE_SOC;
-        clock_status->frequency = clock_info.clk;
-        clock_status->low_frequency = clock_info.min_clk;
-        clock_status->high_frequency = clock_info.max_clk;
-        clock_status->locked = clock_info.clk_locked;
-        clock_status->deep_sleep = clock_info.clk_deep_sleep;
+        clock_status->frequency = freq.frequency[freq.current]/1000000;
+        clock_status->deep_sleep =
+            (clock_status->frequency < clock_status->low_frequency);
         clk_cnt++;
     }
     // PCIe clock
-    amdsmi_ret = amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_PCIE,
-                                       &clock_info);
+    amdsmi_ret = amdsmi_get_clk_freq(gpu_handle, AMDSMI_CLK_TYPE_PCIE, &freq);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get PCIe clock info for GPU {}, err {}",
+        AGA_TRACE_ERR("Failed to get PCIe clock frequencies for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
     } else {
+        low_freq = high_freq = 0;
         clock_status = &status->clock_status[clk_cnt];
+        // min and max frequencies are per clock type
+        find_low_high_frequency(&freq,
+                                &clock_status->low_frequency,
+                                &clock_status->high_frequency);
         clock_status->clock_type = AGA_GPU_CLOCK_TYPE_PCIE;
-        clock_status->frequency = clock_info.clk;
-        clock_status->low_frequency = clock_info.min_clk;
-        clock_status->high_frequency = clock_info.max_clk;
-        clock_status->locked = clock_info.clk_locked;
-        clock_status->deep_sleep = clock_info.clk_deep_sleep;
+        clock_status->frequency = freq.frequency[freq.current]/1000000;
+        clock_status->deep_sleep =
+            (clock_status->frequency < clock_status->low_frequency);
         clk_cnt++;
     }
     status->num_clock_status = clk_cnt;
@@ -672,7 +696,6 @@ static sdk_ret_t
 smi_fill_pcie_status_ (aga_gpu_handle_t gpu_handle,
                        aga_gpu_status_t *status)
 {
-    uint64_t value_64;
     amdsmi_pcie_info_t info;
     amdsmi_status_t amdsmi_ret;
     aga_gpu_pcie_status_t *pcie_status = &status->pcie_status;
@@ -690,19 +713,6 @@ smi_fill_pcie_status_ (aga_gpu_handle_t gpu_handle,
         pcie_status->width = info.pcie_metric.pcie_width;
         pcie_status->speed = info.pcie_metric.pcie_speed/1000;
         pcie_status->bandwidth = info.pcie_metric.pcie_bandwidth;
-    }
-    amdsmi_ret = amdsmi_get_gpu_bdf_id(gpu_handle, &value_64);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get PCIe bus id for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-        return amdsmi_ret_to_sdk_ret(amdsmi_ret);
-    } else {
-        // convert PCIe bus to XXXX.XX.XX.X format
-        snprintf(pcie_status->pcie_bus_id, AGA_MAX_STR_LEN, "%04X:%02X:%02X.%X",
-                ((uint32_t)((value_64 >> 32) & 0xffffffff)),
-                ((uint32_t)((value_64 >> 8) & 0xff)),
-                ((uint32_t)((value_64 >> 3) & 0x1f)),
-                ((uint32_t)(value_64 & 0x7)));
     }
     return SDK_RET_OK;
 }
@@ -724,8 +734,61 @@ smi_fill_vram_status_ (aga_gpu_handle_t gpu_handle,
                       gpu_handle, amdsmi_ret);
     } else {
         status->type = smi_to_aga_vram_type(info.vram_type);
-        status->vendor = smi_to_aga_vram_vendor(info.vram_vendor);
+        memcpy(status->vendor, info.vram_vendor, AGA_MAX_STR_LEN);
         status->size = info.vram_size;
+    }
+    return SDK_RET_OK;
+}
+
+sdk_ret_t
+smi_get_gpu_partition_info (aga_gpu_handle_t gpu_handle, bool *capable,
+                            aga_gpu_compute_partition_type_t *compute_partition,
+                            aga_gpu_memory_partition_type_t *memory_partition)
+{
+    amdsmi_status_t amdsmi_ret;
+    amdsmi_gpu_metrics_t metrics_info = {};
+    char partition_type[AGA_MAX_STR_LEN + 1];
+
+    *capable = true;
+    *compute_partition = AGA_GPU_COMPUTE_PARTITION_TYPE_NONE;
+    *memory_partition = AGA_GPU_MEMORY_PARTITION_TYPE_NONE;
+    // to deduce partition capability of platform, we rely on
+    // metrics field num_partition of a GPU field to be 0xffff
+    // on partition supported platform, this api is not supported
+    // for paritioned GPU other than index 0 or first_handle
+    // we mark the capablity to true on such cases to specify platform
+    // partition capability
+    amdsmi_ret = amdsmi_get_gpu_metrics_info(gpu_handle,
+                                             &metrics_info);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
+    } else {
+        if ((metrics_info.num_partition & 0xffff) ==
+            AMDSMI_INVALID_PARTITION_COUNT) {
+            // this is unsupported platform like Mi2xx
+            *capable = false;
+        }
+    }
+    // fill compute partition type
+    amdsmi_ret = amdsmi_get_gpu_compute_partition(gpu_handle,
+                     partition_type, AGA_MAX_STR_LEN + 1);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get compute partition for GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
+    } else {
+        *compute_partition =
+            smi_to_aga_gpu_compute_partition_type(partition_type);
+    }
+    // fill memory partition type
+    amdsmi_ret = amdsmi_get_gpu_memory_partition(gpu_handle,
+                     partition_type, AGA_MAX_STR_LEN + 1);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get memory partition for GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
+    } else {
+        *memory_partition =
+            smi_to_aga_gpu_memory_partition_type(partition_type);
     }
     return SDK_RET_OK;
 }
@@ -748,84 +811,17 @@ smi_get_gpu_partition_id (aga_gpu_handle_t gpu_handle, uint32_t *partition_id)
 
 sdk_ret_t
 smi_gpu_fill_status (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
-                     aga_gpu_status_t *status)
+                     aga_gpu_spec_t *spec, aga_gpu_status_t *status)
 {
-    uint32_t i;
-    amdsmi_fw_info_t fw_info;
     amdsmi_status_t amdsmi_ret;
     amdsmi_xgmi_status_t xgmi_st;
-    amdsmi_vbios_info_t vbios_info;
-    amdsmi_board_info_t board_info;
-    amdsmi_driver_info_t driver_info;
     amdsmi_od_volt_freq_data_t vc_data;
     amdsmi_gpu_metrics_t metrics_info = { 0 };
 
-    status->index = gpu_id;
-    status->handle = gpu_handle;
-    // fill the GPU serial number
-    amdsmi_ret = amdsmi_get_gpu_board_info(gpu_handle, &board_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-       AGA_TRACE_ERR("Failed to get serial number for GPU {}, err {}",
-                     gpu_handle, amdsmi_ret);
-    }
-    memcpy(status->serial_num, board_info.product_serial, AGA_MAX_STR_LEN);
-    // fill the GPU card series
-    memcpy(status->card_series, board_info.product_name, AGA_MAX_STR_LEN);
-    // fill the GPU vendor information
-    memcpy(status->card_vendor, board_info.manufacturer_name, AGA_MAX_STR_LEN);
-    // fill the GPU card model
-    memcpy(status->card_model, board_info.model_number, AGA_MAX_STR_LEN);
-    // fill the driver version
-    amdsmi_ret = amdsmi_get_gpu_driver_info(gpu_handle, &driver_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get system driver information, GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    }
-    memcpy(status->driver_version, driver_info.driver_version, AGA_MAX_STR_LEN);
-
-    // fill the vbios version
-    amdsmi_ret = amdsmi_get_gpu_vbios_info(gpu_handle, &vbios_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get vbios version for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        strncpy(status->vbios_version, vbios_info.version, AGA_MAX_STR_LEN);
-        strncpy(status->vbios_part_number, vbios_info.part_number,
-                AGA_MAX_STR_LEN);
-        // sku should be retrieved from vbios version
-        gpu_get_sku_from_vbios_(status->card_sku, vbios_info.part_number);
-    }
-    // fill the firmware version
-    amdsmi_ret = amdsmi_get_fw_info(gpu_handle, &fw_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get firmware version for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        memset(status->fw_version, 0,
-               sizeof(aga_gpu_fw_version_t) * AGA_GPU_MAX_FIRMWARE_VERSION);
-        for (i = 0; i < fw_info.num_fw_info; i++) {
-            fill_gpu_fw_version_(&status->fw_version[i],
-                                 fw_info.fw_info_list[i].fw_id,
-                                 fw_info.fw_info_list[i].fw_version);
-        }
-        status->num_fw_versions = fw_info.num_fw_info;
-    }
-    // fill the memory vendor
-    amdsmi_ret =  amdsmi_get_gpu_vram_vendor(gpu_handle, status->memory_vendor,
-                                             AGA_MAX_STR_LEN);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get memory vendor for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    }
-    amdsmi_ret = amdsmi_get_gpu_metrics_info(gpu_handle, &metrics_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-        // fill the clock status without metrics info
-        smi_fill_clock_status_(gpu_handle, status, NULL);
-    } else {
+    if (g_gpu_metrics.find(gpu_handle) != g_gpu_metrics.end()) {
+        metrics_info = g_gpu_metrics[gpu_handle];
         // fill the clock status with metrics info
-        smi_fill_clock_status_(gpu_handle, status, &metrics_info);
+        smi_fill_clock_status_(gpu_handle, spec, status, &metrics_info);
         // fill firmware timestamp
         status->fw_timestamp = metrics_info.firmware_timestamp;
         if (metrics_info.throttle_status !=
@@ -836,11 +832,12 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
         }
         status->xgmi_status.width = metrics_info.xgmi_link_width;
         status->xgmi_status.speed = metrics_info.xgmi_link_speed;
+    } else {
+        AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
     }
     // fill the PCIe status
     smi_fill_pcie_status_(gpu_handle, status);
-    // fill VRAM status
-    smi_fill_vram_status_(gpu_handle, &status->vram_status);
     // fill the xgmi error count
     amdsmi_ret = amdsmi_gpu_xgmi_error_status(gpu_handle, &xgmi_st);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
@@ -865,9 +862,8 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
                 vc_data.curve.vc_points[i].voltage;
         }
     }
-    // fill partition id
-    smi_get_gpu_partition_id(gpu_handle, &status->partition_id);
     smi_fill_gpu_kfd_pid_status_(gpu_handle, gpu_id, status);
+    smi_fill_gpu_enumeration_id_status_(gpu_handle, status);
     // TODO: oper status
     // TODO: RAS status
     return SDK_RET_OK;
@@ -946,9 +942,8 @@ smi_fill_vram_usage_ (aga_gpu_handle_t gpu_handle,
     uint64_t value_64;
     amdsmi_status_t amdsmi_ret;
 
-    memset(usage, 0, sizeof(aga_gpu_vram_usage_t));
-    amdsmi_ret = amdsmi_get_gpu_memory_total(gpu_handle, AMDSMI_MEM_TYPE_VRAM,
-                                             &value_64);
+    amdsmi_ret = amdsmi_get_gpu_memory_total(gpu_handle,
+                                             AMDSMI_MEM_TYPE_VRAM, &value_64);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
         AGA_TRACE_ERR("Failed to get VRAM total memory GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
@@ -1008,78 +1003,34 @@ smi_fill_vram_usage_ (aga_gpu_handle_t gpu_handle,
 
 sdk_ret_t
 smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
+                    bool partition_capable,
+                    uint32_t partition_id,
                     aga_gpu_handle_t first_partition_handle,
                     aga_gpu_stats_t *stats)
 {
-    sdk_ret_t ret;
-    int64_t temperature;
-    uint32_t partition_id;
-    uint64_t power, value_64;
-    float counter_resolution;
     amdsmi_status_t amdsmi_ret;
-    amdsmi_pcie_info_t pcie_info = {};
-    amdsmi_power_info_t power_info = {};
-    amdsmi_engine_usage_t usage_info = {};
     amdsmi_gpu_metrics_t metrics_info = {};
 
-    // get partition ID
-    ret = smi_get_gpu_partition_id(gpu_handle, &partition_id);
-    if (ret != SDK_RET_OK) {
-        return ret;
-    }
-
-    // fill the power and voltage info
-    amdsmi_ret = amdsmi_get_power_info(gpu_handle, &power_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get power information for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        stats->avg_package_power = power_info.average_socket_power;
-        stats->package_power = power_info.current_socket_power;
-        stats->voltage.voltage = power_info.soc_voltage;
-        stats->voltage.gfx_voltage = power_info.gfx_voltage;
-        stats->voltage.memory_voltage = power_info.mem_voltage;
-    }
-    // fill the GPU usage
-    amdsmi_ret = amdsmi_get_gpu_activity(gpu_handle, &usage_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get GPU activity for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        stats->usage.umc_activity = usage_info.umc_activity;
-        stats->usage.mm_activity = usage_info.mm_activity;
-    }
-    // get gfx, vcn and jpeg usage from first gpu partition
-    amdsmi_ret = amdsmi_get_gpu_metrics_info(first_partition_handle,
-                                             &metrics_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
-                      first_partition_handle, amdsmi_ret);
-    } else {
-        stats->usage.gfx_activity =
-            metrics_info.xcp_stats[partition_id].gfx_busy_inst[partition_id];
-        stats->usage.num_vcn = AMDSMI_MAX_NUM_VCN;
-        for (uint16_t i = 0; i < stats->usage.num_vcn; i++) {
-            stats->usage.vcn_activity[i] =
-                metrics_info.xcp_stats[partition_id].vcn_busy[i];
-        }
-        stats->usage.num_jpeg = AMDSMI_MAX_NUM_JPEG;
-        for (uint16_t i = 0; i < stats->usage.num_jpeg; i++) {
-            stats->usage.jpeg_activity[i] =
-                metrics_info.xcp_stats[partition_id].jpeg_busy[i];
-        }
-    }
     // fill VRAM usage
     smi_fill_vram_usage_(gpu_handle, &stats->vram_usage);
     // fill additional statistics from gpu metrics
-    amdsmi_ret = amdsmi_get_gpu_metrics_info(gpu_handle, &metrics_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
+    if (g_gpu_metrics.find(gpu_handle) != g_gpu_metrics.end()) {
+        metrics_info = g_gpu_metrics[gpu_handle];
+        // power and voltage
+        stats->avg_package_power = metrics_info.average_socket_power;
+        stats->package_power = metrics_info.current_socket_power;
+        stats->voltage.voltage = metrics_info.voltage_soc;
+        stats->voltage.gfx_voltage = metrics_info.voltage_gfx;
+        stats->voltage.memory_voltage = metrics_info.voltage_mem;
+        // fan speed
         stats->fan_speed = metrics_info.current_fan_speed;
+        // activity information
+        stats->usage.gfx_activity = metrics_info.average_gfx_activity;
+        stats->usage.umc_activity = metrics_info.average_umc_activity;
+        stats->usage.mm_activity = metrics_info.average_mm_activity;
         stats->gfx_activity_accumulated = metrics_info.gfx_activity_acc;
         stats->mem_activity_accumulated = metrics_info.mem_activity_acc;
+        // xgmi link stats
         for (uint32_t i = 0; i < AGA_GPU_MAX_XGMI_LINKS; i++) {
             stats->xgmi_link_stats[i].data_read =
                 metrics_info.xgmi_read_data_acc[i];
@@ -1099,103 +1050,87 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
             metrics_info.vr_thm_residency_acc;
         stats->violation_stats.hbm_thermal_residency_accumulated =
             metrics_info.hbm_thm_residency_acc;
-
-    }
-    // fill the PCIe stats
-    amdsmi_ret = amdsmi_get_pcie_info(gpu_handle, &pcie_info);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get PCIe info for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        stats->pcie_stats.replay_count =
-            pcie_info.pcie_metric.pcie_replay_count;
+        // get usage information from the metrics info for partition 0
+        for (uint16_t i = 0; i < AMDSMI_MAX_NUM_VCN; i++) {
+            stats->usage.vcn_activity[i] = metrics_info.vcn_activity[i];
+            if (partition_capable) {
+                stats->usage.vcn_busy[i] =
+                    metrics_info.xcp_stats[partition_id].vcn_busy[i];
+            } else {
+                stats->usage.vcn_busy[i] = AMDSMI_INVALID_UINT16;
+            }
+        }
+        for (uint16_t i = 0; i < AMDSMI_MAX_NUM_JPEG; i++) {
+            stats->usage.jpeg_activity[i] = metrics_info.jpeg_activity[i];
+        }
+        for (uint16_t i = 0; i < AMDSMI_MAX_NUM_JPEG_ENG_V1; i++) {
+            if (partition_capable) {
+                stats->usage.jpeg_busy[i] =
+                    metrics_info.xcp_stats[partition_id].jpeg_busy[i];
+            } else {
+                stats->usage.jpeg_busy[i] = AMDSMI_INVALID_UINT16;
+            }
+        }
+        for (uint16_t i = 0; i < AMDSMI_MAX_NUM_XCC; i++) {
+            if (partition_capable) {
+                stats->usage.gfx_busy_inst[i] =
+                    metrics_info.xcp_stats[partition_id].gfx_busy_inst[i];
+            } else {
+                stats->usage.gfx_busy_inst[i] = AMDSMI_INVALID_UINT32;
+            }
+        }
+        // fill the energy consumed
+        stats->energy_consumed = metrics_info.energy_accumulator *
+                                     g_energy_counter_resolution;
+        // fill temperature
+        stats->temperature.edge_temperature =
+            (float)metrics_info.temperature_edge;
+        stats->temperature.junction_temperature =
+            (float)metrics_info.temperature_hotspot;
+        stats->temperature.memory_temperature =
+            (float)metrics_info.temperature_mem;
+        for (uint32_t i = 0; i < AGA_GPU_MAX_HBM; i++) {
+            stats->temperature.hbm_temperature[i] =
+                (float)metrics_info.temperature_hbm[i];
+        }
+        // pcie stats
+        stats->pcie_stats.replay_count = metrics_info.pcie_replay_count_acc;
         stats->pcie_stats.recovery_count =
-            pcie_info.pcie_metric.pcie_l0_to_recovery_count;
+            metrics_info.pcie_l0_to_recov_count_acc;
         stats->pcie_stats.replay_rollover_count =
-            pcie_info.pcie_metric.pcie_replay_roll_over_count;
+            metrics_info.pcie_replay_rover_count_acc;
         stats->pcie_stats.nack_sent_count =
-            pcie_info.pcie_metric.pcie_nak_sent_count;
+            metrics_info.pcie_nak_sent_count_acc;
         stats->pcie_stats.nack_received_count =
-            pcie_info.pcie_metric.pcie_nak_received_count;
-    }
-    // fill the energy consumed
-    amdsmi_ret = amdsmi_get_energy_count(gpu_handle, &power,
-                                         &counter_resolution, &value_64);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get energy consumed for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
+            metrics_info.pcie_nak_rcvd_count_acc;
     } else {
-        stats->energy_consumed = power * counter_resolution;
-    }
-    // fill the edge temperature
-    amdsmi_ret = amdsmi_get_temp_metric(gpu_handle,
-                                        AMDSMI_TEMPERATURE_TYPE_EDGE,
-                                        AMDSMI_TEMP_CURRENT, &temperature);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get edge temperature for GPU {}, err {}",
+        AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
-    } else {
-        stats->temperature.edge_temperature = (float)temperature;
     }
-    // fill the junction temperature
-    amdsmi_ret = amdsmi_get_temp_metric(gpu_handle,
-                                        AMDSMI_TEMPERATURE_TYPE_JUNCTION,
-                                        AMDSMI_TEMP_CURRENT, &temperature);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get junction temperature for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        stats->temperature.junction_temperature = (float)temperature;
-    }
-    // fill the memory temperature
-    amdsmi_ret = amdsmi_get_temp_metric(gpu_handle,
-                                        AMDSMI_TEMPERATURE_TYPE_VRAM,
-                                        AMDSMI_TEMP_CURRENT, &temperature);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get VRAM temperature for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        stats->temperature.memory_temperature = (float)temperature;
-    }
-    // fill the HBM0 temperature
-    amdsmi_ret = amdsmi_get_temp_metric(gpu_handle,
-                                        AMDSMI_TEMPERATURE_TYPE_HBM_0,
-                                        AMDSMI_TEMP_CURRENT, &temperature);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get HBM0 temperature for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        stats->temperature.hbm_temperature[0] = (float)temperature;
-    }
-    // fill the HBM1 temperature
-    amdsmi_ret = amdsmi_get_temp_metric(gpu_handle,
-                                        AMDSMI_TEMPERATURE_TYPE_HBM_1,
-                                        AMDSMI_TEMP_CURRENT, &temperature);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get HBM1 temperature for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        stats->temperature.hbm_temperature[1] = (float)temperature;
-    }
-    // fill the HBM2 temperature
-    amdsmi_ret = amdsmi_get_temp_metric(gpu_handle,
-                                        AMDSMI_TEMPERATURE_TYPE_HBM_2,
-                                        AMDSMI_TEMP_CURRENT, &temperature);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get HBM2 temperature for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        stats->temperature.hbm_temperature[2] = (float)temperature;
-    }
-    // fill the HBM3 temperature
-    amdsmi_ret = amdsmi_get_temp_metric(gpu_handle,
-                                        AMDSMI_TEMPERATURE_TYPE_HBM_3,
-                                        AMDSMI_TEMP_CURRENT, &temperature);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get HBM3 temperature for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        stats->temperature.hbm_temperature[3] = (float)temperature;
+    // for GPU partitions which are not the first partition, we need to get
+    // usage information from the first partition
+    // partition
+    if (partition_id) {
+        // get gfx, vcn and jpeg usage from first gpu partition
+        amdsmi_ret = amdsmi_get_gpu_metrics_info(first_partition_handle,
+                                                 &metrics_info);
+        if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+            AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
+                          first_partition_handle, amdsmi_ret);
+        } else {
+            for (uint16_t i = 0; i < AMDSMI_MAX_NUM_VCN; i++) {
+                stats->usage.vcn_busy[i] =
+                    metrics_info.xcp_stats[partition_id].vcn_busy[i];
+            }
+            for (uint16_t i = 0; i < AMDSMI_MAX_NUM_JPEG_ENG_V1; i++) {
+                stats->usage.jpeg_busy[i] =
+                    metrics_info.xcp_stats[partition_id].jpeg_busy[i];
+            }
+            for (uint16_t i = 0; i < AMDSMI_MAX_NUM_XCC; i++) {
+                stats->usage.gfx_busy_inst[i] =
+                    metrics_info.xcp_stats[partition_id].gfx_busy_inst[i];
+            }
+        }
     }
     return SDK_RET_OK;
 }
@@ -1503,11 +1438,11 @@ gpu_topo_walk_cb (void *obj, void *ctxt)
         info->peer_device[walk_ctxt->count].peer_device.type =
             AGA_DEVICE_TYPE_GPU;
         strcpy(info->peer_device[walk_ctxt->count].peer_device.name,
-               (name + std::to_string(gpu1->id())).c_str());
+               (name + std::to_string(gpu2->id())).c_str());
         amdsmi_ret =
             amdsmi_topo_get_link_type(gpu1->handle(), gpu2->handle(),
                 &info->peer_device[walk_ctxt->count].num_hops,
-                (amdsmi_io_link_type_t *)
+                (amdsmi_link_type_t *)
                      &info->peer_device[walk_ctxt->count].connection.type);
         if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
             AGA_TRACE_ERR("Failed to get link type between gpus {} and {}, "
@@ -1661,6 +1596,107 @@ smi_discover_gpus (uint32_t *num_gpus, aga_gpu_handle_t *gpu_handles,
                 }
                 (*num_gpus)++;
             }
+        }
+    }
+    return SDK_RET_OK;
+}
+
+sdk_ret_t
+smi_gpu_init_immutable_attrs (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec,
+                              aga_gpu_status_t *status)
+{
+    uint64_t value_64;
+    amdsmi_fw_info_t fw_info;
+    amdsmi_status_t amdsmi_ret;
+    amdsmi_vbios_info_t vbios_info;
+    amdsmi_board_info_t board_info;
+    amdsmi_driver_info_t driver_info;
+
+    // fill immutable attributes in spec
+    // fill gpu and memory clock frequencies
+    smi_fill_gpu_clock_frequency_spec_(gpu_handle, spec);
+
+    // fill immutable attributes in status
+    // fill the GPU serial number
+    amdsmi_ret = amdsmi_get_gpu_board_info(gpu_handle, &board_info);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+       AGA_TRACE_ERR("Failed to get serial number for GPU {}, err {}",
+                     gpu_handle, amdsmi_ret);
+    }
+    memcpy(status->serial_num, board_info.product_serial, AGA_MAX_STR_LEN);
+    // fill the GPU card series
+    memcpy(status->card_series, board_info.product_name, AGA_MAX_STR_LEN);
+    // fill the GPU vendor information
+    memcpy(status->card_vendor, board_info.manufacturer_name, AGA_MAX_STR_LEN);
+    // fill the GPU card model
+    memcpy(status->card_model, board_info.model_number, AGA_MAX_STR_LEN);
+    // fill the driver version
+    amdsmi_ret = amdsmi_get_gpu_driver_info(gpu_handle, &driver_info);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get system driver information, GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
+    }
+    memcpy(status->driver_version, driver_info.driver_version, AGA_MAX_STR_LEN);
+
+    // fill the vbios version
+    amdsmi_ret = amdsmi_get_gpu_vbios_info(gpu_handle, &vbios_info);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get vbios version for GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
+    } else {
+        strncpy(status->vbios_version, vbios_info.version, AGA_MAX_STR_LEN);
+        strncpy(status->vbios_part_number, vbios_info.part_number,
+                AGA_MAX_STR_LEN);
+        // sku should be retrieved from vbios version
+        gpu_get_sku_from_vbios_(status->card_sku, vbios_info.part_number);
+    }
+    // fill the firmware version
+    amdsmi_ret = amdsmi_get_fw_info(gpu_handle, &fw_info);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get firmware version for GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
+    } else {
+        memset(status->fw_version, 0,
+               sizeof(aga_gpu_fw_version_t) * AGA_GPU_MAX_FIRMWARE_VERSION);
+        for (uint32_t i = 0; i < fw_info.num_fw_info; i++) {
+            fill_gpu_fw_version_(&status->fw_version[i],
+                                 fw_info.fw_info_list[i].fw_id,
+                                 fw_info.fw_info_list[i].fw_version);
+        }
+        status->num_fw_versions = fw_info.num_fw_info;
+    }
+    // fill the memory vendor
+    amdsmi_ret =  amdsmi_get_gpu_vram_vendor(gpu_handle, status->memory_vendor,
+                                             AGA_MAX_STR_LEN);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get memory vendor for GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
+    }
+    // fill vram status
+    smi_fill_vram_status_(gpu_handle, &status->vram_status);
+    // fill GPU BDF
+    amdsmi_ret = amdsmi_get_gpu_bdf_id(gpu_handle, &value_64);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get PCIe bus id for GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
+    } else {
+        // convert PCIe bus to XXXX.XX.XX.X format
+        snprintf(status->pcie_status.pcie_bus_id, AGA_MAX_STR_LEN,
+                 "%04X:%02X:%02X.%X",
+                 ((uint32_t)((value_64 >> 32) & 0xffffffff)),
+                 ((uint32_t)((value_64 >> 8) & 0xff)),
+                 ((uint32_t)((value_64 >> 3) & 0x1f)),
+                 ((uint32_t)(value_64 & 0x7)));
+    }
+    // get energy counter resolution if not already set
+    if (g_energy_counter_resolution == 0.0) {
+        amdsmi_ret = amdsmi_get_energy_count(gpu_handle, &value_64,
+                         &g_energy_counter_resolution, &value_64);
+        if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+            AGA_TRACE_ERR("Failed to get energy count for GPU {}, err {}",
+                          gpu_handle, amdsmi_ret);
+            // in case of failure use the default value
+            g_energy_counter_resolution = AMDSMI_COUNTER_RESOLUTION;
         }
     }
     return SDK_RET_OK;
