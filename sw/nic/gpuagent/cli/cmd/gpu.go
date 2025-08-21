@@ -1170,6 +1170,16 @@ func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 			fmt.Printf(indent+"  %-36s : %d\n", "NACKs received",
 				p.GetNACKReceivedCount())
 		}
+		if p.GetRxBytes() != UINT64_MAX_VAL {
+			printPCIeStatusHdr(indent)
+			fmt.Printf(indent+"  %-36s : %d\n", "Total received bytes",
+				p.GetRxBytes())
+		}
+		if p.GetTxBytes() != UINT64_MAX_VAL {
+			printPCIeStatusHdr(indent)
+			fmt.Printf(indent+"  %-36s : %d\n", "Total transmitted bytes",
+				p.GetTxBytes())
+		}
 	}
 	if stats.GetVRAMUsage() != nil {
 		printHdr = false
