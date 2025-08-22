@@ -259,6 +259,15 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
     stats->vram_usage.used_gtt = 20;
     stats->vram_usage.free_gtt =
         stats->vram_usage.total_gtt - stats->vram_usage.used_gtt;
+    // fill the PCIe stats
+    ++stats->pcie_stats.replay_count;
+    ++stats->pcie_stats.tx_bytes;
+    ++stats->pcie_stats.recovery_count;
+    ++stats->pcie_stats.replay_rollover_count;
+    ++stats->pcie_stats.nack_sent_count;
+    ++stats->pcie_stats.nack_received_count;
+    ++stats->pcie_stats.rx_bytes;
+    ++stats->pcie_stats.tx_bytes;
     // fill the energy consumed
     stats->energy_consumed = 25293978861568 + distr(gen) - distr(gen);
     for (uint16_t i = 0; i < AMDSMI_MAX_NUM_XCC; i++) {

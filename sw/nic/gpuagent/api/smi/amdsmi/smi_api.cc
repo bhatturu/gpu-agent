@@ -39,6 +39,7 @@ namespace aga {
 #define AMDSMI_INVALID_PARTITION_COUNT  0xffff
 #define AMDSMI_INVALID_UINT16           0xffff
 #define AMDSMI_INVALID_UINT32           0xffffffff
+#define AMDSMI_INVALID_UINT64           0xffffffffffffffff
 #define AMDSMI_DEEP_SLEEP_THRESHOLD     140
 #define AMDSMI_COUNTER_RESOLUTION       15.3
 
@@ -1009,6 +1010,7 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
                     aga_gpu_stats_t *stats)
 {
     amdsmi_status_t amdsmi_ret;
+    uint64_t sent, received, max_pkt_size;
     amdsmi_gpu_metrics_t metrics_info = {};
 
     // fill VRAM usage
@@ -1103,6 +1105,20 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
             metrics_info.pcie_nak_sent_count_acc;
         stats->pcie_stats.nack_received_count =
             metrics_info.pcie_nak_rcvd_count_acc;
+
+        // PCIe throughput initialization to invalid value
+        stats->pcie_stats.tx_bytes = AMDSMI_INVALID_UINT64;
+        stats->pcie_stats.rx_bytes = AMDSMI_INVALID_UINT64;
+
+        amdsmi_ret = amdsmi_get_gpu_pci_throughput(gpu_handle, &sent, &received,
+                                                   &max_pkt_size);
+        if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+            AGA_TRACE_ERR("Failed to get PCIe throughput for GPU {}, err {}",
+                          gpu_handle, amdsmi_ret);
+        } else {
+            stats->pcie_stats.tx_bytes = received;
+            stats->pcie_stats.rx_bytes = sent;
+        }
     } else {
         AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);

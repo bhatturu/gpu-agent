@@ -499,6 +499,10 @@ typedef struct aga_gpu_pcie_stats_s {
     uint64_t nack_sent_count;
     /// total number of NACKs issued on the PCIe link by the receiver
     uint64_t nack_received_count;
+    /// accumulated bytes received from the PCIe link
+    uint64_t rx_bytes;
+    /// accumulated bytes transmitted to the PCIe link
+    uint64_t tx_bytes;
 } aga_gpu_pcie_stats_t;
 
 /// \brief GPU voltage statistics

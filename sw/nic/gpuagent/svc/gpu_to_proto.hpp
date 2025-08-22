@@ -533,6 +533,8 @@ aga_gpu_pcie_stats_to_proto (GPUPCIeStats *proto_stats,
     proto_stats->set_replayrollovercount(stats->replay_rollover_count);
     proto_stats->set_nacksentcount(stats->nack_sent_count);
     proto_stats->set_nackreceivedcount(stats->nack_received_count);
+    proto_stats->set_rxbytes(stats->rx_bytes);
+    proto_stats->set_txbytes(stats->tx_bytes);
 }
 
 // populte VRAM usage stats proto
