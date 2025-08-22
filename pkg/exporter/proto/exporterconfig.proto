@@ -424,6 +424,51 @@ enum NICMetricField {
     QP_RQ_QCN_NUM_ALPHA_TIMER_EXPIRED        = 98;
     QP_RQ_QCN_NUM_CNP_RCVD                   = 99;
     QP_RQ_QCN_NUM_CNP_PROCESSED              = 100;
+
+    // Ethtool stats
+    ETH_TX_PACKETS                           = 500;
+    ETH_TX_BYTES                             = 501;
+    ETH_RX_PACKETS                           = 502;
+    ETH_RX_BYTES                             = 503;
+    ETH_FRAMES_RX_BROADCAST                  = 504;
+    ETH_FRAMES_RX_MULTICAST                  = 505;
+    ETH_FRAMES_TX_BROADCAST                  = 506;
+    ETH_FRAMES_TX_MULTICAST                  = 507;
+    ETH_FRAMES_RX_PAUSE                      = 508;
+    ETH_FRAMES_TX_PAUSE                      = 509;
+    ETH_FRAMES_RX_64B                        = 510;
+    ETH_FRAMES_RX_65B_127B                   = 511;
+    ETH_FRAMES_RX_128B_255B                  = 512;
+    ETH_FRAMES_RX_256B_511B                  = 513;
+    ETH_FRAMES_RX_512B_1023B                 = 514;
+    ETH_FRAMES_RX_1024B_1518B                = 515;
+    ETH_FRAMES_RX_1519B_2047B                = 516;
+    ETH_FRAMES_RX_2048B_4095B                = 517;
+    ETH_FRAMES_RX_4096B_8191B                = 518;
+    ETH_FRAMES_RX_BAD_FCS                    = 519;
+    ETH_FRAMES_RX_PRI0                       = 520;
+    ETH_FRAMES_RX_PRI1                       = 521;
+    ETH_FRAMES_RX_PRI2                       = 522;
+    ETH_FRAMES_RX_PRI3                       = 523;
+    ETH_FRAMES_RX_PRI4                       = 524;
+    ETH_FRAMES_RX_PRI5                       = 525;
+    ETH_FRAMES_RX_PRI6                       = 526;
+    ETH_FRAMES_RX_PRI7                       = 527;
+    ETH_FRAMES_TX_PRI0                       = 528;
+    ETH_FRAMES_TX_PRI1                       = 529;
+    ETH_FRAMES_TX_PRI2                       = 530;
+    ETH_FRAMES_TX_PRI3                       = 531;
+    ETH_FRAMES_TX_PRI4                       = 532;
+    ETH_FRAMES_TX_PRI5                       = 533;
+    ETH_FRAMES_TX_PRI6                       = 534;
+    ETH_FRAMES_TX_PRI7                       = 535;
+    ETH_FRAMES_RX_DROPPED                    = 536;
+    ETH_FRAMES_RX_ALL                        = 537;
+    ETH_FRAMES_RX_BAD_ALL                    = 538;
+    ETH_FRAMES_TX_ALL                        = 539;
+    ETH_FRAMES_TX_BAD                        = 540;
+    ETH_HW_TX_DROPPED                        = 541;
+    ETH_HW_RX_DROPPED                        = 542;
 }
 
 enum NICMetricLabel {
