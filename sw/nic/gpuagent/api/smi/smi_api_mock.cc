@@ -268,6 +268,7 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
     ++stats->pcie_stats.nack_received_count;
     ++stats->pcie_stats.rx_bytes;
     ++stats->pcie_stats.tx_bytes;
+    ++stats->pcie_stats.bidir_bandwidth;
     // fill the energy consumed
     stats->energy_consumed = 25293978861568 + distr(gen) - distr(gen);
     for (uint16_t i = 0; i < AMDSMI_MAX_NUM_XCC; i++) {
