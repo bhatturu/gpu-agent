@@ -1105,6 +1105,8 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
             metrics_info.pcie_nak_sent_count_acc;
         stats->pcie_stats.nack_received_count =
             metrics_info.pcie_nak_rcvd_count_acc;
+        stats->pcie_stats.bidir_bandwidth =
+            metrics_info.pcie_bandwidth_acc;
 
         // PCIe throughput initialization to invalid value
         stats->pcie_stats.tx_bytes = AMDSMI_INVALID_UINT64;

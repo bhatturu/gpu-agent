@@ -503,6 +503,8 @@ typedef struct aga_gpu_pcie_stats_s {
     uint64_t rx_bytes;
     /// accumulated bytes transmitted to the PCIe link
     uint64_t tx_bytes;
+    /// accumulated combined bandwidth on PCIe link (GB/sec)
+    uint64_t bidir_bandwidth;
 } aga_gpu_pcie_stats_t;
 
 /// \brief GPU voltage statistics

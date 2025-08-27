@@ -1171,14 +1171,20 @@ func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 				p.GetNACKReceivedCount())
 		}
 		if p.GetRxBytes() != UINT64_MAX_VAL {
-			printPCIeStatusHdr(indent)
+			printPCIeHdr(indent)
 			fmt.Printf(indent+"  %-36s : %d\n", "Total received bytes",
 				p.GetRxBytes())
 		}
 		if p.GetTxBytes() != UINT64_MAX_VAL {
-			printPCIeStatusHdr(indent)
+			printPCIeHdr(indent)
 			fmt.Printf(indent+"  %-36s : %d\n", "Total transmitted bytes",
 				p.GetTxBytes())
+		}
+		if p.GetBiDirBandwidth() != UINT16_MAX_VAL_UINT64 {
+			printPCIeHdr(indent)
+			fmt.Printf(indent+"  %-36s : %d\n",
+				"Bidirectional bandwidth (in GB/s)",
+				p.GetBiDirBandwidth())
 		}
 	}
 	if stats.GetVRAMUsage() != nil {
