@@ -72,7 +72,7 @@ docker_push () {
     #docker push $EXPORTER_IMAGE_URL:$azuretag
 
     # rhel 9 sriov image push
-    docker load -i /device-metrics-exporter/docker/device-metrics-exporter-latest.tar.gz
+    docker load -i /device-metrics-exporter/docker/device-metrics-exporter-sriov-latest.tar.gz
     docker inspect $EXPORTER_SRIOV_IMAGE_URL:latest | grep "HOURLY"
     docker tag $EXPORTER_SRIOV_IMAGE_URL:latest $EXPORTER_SRIOV_IMAGE_URL:$tag
     docker push $EXPORTER_SRIOV_IMAGE_URL:$tag
@@ -83,10 +83,10 @@ docker_push () {
       echo "DOCKERHUB_TOKEN is not set"
     else
       docker login --username=shreyajmeraamd --password-stdin <<< $DOCKERHUB_TOKEN
-      # rhel 9.4
+      # rhel 9
       docker tag $EXPORTER_IMAGE_URL:$tag amdpsdo/device-metrics-exporter:$RELEASE
       docker push amdpsdo/device-metrics-exporter:$RELEASE
-      # sriov rhel 9.4
+      # sriov rhel 9
       docker tag $EXPORTER_SRIOV_IMAGE_URL:$tag amdpsdo/device-metrics-exporter-sriov:$RELEASE
       docker push amdpsdo/device-metrics-exporter-sriov:$RELEASE
       # azure linux3
