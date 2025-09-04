@@ -80,6 +80,25 @@ smi_to_aga_vram_type (amdsmi_vram_type_t vram_type)
     return AGA_VRAM_TYPE_NONE;
 }
 
+/// \brief convert amdsmi virtualization mode to aga vritualization mode
+/// \param[in] virt_mode    amdsmi virtualization mode
+/// \return    aga virtualization mode
+static inline aga_gpu_virtualization_mode_t
+smi_to_aga_virtualization_mode (amdsmi_virtualization_mode_t virt_mode)
+{
+    switch (virt_mode) {
+    case AMDSMI_VIRTUALIZATION_MODE_HOST:
+        return AGA_VIRTUALIZATION_MODE_HOST;
+    case AMDSMI_VIRTUALIZATION_MODE_GUEST:
+        return AGA_VIRTUALIZATION_MODE_GUEST;
+    case AMDSMI_VIRTUALIZATION_MODE_PASSTHROUGH:
+        return AGA_VIRTUALIZATION_MODE_PASSTHROUGH;
+    default:
+        break;
+    }
+    return AGA_VIRTUALIZATION_MODE_UNKNOWN;
+}
+
 /// \brief convert amdsmi VRAM vendor to aga VRAM vendor
 /// \param[in] vendor    amdsmi vendor
 /// \return    aga vendor

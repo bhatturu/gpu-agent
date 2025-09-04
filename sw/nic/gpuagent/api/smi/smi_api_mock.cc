@@ -616,6 +616,14 @@ smi_get_gpu_partition_id (aga_gpu_handle_t gpu_handle, uint32_t *partition_id)
 }
 
 sdk_ret_t
+smi_get_gpu_virtualization_mode (aga_gpu_handle_t gpu_handle,
+                                 aga_gpu_virtualization_mode_t *mode)
+{
+    *mode = AGA_VIRTUALIZATION_MODE_BAREMETAL;
+    return SDK_RET_OK;
+}
+
+sdk_ret_t
 smi_get_gpu_partition_info (aga_gpu_handle_t gpu_handle, bool *capable,
                             aga_gpu_compute_partition_type_t *compute_partition,
                             aga_gpu_memory_partition_type_t *memory_partition)

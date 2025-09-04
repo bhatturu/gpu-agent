@@ -414,6 +414,16 @@ typedef struct aga_gpu_bad_page_record_s {
     aga_gpu_page_status_t page_status;
 } aga_gpu_bad_page_record_t;
 
+/// \brief GPU virtualization mode
+typedef enum aga_gpu_virtualization_mode_e {
+    AGA_VIRTUALIZATION_MODE_NONE        = 0,
+    AGA_VIRTUALIZATION_MODE_UNKNOWN     = AGA_VIRTUALIZATION_MODE_NONE,
+    AGA_VIRTUALIZATION_MODE_BAREMETAL   = 1,
+    AGA_VIRTUALIZATION_MODE_HOST        = 2,
+    AGA_VIRTUALIZATION_MODE_GUEST       = 3,
+    AGA_VIRTUALIZATION_MODE_PASSTHROUGH = 4,
+} aga_gpu_virtualization_mode_t;
+
 /// \brief operational information of a physical GPU
 typedef struct aga_gpu_status_s {
     /// assigned GPU index local to compute node
@@ -485,6 +495,8 @@ typedef struct aga_gpu_status_s {
     uint32_t drm_render_id;
     // GPU driver DRM card id
     uint32_t drm_card_id;
+    // GPU virtualization mode
+    aga_gpu_virtualization_mode_t virtualization_mode;
 } aga_gpu_status_t;
 
 /// \brief GPU PCIe statistics

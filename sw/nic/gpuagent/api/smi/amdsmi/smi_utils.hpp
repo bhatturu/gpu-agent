@@ -76,6 +76,25 @@ find_low_high_frequency (amdsmi_frequencies_t *freq,
     return;
 }
 
+/// \brief convert amdsmi virtualization mode to aga vritualization mode
+/// \param[in] virt_mode    amdsmi virtualization mode
+/// \return    aga virtualization mode
+static inline aga_gpu_virtualization_mode_t
+smi_to_aga_virtualization_mode (amdsmi_virtualization_mode_t virt_mode)
+{
+    switch (virt_mode) {
+    case AMDSMI_VIRTUALIZATION_MODE_HOST:
+        return AGA_VIRTUALIZATION_MODE_HOST;
+    case AMDSMI_VIRTUALIZATION_MODE_GUEST:
+        return AGA_VIRTUALIZATION_MODE_GUEST;
+    case AMDSMI_VIRTUALIZATION_MODE_PASSTHROUGH:
+        return AGA_VIRTUALIZATION_MODE_PASSTHROUGH;
+    default:
+        break;
+    }
+    return AGA_VIRTUALIZATION_MODE_UNKNOWN;
+}
+
 /// \brief convert amdsmi VRAM type to aga VRAM type
 /// \param[in] vram_type    amdsmi VRAM type
 /// \return    aga VRAM type
