@@ -112,6 +112,24 @@ aga_gpu_throttling_status_to_proto (aga_gpu_throttling_status_t status)
     return amdgpu::GPU_THROTTLING_STATUS_NONE;
 }
 
+static inline amdgpu::GPUVirtualizationMode
+aga_gpu_virtualization_mode_to_proto (aga_gpu_virtualization_mode_t mode)
+{
+    switch (mode) {
+    case AGA_VIRTUALIZATION_MODE_BAREMETAL:
+        return amdgpu::GPU_VIRTUALIZATION_MODE_BAREMETAL;
+    case AGA_VIRTUALIZATION_MODE_HOST:
+        return amdgpu::GPU_VIRTUALIZATION_MODE_HOST;
+    case AGA_VIRTUALIZATION_MODE_GUEST:
+        return amdgpu::GPU_VIRTUALIZATION_MODE_GUEST;
+    case AGA_VIRTUALIZATION_MODE_PASSTHROUGH:
+        return amdgpu::GPU_VIRTUALIZATION_MODE_PASSTHROUGH;
+    default:
+        break;
+    }
+    return amdgpu::GPU_VIRTUALIZATION_MODE_NONE;
+}
+
 static inline void
 aga_gpu_clock_spec_to_proto (GPUClockFrequencyRange *proto_spec,
                              const aga_gpu_clock_freq_range_t *spec)
@@ -394,6 +412,8 @@ aga_gpu_api_status_to_proto (GPUStatus *proto_status,
                                           status->throttling_status));
     proto_status->set_fwtimestamp(status->fw_timestamp);
     proto_status->set_partitionid(status->partition_id);
+    proto_status->set_virtualizationmode(aga_gpu_virtualization_mode_to_proto(
+                                         status->virtualization_mode));
     for (uint32_t i = 0; i < status->num_gpu_partition; i++) {
         if (status->gpu_partition[i].valid()) {
             proto_status->add_gpupartition(status->gpu_partition[i].id,

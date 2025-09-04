@@ -692,6 +692,9 @@ func printGPUStatus(gpu *aga.GPU, statusOnly bool) {
 	fmt.Printf(indent+"%-38s : %d\n", "KFD id", status.GetKFDId())
 	fmt.Printf(indent+"%-38s : %d\n", "DRM render id", status.GetDRMRenderId())
 	fmt.Printf(indent+"%-38s : %d\n", "DRM card id", status.GetDRMCardId())
+	fmt.Printf(indent+"%-38s : %s\n", "Virtualization mode",
+	    strings.ToLower(strings.Replace(status.GetVirtualizationMode().String(),
+				"GPU_VIRTUALIZATION_MODE_", "", -1)))
 	fmt.Printf(indent+"%-38s : 0x%x\n", "GPU handle", status.GetGPUHandle())
 	if status.GetSerialNum() != "" {
 		fmt.Printf(indent+"%-38s : %s\n", "Serial number",

@@ -1629,6 +1629,7 @@ smi_gpu_init_immutable_attrs (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec,
     amdsmi_vbios_info_t vbios_info;
     amdsmi_board_info_t board_info;
     amdsmi_driver_info_t driver_info;
+    amdsmi_virtualization_mode_t mode;
 
     // fill immutable attributes in spec
     // fill gpu and memory clock frequencies
@@ -1640,6 +1641,14 @@ smi_gpu_init_immutable_attrs (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec,
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
        AGA_TRACE_ERR("Failed to get serial number for GPU {}, err {}",
                      gpu_handle, amdsmi_ret);
+    }
+    // fill the virtualization mode
+    amdsmi_ret = amdsmi_get_gpu_virtualization_mode(gpu_handle, &mode);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get virtualization mode for GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
+    } else {
+        status->virtualization_mode = smi_to_aga_virtualization_mode(mode);
     }
     memcpy(status->serial_num, board_info.product_serial, AGA_MAX_STR_LEN);
     // fill the GPU card series

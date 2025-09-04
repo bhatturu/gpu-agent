@@ -151,6 +151,20 @@ enum GPUMemoryPartitionType {
   GPU_MEMORY_PARTITION_TYPE_NPS8 = 4;
 }
 
+// GPU virtualization mode
+enum GPUVirtualizationMode {
+  // none unknown/invalid virtualization type
+  GPU_VIRTUALIZATION_MODE_NONE        = 0;
+  // baremetal virtualization type
+  GPU_VIRTUALIZATION_MODE_BAREMETAL   = 1;
+  // host virtualization type
+  GPU_VIRTUALIZATION_MODE_HOST        = 2;
+  // guest virtualization type
+  GPU_VIRTUALIZATION_MODE_GUEST       = 3;
+  // passthrough virtualization type
+  GPU_VIRTUALIZATION_MODE_PASSTHROUGH = 4;
+}
+
 // config specification of physical GPU
 message GPUSpec {
   // uuid identifying the GPU
@@ -355,65 +369,67 @@ message GPUBadPageGetResponse {
 // operational information of a physical GPU
 message GPUStatus {
   // assigned GPU index local to the compute node
-  uint32                        Index             = 1;
+  uint32                      Index              = 1;
   // GPU handle
-  uint64                        GPUHandle         = 2;
+  uint64                      GPUHandle          = 2;
   // serial number of the GPU
-  string                        SerialNum         = 3;
+  string                      SerialNum          = 3;
   // product series of the GPU
-  string                        CardSeries        = 4;
+  string                      CardSeries         = 4;
   // model of the GPU
-  string                        CardModel         = 5;
+  string                      CardModel          = 5;
   // GPU vendor
-  string                        CardVendor        = 6;
+  string                      CardVendor         = 6;
   // SKU of the GPU card
-  string                        CardSKU           = 7;
+  string                      CardSKU            = 7;
   // operational status of the device
-  GPUOperStatus                 OperStatus        = 8;
+  GPUOperStatus               OperStatus         = 8;
   // driver version
-  string                        DriverVersion     = 9;
+  string                      DriverVersion      = 9;
   // VBIOS part number
-  string                        VBIOSPartNumber   = 10;
+  string                      VBIOSPartNumber    = 10;
   // VBIOS version
-  string                        VBIOSVersion      = 11;
+  string                      VBIOSVersion       = 11;
   // firmware versions of various components
-  repeated GPUFirmwareVersion   FirmwareVersion   = 12;
+  repeated GPUFirmwareVersion FirmwareVersion    = 12;
   // memory component vendor
-  string                        MemoryVendor      = 13;
+  string                      MemoryVendor       = 13;
   // GPU clock status
-  repeated GPUClockStatus       ClockStatus       = 14;
+  repeated GPUClockStatus     ClockStatus        = 14;
   // Kernel Fusion Driver (KFD) process ids using the GPU
-  repeated uint32               KFDProcessId      = 15;
+  repeated uint32             KFDProcessId       = 15;
   // RAS (Reliability, Availability & Serviceability) information
-  GPURASStatus                  RASStatus         = 16;
+  GPURASStatus                RASStatus          = 16;
   // XGMI status
-  GPUXGMIStatus                 XGMIStatus        = 17;
+  GPUXGMIStatus               XGMIStatus         = 17;
   // VRAM status
-  GPUVRAMStatus                 VRAMStatus        = 18;
+  GPUVRAMStatus               VRAMStatus         = 18;
   // PCIe status
-  GPUPCIeStatus                 PCIeStatus        = 19;
+  GPUPCIeStatus               PCIeStatus         = 19;
   // throttling status
-  GPUThrottlingStatus           ThrottlingStatus  = 20;
+  GPUThrottlingStatus         ThrottlingStatus   = 20;
   // firmware timestamp in ns (10ns resolution)
-  uint64                        FWTimestamp       = 21;
+  uint64                      FWTimestamp        = 21;
   // GPU compute partition id; only valid when partition type is not SPX
-  uint32                        PartitionId       = 22;
+  uint32                      PartitionId        = 22;
   // GPU partitions (aka. child GPUs)
   // NOTE:
   // only valid for physical GPUs which have been partitioned
-  repeated bytes                GPUPartition      = 23;
+  repeated bytes              GPUPartition       = 23;
   // physical GPU (aka. parent GPU)
   // NOTE:
   // only valid for GPU partitions (child GPUs)
-  bytes                         PhysicalGPU       = 24;
+  bytes                       PhysicalGPU        = 24;
   // GPU KFD id
-  uint64                        KFDId             = 25;
+  uint64                      KFDId              = 25;
   // GPU node id
-  uint32                        NodeId            = 26;
+  uint32                      NodeId             = 26;
   // GPU device DRM render Id
-  uint32                        DRMRenderId       = 27;
+  uint32                      DRMRenderId        = 27;
   // GPU device DRM  card Id
-  uint32                        DRMCardId         = 28;
+  uint32                      DRMCardId          = 28;
+  // GPU virtualization mode
+  GPUVirtualizationMode       VirtualizationMode = 29;
 
 }
 

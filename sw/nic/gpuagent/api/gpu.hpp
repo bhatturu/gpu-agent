@@ -187,6 +187,18 @@ public:
         return partition_id_;
     }
 
+    /// \brief  set GPU virtualization mode
+    /// \param[in] virtualization mode
+    void set_virtualization_mode(aga_gpu_virtualization_mode_t mode) {
+        virtualization_mode_ = mode;
+    }
+
+    /// \brief  return GPU virtualization mode
+    /// \return virtualization mode
+    aga_gpu_virtualization_mode_t virtualization_mode(void) {
+        return virtualization_mode_;
+    }
+
     /// \brief  check if GPU is a child
     /// \return true if child GPU, false otherwise
     bool is_child_gpu(void) {
@@ -317,6 +329,8 @@ private:
     aga_gpu_status_t status_;
     /// GPU watch stats
     aga_gpu_watch_fields_t stats_;
+    /// GPU virtualization mode;
+    aga_gpu_virtualization_mode_t virtualization_mode_;
     /// number of GPU watch objects watching this GPU
     uint32_t num_gpu_watch_;
     /// a friend of gpu entry
