@@ -56,7 +56,7 @@ Step 2: Install AMDGPU Driver
 
       sudo mkdir --parents --mode=0755 /etc/apt/keyrings
       wget https://repo.radeon.com/rocm/rocm.gpg.key -O - | gpg --dearmor | sudo tee /etc/apt/keyrings/rocm.gpg > /dev/null
-      echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/amdgpu/30.10_rc1/ubuntu jammy main" sudo tee /etc/apt/sources.list.d/amdgpu.list
+      echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/amdgpu/30.10_rc1/ubuntu jammy main" | sudo tee /etc/apt/sources.list.d/amdgpu.list
       sudo apt update
 
    Please note that the above url will be different depending on what version of the drivers you will be installing and type of Operating System you are using.
