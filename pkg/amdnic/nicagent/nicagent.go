@@ -137,7 +137,6 @@ func (na *NICAgentClient) Init() error {
 
 	na.mh.RegisterMetricsClient(na)
 
-	// /* UTgsm
 	// fetch all the static data that doesn't change (NIC, Port, Lif, etc.)
 	nics, err := na.getNICs()
 	if err != nil {
@@ -146,7 +145,6 @@ func (na *NICAgentClient) Init() error {
 	}
 	na.nics = nics
 	na.printNICs()
-	// */ //UTgsm
 
 	if err := na.populateStaticHostLabels(); err != nil {
 		logger.Log.Printf("failed to populate static host labels, err: %v", err)
@@ -170,7 +168,6 @@ func (na *NICAgentClient) addRdmaDevPcieAddrIfAbsent(rdmaDev string) error {
 			return fmt.Errorf("pcie addr info not found for %s", rdmaDev)
 		}
 		na.rdmaDevToPcieAddr[rdmaDev] = parts[1]
-		logger.Log.Printf("gsm60 adding pcieRdmaMap entry %s:%s", rdmaDev, na.rdmaDevToPcieAddr[rdmaDev])
 	}
 	return nil
 }
@@ -212,7 +209,6 @@ func (na *NICAgentClient) getPidOfPod(podName, ns string) (int, error) {
 		return -1, fmt.Errorf("failed in integer conversion for pid %s, %s: %v", string(processID), logStr, err)
 	}
 
-	logger.Log.Printf("gsm60 pid %d, %s", pidVal, logStr)
 	return pidVal, nil
 }
 
@@ -228,7 +224,6 @@ func (na *NICAgentClient) getNetDevicesList(podInfo *scheduler.PodResourceInfo) 
 		podName = podInfo.Pod
 		netDevices, ok := na.podnameToNetDeviceList[podName]
 		if ok {
-			logger.Log.Printf("gsm60 cacheMatch pid %s, interfaces %v", podName, netDevices)
 			return netDevices, nil
 		}
 	}
@@ -293,7 +288,6 @@ func (na *NICAgentClient) getNetDevicesList(podInfo *scheduler.PodResourceInfo) 
 	if podInfo != nil {
 		na.podnameToNetDeviceList[podName] = netDevices
 	}
-	logger.Log.Printf("gsm60 podname %s, netdevs %v", podName, netDevices)
 	return netDevices, nil
 }
 
@@ -330,7 +324,7 @@ func (na *NICAgentClient) initLocalCacheIfRequired() {
 
 func (na *NICAgentClient) getMetricsAll() error {
 	var wg sync.WaitGroup
-	na.initLocalCacheIfRequired() /// UTgsm
+	na.initLocalCacheIfRequired()
 
 	workloads, err := na.ListWorkloads()
 	if err != nil {
