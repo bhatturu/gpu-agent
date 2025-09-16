@@ -16,6 +16,10 @@ run "chmod +x /usr/bin/asset-push"
 copy "asset-build/exporter-asset-push.sh", "/exporter-asset-push.sh"
 run "chmod +x /exporter-asset-push.sh"
 
+# install yq
+run "wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64"
+run "chmod a+x /usr/local/bin/yq"
+
 if user == "root"
   # update user .bash_profile
   run "echo 'export GOPATH=/usr' >> /root/.bash_profile"

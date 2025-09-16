@@ -4,6 +4,9 @@
 # Docker Registry
 DOCKER_REGISTRY ?= docker.io/rocm
 
+# helm environment variables
+HELM_EXPORTER_IMAGE := $(DOCKER_REGISTRY)/device-metrics-exporter
+
 # Build Container environment
 DOCKER_BUILDER_TAG ?= v1.0
 BUILD_BASE_IMAGE ?= ubuntu:22.04
@@ -126,7 +129,8 @@ UBUNTU_LIBDIR = UBUNTU24
 endif
 
 # set version and run `make update-version` to all docs
-PACKAGE_VERSION ?= "1.5.0"
+PROJECT_VERSION ?= "1.5.0"
+PACKAGE_VERSION := $(PROJECT_VERSION)
 ifneq (,$(findstring exporter,$(RELEASE)))
 #remove prefix from main tag
 DEBIAN_VERSION := $(shell echo "$(RELEASE)" | cut -c 10-)
@@ -418,8 +422,8 @@ helm-build: helm-lint
 .PHONY: helm
 helm: helm-lint
 	@rm -rf helm-charts-k8s
-	@yq eval -i '.appVersion = "$(EXPORTER_IMAGE_TAG)"' helm-charts/Chart.yaml
-	@yq eval -i '.version = "$(EXPORTER_IMAGE_TAG)"' helm-charts/Chart.yaml
+	@yq eval -i '.appVersion = "$(PROJECT_VERSION)"' helm-charts/Chart.yaml
+	@yq eval -i '.version = "$(PROJECT_VERSION)"' helm-charts/Chart.yaml
 	@yq eval -i '.image.repository = "$(HELM_EXPORTER_IMAGE)"' helm-charts/values.yaml
 	@yq eval -i '.image.tag = "$(EXPORTER_IMAGE_TAG)"' helm-charts/values.yaml
 	@mkdir -p helm-charts-k8s
