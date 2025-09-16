@@ -103,12 +103,12 @@ BUILD_DIR := $(DOCS_DIR)/_build
 HTML_DIR := $(BUILD_DIR)/html
 
 # library branch to build amdsmi libraries for gpuagent
-AMDSMI_BRANCH ?= release/rocm-rel-7.0
-AMDSMI_COMMIT ?= ff168a2
+AMDSMI_BRANCH ?= rocm-7.0.0
+AMDSMI_COMMIT ?= 37d158a
 GIMSMI_BRANCH ?= mainline
 GIMSMI_COMMIT ?= mainline/8.3.0.K
 
-ROCM_VERSION ?= 7.0_rc1
+ROCM_VERSION ?= 7.0
 
 export ${GOROOT}
 export ${GOPATH}
@@ -468,7 +468,7 @@ build-all:
 	${MAKE} gimsmi-compile-all
 	# no need to run this everytime, we build and copy assets once
 	#${MAKE} rocprofiler-compile
-	${MAKE} gpuagent-compile
+	#${MAKE} gpuagent-compile
 	@echo "Docker image build is available under docker/ directory"
 	# TBD once we have fully working gpuagent shall include in docker build
 	#${MAKE} docker
