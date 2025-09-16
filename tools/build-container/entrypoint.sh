@@ -11,7 +11,7 @@ trap term INT TERM
 mkdir -p ${dir}
 mkdir -p ${netns}
 rm -f $dir/.container_ready
-git config --global --add safe.directory $dir
+git config --global --add safe.directory $dir || true
 export GOFLAGS=-mod=vendor
 
 if [[ -n "${USER_NAME:-}" && -n "${USER_UID:-}" && -n "${USER_GID:-}" ]]; then
