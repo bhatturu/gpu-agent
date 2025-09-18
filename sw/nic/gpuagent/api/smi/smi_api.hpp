@@ -163,6 +163,16 @@ sdk_ret_t smi_gpu_init_immutable_attrs(aga_gpu_handle_t gpu_handle,
                                        aga_gpu_spec_t *spec,
                                        aga_gpu_status_t *status);
 
+/// \brief function to get GPU CPER entries
+/// \param[in]  gpu_handle    handle of GPU device
+/// \param[in]  severity      severity of CPER entries to be retrieved
+///                           AGA_CPER_SEVERITY_NONE implies all
+/// \param[out] info          GPU CPER information
+/// \return SDK_RET_OK or error code in case of failure
+sdk_ret_t smi_gpu_get_cper_entries(aga_gpu_handle_t gpu_handle,
+                                   aga_cper_severity_t severity,
+                                   aga_cper_info_t *info);
+
 /// \@}
 
 }    // namespace aga

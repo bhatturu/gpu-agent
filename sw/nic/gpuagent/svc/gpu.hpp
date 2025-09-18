@@ -64,6 +64,9 @@ using amdgpu::GPUMemoryPartitionSetRequest;
 using amdgpu::GPUMemoryPartitionSetResponse;
 using amdgpu::GPUMemoryPartitionGetRequest;
 using amdgpu::GPUMemoryPartitionGetResponse;
+using amdgpu::GPUCPEREntry;
+using amdgpu::GPUCPERGetRequest;
+using amdgpu::GPUCPERGetResponse;
 
 class GPUSvcImpl final : public GPUSvc::Service {
 public:
@@ -88,6 +91,9 @@ public:
     Status GPUMemoryPartitionGet(ServerContext *context,
                const GPUMemoryPartitionGetRequest *proto_req,
                GPUMemoryPartitionGetResponse *proto_rsp) override;
+    Status GPUCPERGet(ServerContext *context,
+                      const GPUCPERGetRequest *proto_req,
+                      GPUCPERGetResponse *proto_rsp) override;
 };
 
 class DebugGPUSvcImpl final : public DebugGPUSvc::Service {

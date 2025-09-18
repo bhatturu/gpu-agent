@@ -367,6 +367,75 @@ aga_to_smi_gpu_memory_partition_type (
     return AMDSMI_MEMORY_PARTITION_UNKNOWN;
 }
 
+/// \brief convert amdsmi CPER severity to aga CPER severity
+/// \param[in] amdsmi CPER severity
+/// \return    aga CPER severity
+static inline aga_cper_severity_t
+smi_to_aga_cper_severity (amdsmi_cper_sev_t severity)
+{
+    switch (severity) {
+    case AMDSMI_CPER_SEV_NON_FATAL_UNCORRECTED:
+        return AGA_CPER_SEVERITY_NON_FATAL_UNCORRECTED;
+    case AMDSMI_CPER_SEV_FATAL:
+        return AGA_CPER_SEVERITY_FATAL;
+    case AMDSMI_CPER_SEV_NON_FATAL_CORRECTED:
+        return AGA_CPER_SEVERITY_NON_FATAL_CORRECTED;
+    default:
+        break;
+    }
+
+    return AGA_CPER_SEVERITY_NONE;
+}
+
+/// \brief convert amdsmi CPER notification type to aga CPER notification type
+/// \param[in] amdsmi CPER notification type in amdsmi_cper_guid_t format
+/// \return    aga CPER notification type
+static inline aga_cper_notification_type_t
+smi_to_aga_cper_notification_type (amdsmi_cper_guid_t ntfn_type)
+{
+    uint64_t amdsmi_ntfn_type;
+
+    amdsmi_ntfn_type = (uint64_t)ntfn_type.b[0]         |
+                       ((uint64_t)ntfn_type.b[1] << 8)  |
+                       ((uint64_t)ntfn_type.b[2] << 16) |
+                       ((uint64_t)ntfn_type.b[3] << 24) |
+                       ((uint64_t)ntfn_type.b[4] << 32) |
+                       ((uint64_t)ntfn_type.b[5] << 40) |
+                       ((uint64_t)ntfn_type.b[6] << 48) |
+                       ((uint64_t)ntfn_type.b[7] << 56);
+
+    switch (amdsmi_ntfn_type) {
+    case AMDSMI_CPER_NOTIFY_TYPE_CMC:
+        return AGA_CPER_NOTIFICATION_TYPE_CMC;
+    case AMDSMI_CPER_NOTIFY_TYPE_CPE:
+        return AGA_CPER_NOTIFICATION_TYPE_CPE;
+    case AMDSMI_CPER_NOTIFY_TYPE_MCE:
+        return AGA_CPER_NOTIFICATION_TYPE_MCE;
+    case AMDSMI_CPER_NOTIFY_TYPE_PCIE:
+        return AGA_CPER_NOTIFICATION_TYPE_PCIE;
+    case AMDSMI_CPER_NOTIFY_TYPE_INIT:
+        return AGA_CPER_NOTIFICATION_TYPE_INIT;
+    case AMDSMI_CPER_NOTIFY_TYPE_NMI:
+        return AGA_CPER_NOTIFICATION_TYPE_NMI;
+    case AMDSMI_CPER_NOTIFY_TYPE_BOOT:
+        return AGA_CPER_NOTIFICATION_TYPE_BOOT;
+    case AMDSMI_CPER_NOTIFY_TYPE_DMAR:
+        return AGA_CPER_NOTIFICATION_TYPE_DMAR;
+    case AMDSMI_CPER_NOTIFY_TYPE_SEA:
+        return AGA_CPER_NOTIFICATION_TYPE_SEA;
+    case AMDSMI_CPER_NOTIFY_TYPE_SEI:
+        return AGA_CPER_NOTIFICATION_TYPE_SEI;
+    case AMDSMI_CPER_NOTIFY_TYPE_PEI:
+        return AGA_CPER_NOTIFICATION_TYPE_PEI;
+    case AMDSMI_CPER_NOTIFY_TYPE_CXL_COMPONENT:
+        return AGA_CPER_NOTIFICATION_TYPE_CXL_COMPONENT;
+    default:
+        break;
+    }
+
+    return AGA_CPER_NOTIFICATION_TYPE_NONE;
+}
+
 /// \brief     convert amdsmi return status to sdk return status
 /// \param[in] amdsmi_ret amdsmi return status
 /// \return    sdk return status

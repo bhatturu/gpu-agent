@@ -47,6 +47,9 @@ limitations under the License.
 #define AGA_GPU_MAX_BAD_PAGE_RECORD            64
 #define AGA_GPU_INVALID_PARTITION_ID           0xFFFFFFFF
 #define AGA_GPU_MAX_PARTITION                  8
+#define AGA_GPU_MAX_CPER_ENTRY                 128
+#define AGA_GPU_MAX_AF_ID_PER_CPER             12
+
 /// number of clocks that can not be configured - AGA_GPU_CLOCK_TYPE_FABRIC,
 /// AGA_GPU_CLOCK_TYPE_SOC (4), AGA_GPU_CLOCK_TYPE_DCE, AGA_GPU_CLOCK_TYPE_PCIE
 #define AGA_GPU_NUM_NON_CFG_CLOCK_TYPES        7
@@ -793,6 +796,78 @@ typedef struct aga_gpu_memory_partition_info_s {
     aga_gpu_memory_partition_type_t partition_type;
 } aga_gpu_memory_partition_info_t;
 
+/// CPER severity
+typedef enum aga_cper_severity_e {
+    /// invalid severity
+    AGA_CPER_SEVERITY_NONE                  = 0,
+    /// non-fatal uncorrected errors
+    AGA_CPER_SEVERITY_NON_FATAL_UNCORRECTED = 1,
+    /// fatal errors
+    AGA_CPER_SEVERITY_FATAL                 = 2,
+    /// non-fatal corrected errors
+    AGA_CPER_SEVERITY_NON_FATAL_CORRECTED   = 3,
+} aga_cper_severity_t;
+
+/// CPER notification type
+typedef enum aga_cper_notification_type_e {
+    /// invalid notification type
+    AGA_CPER_NOTIFICATION_TYPE_NONE          = 0,
+    /// Corrected Memory Check (CMC)
+    AGA_CPER_NOTIFICATION_TYPE_CMC           = 1,
+    /// Corrected Platform Error (CPE)
+    AGA_CPER_NOTIFICATION_TYPE_CPE           = 2,
+    /// Machine Check Exception (MCE)
+    AGA_CPER_NOTIFICATION_TYPE_MCE           = 3,
+    /// PCI express error
+    AGA_CPER_NOTIFICATION_TYPE_PCIE          = 4,
+    /// initialization error
+    AGA_CPER_NOTIFICATION_TYPE_INIT          = 5,
+    /// Non-Maskable Interrupt (NMI)
+    AGA_CPER_NOTIFICATION_TYPE_NMI           = 6,
+    /// boot error
+    AGA_CPER_NOTIFICATION_TYPE_BOOT          = 7,
+    /// Direct Memory Access Remapping (DMAR) error
+    AGA_CPER_NOTIFICATION_TYPE_DMAR          = 8,
+    /// System Error Architecture (SEA)
+    AGA_CPER_NOTIFICATION_TYPE_SEA           = 9,
+    /// System Error Interface (SEI)
+    AGA_CPER_NOTIFICATION_TYPE_SEI           = 10,
+    /// Platform Error Interface (PEI)
+    AGA_CPER_NOTIFICATION_TYPE_PEI           = 11,
+    /// Compute Express Link component error
+    AGA_CPER_NOTIFICATION_TYPE_CXL_COMPONENT = 12,
+} aga_cper_notification_type_t;
+
+/// CPER entry information
+typedef struct aga_cper_entry_s {
+    /// CPER entry identifier
+    std::string record_id;
+    /// CPER error severity
+    aga_cper_severity_t severity;
+    /// CPER format revision
+    uint32_t revision;
+    /// CPER error timestamp
+    std::string timestamp;
+    /// CPER entry creator identifier
+    std::string creator_id;
+    /// CPER entry notification type
+    aga_cper_notification_type_t notification_type;
+    /// number of AMD field ids
+    uint32_t num_af_id;
+    /// AMD field ids
+    uint64_t af_id[AGA_GPU_MAX_AF_ID_PER_CPER];
+} aga_cper_entry_t;
+
+/// CPER information
+typedef struct aga_cper_info_s {
+    /// GPU uuid
+    aga_obj_key_t gpu;
+    /// number of cper entries
+    uint32_t num_cper_entry;
+    /// cper entries
+    aga_cper_entry_t cper_entry[AGA_GPU_MAX_CPER_ENTRY];
+} aga_cper_info_t;
+
 /// \brief     create gpu
 /// \param[in] spec config specification
 /// \return    #SDK_RET_OK on success, failure status code on error
@@ -895,5 +970,18 @@ sdk_ret_t aga_gpu_update(_In_ aga_gpu_spec_t *spec);
 /// \param[in] key key
 /// \return    #SDK_RET_OK on success, failure status code on error
 sdk_ret_t aga_gpu_delete(_In_ aga_obj_key_t *key);
+
+typedef void (*gpu_cper_read_cb_t)(aga_cper_info_t *info, void *ctxt);
+
+/// \brief    read gpu CPER records
+/// \param[in]  key     key of the gpu object, if k_aga_obj_key_invalid we read
+///                     CPER records of all gpu
+/// \param[in]  cb      callback function
+/// \param[in]  ctxt    opaque context passed to cb
+/// \return #SDK_RET_OK on success, failure status code on error
+sdk_ret_t aga_gpu_cper_read(_In_ aga_obj_key_t *key,
+                            _In_ aga_cper_severity_t severity,
+                            _In_ gpu_cper_read_cb_t gpu_cper_read_cb,
+                            _In_ void *ctxt);
 
 #endif    /// __API_INCLUDE_AGA_GPU_HPP__
