@@ -329,4 +329,36 @@ aga_svc_gpu_memory_partition_get (
 
 }
 
+static inline sdk_ret_t
+aga_svc_gpu_cper_get (const GPUCPERGetRequest *proto_req,
+                      GPUCPERGetResponse *proto_rsp)
+{
+    sdk_ret_t ret;
+    aga_obj_key_t key = k_aga_obj_key_invalid;
+    aga_cper_severity_t severity = AGA_CPER_SEVERITY_NONE;
+
+    if (proto_req == NULL) {
+        proto_rsp->set_apistatus(types::ApiStatus::API_STATUS_INVALID_ARG);
+        return SDK_RET_INVALID_ARG;
+    }
+    aga_api_trace_verbose("GPU", "Get", proto_req);
+    severity = aga_cper_severity_to_spec(proto_req->severity());
+    if (proto_req->id_size() == 0) {
+        ret = aga_gpu_cper_read(&key, severity, aga_gpu_cper_api_info_to_proto,
+                                proto_rsp);
+        proto_rsp->set_apistatus(sdk_ret_to_api_status(ret));
+    }
+    for (int i = 0; i < proto_req->id_size(); i ++) {
+        aga_obj_key_proto_to_api_spec(&key, proto_req->id(i));
+        ret = aga_gpu_cper_read(&key, severity, aga_gpu_cper_api_info_to_proto,
+                                proto_rsp);
+        if (unlikely(ret != SDK_RET_OK)) {
+            proto_rsp->set_apistatus(sdk_ret_to_api_status(ret));
+            break;
+        }
+        proto_rsp->set_apistatus(types::ApiStatus::API_STATUS_OK);
+    }
+    return ret;
+}
+
 #endif    // __AGA_SVC_GPU_SVC_HPP__

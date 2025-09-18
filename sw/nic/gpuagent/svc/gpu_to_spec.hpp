@@ -31,6 +31,26 @@ limitations under the License.
 #include "nic/gpuagent/api/include/aga_gpu.hpp"
 #include "nic/gpuagent/api/include/aga_task.hpp"
 
+// convert aga cper severity to spec
+static inline aga_cper_severity_t
+aga_cper_severity_to_spec (amdgpu::CPERSeverity severity)
+{
+    switch (severity) {
+    case amdgpu::CPER_SEVERITY_NON_FATAL_UNCORRECTED:
+        return AGA_CPER_SEVERITY_NON_FATAL_UNCORRECTED;
+        break;
+    case amdgpu::CPER_SEVERITY_FATAL:
+        return AGA_CPER_SEVERITY_FATAL;
+        break;
+    case amdgpu::CPER_SEVERITY_NON_FATAL_CORRECTED:
+        return AGA_CPER_SEVERITY_NON_FATAL_CORRECTED;
+        break;
+    default:
+        break;
+    }
+    return AGA_CPER_SEVERITY_NONE;
+}
+
 static inline aga_gpu_admin_state_t
 aga_gpu_admin_state_to_spec (amdgpu::GPUAdminState admin_state)
 {

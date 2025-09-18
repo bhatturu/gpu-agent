@@ -20,6 +20,8 @@ limitations under the License.
 ///
 //----------------------------------------------------------------------------
 
+#include <sstream>
+#include <iomanip>
 extern "C" {
 #include "nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h"
 }
@@ -42,6 +44,8 @@ namespace aga {
 #define AMDSMI_INVALID_UINT64           0xffffffffffffffff
 #define AMDSMI_DEEP_SLEEP_THRESHOLD     140
 #define AMDSMI_COUNTER_RESOLUTION       15.3
+#define CPER_BUF_SIZE                   (4 * 1024 * 1024) // 4 MB
+
 
 /// cache GPU metrics so that we don't do repeated calls while filling spec,
 /// status and statistics
@@ -1726,6 +1730,113 @@ smi_gpu_init_immutable_attrs (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec,
             g_energy_counter_resolution = AMDSMI_COUNTER_RESOLUTION;
         }
     }
+    return SDK_RET_OK;
+}
+
+static inline std::string
+timestamp_string_from_cper_timestamp (amdsmi_cper_timestamp_t *ts)
+{
+    uint32_t full_year;
+    std::ostringstream oss;
+
+    // assuming year is offset from 2000
+    full_year = 2000 + ts->year;
+
+    oss << std::setfill('0') << std::setw(4) << full_year << "-"
+        << std::setw(2) << static_cast<int>(ts->month) << "-"
+        << std::setw(2) << static_cast<int>(ts->day) << " "
+        << std::setw(2) << static_cast<int>(ts->hours) << ":"
+        << std::setw(2) << static_cast<int>(ts->minutes) << ":"
+        << std::setw(2) << static_cast<int>(ts->seconds);
+
+    return oss.str();
+}
+
+sdk_ret_t
+smi_gpu_get_cper_entries (aga_gpu_handle_t gpu_handle,
+                          aga_cper_severity_t severity, aga_cper_info_t *info)
+{
+    char *cper_data;
+    char *cper_buffer;
+    uint64_t cursor = 0;
+    uint32_t severity_mask;
+    amdsmi_status_t afid_status;
+    uint64_t total_cper_entries = 0;
+    uint64_t buf_size = CPER_BUF_SIZE;
+    uint32_t prev_cper_record_size = 0;
+    uint64_t num_cper_hdr = AGA_GPU_MAX_CPER_ENTRY;
+    amdsmi_status_t status = AMDSMI_STATUS_MORE_DATA;
+    amdsmi_cper_hdr_t *cper_hdrs[AGA_GPU_MAX_CPER_ENTRY];
+
+    // set severity mask
+    switch (severity) {
+    case AGA_CPER_SEVERITY_NON_FATAL_UNCORRECTED:
+        severity_mask = (1 << AMDSMI_CPER_SEV_NON_FATAL_UNCORRECTED);
+        break;
+    case AGA_CPER_SEVERITY_FATAL:
+        severity_mask = (1 << AMDSMI_CPER_SEV_FATAL);
+        break;
+    case AGA_CPER_SEVERITY_NON_FATAL_CORRECTED:
+        severity_mask = (1 << AMDSMI_CPER_SEV_NON_FATAL_CORRECTED);
+        break;
+    default:
+        severity_mask = (1 << AMDSMI_CPER_SEV_NON_FATAL_UNCORRECTED) |
+                        (1 << AMDSMI_CPER_SEV_FATAL)                 |
+                        (1 << AMDSMI_CPER_SEV_NON_FATAL_CORRECTED);
+        break;
+    }
+    // allocate memory for CPER data
+    cper_data = (char *)malloc(buf_size);
+    // cper_buffer is used to keep track of each individual record
+    cper_buffer = cper_data;
+    while (status == AMDSMI_STATUS_MORE_DATA) {
+        // get CPER entries
+        status = amdsmi_get_gpu_cper_entries(gpu_handle, severity_mask,
+                     cper_data, &buf_size, cper_hdrs, &num_cper_hdr, &cursor);
+        if ((status != AMDSMI_STATUS_SUCCESS) &&
+            (status != AMDSMI_STATUS_MORE_DATA)) {
+            AGA_TRACE_ERR("Failed to get CPER entries for GPU {}, err {}",
+                          gpu_handle, status);
+            // free allocated memory
+            free(cper_data);
+            return amdsmi_ret_to_sdk_ret(status);
+        }
+        for (uint64_t i = 0;
+             i < num_cper_hdr && total_cper_entries < AGA_GPU_MAX_CPER_ENTRY;
+             i++, total_cper_entries++) {
+            auto cper_entry = &info->cper_entry[info->num_cper_entry++];
+
+            cper_entry->record_id = std::string(cper_hdrs[i]->record_id);
+            cper_entry->severity =
+                smi_to_aga_cper_severity(cper_hdrs[i]->error_severity);
+            cper_entry->revision = cper_hdrs[i]->revision;
+            if (cper_hdrs[i]->cper_valid_bits.valid_bits.timestamp) {
+                cper_entry->timestamp =
+					timestamp_string_from_cper_timestamp(
+						&cper_hdrs[i]->timestamp);
+            }
+            cper_entry->creator_id = std::string(cper_hdrs[i]->creator_id);
+            cper_entry->notification_type =
+                smi_to_aga_cper_notification_type(cper_hdrs[i]->notify_type);
+            // get AMD field ids from the cper record
+            cper_buffer += prev_cper_record_size;
+            // initialize num_af_id to be the size of the array
+            cper_entry->num_af_id = AGA_GPU_MAX_AF_ID_PER_CPER;
+            afid_status = amdsmi_get_afids_from_cper(cper_buffer,
+                              cper_hdrs[i]->record_length, cper_entry->af_id,
+                              &cper_entry->num_af_id);
+            if (afid_status != AMDSMI_STATUS_SUCCESS) {
+                cper_entry->num_af_id = 0;
+                AGA_TRACE_ERR("Failed to get AMD field id for CPER entry for "
+                              "GPU {}, err {}", gpu_handle, status);
+            }
+            // update prev_cper_record_size
+            prev_cper_record_size = cper_hdrs[i]->record_length;
+        }
+    }
+
+    // free allocated memory
+    free(cper_data);
     return SDK_RET_OK;
 }
 

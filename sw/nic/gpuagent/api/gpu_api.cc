@@ -398,3 +398,59 @@ aga_gpu_delete (_In_ aga_obj_key_t *key)
 {
     return aga_gpu_api_handle(API_OP_DELETE, key, NULL);
 }
+
+typedef struct aga_gpu_cper_read_args_s {
+    void *ctxt;
+    aga_cper_severity_t severity;
+    gpu_cper_read_cb_t cb;
+} aga_gpu_cper_read_args_t;
+
+static bool
+aga_gpu_cper_info_from_entry (void *entry, void *ctxt)
+{
+    sdk_ret_t ret;
+    aga_cper_info_t info = {};
+    gpu_entry *gpu = (gpu_entry *)entry;
+    aga_gpu_cper_read_args_t *args = (aga_gpu_cper_read_args_t *)ctxt;
+
+    if (gpu->in_use()) {
+        // some API operation is in progress on this object, skip it
+        return false;
+    }
+    if (gpu->is_parent_gpu()) {
+        // partition parent GPU objects can be skipped
+        return false;
+    }
+    // set GPU id
+    info.gpu = gpu->key();
+    // get CPER information
+    ret = aga::smi_gpu_get_cper_entries(gpu->handle(), args->severity, &info);
+    if (ret != SDK_RET_OK) {
+        goto done;
+    }
+    // call cb on info
+    args->cb(&info, args->ctxt);
+done:
+    return false;
+}
+
+sdk_ret_t
+aga_gpu_cper_read (aga_obj_key_t *key, aga_cper_severity_t severity,
+                   gpu_cper_read_cb_t cb, void *ctxt)
+{
+    gpu_entry *gpu;
+    aga_gpu_cper_read_args_t args = { 0 };
+
+    args.ctxt = ctxt;
+    args.severity = severity;
+    args.cb = cb;
+    if (*key == k_aga_obj_key_invalid) {
+        return gpu_db()->walk(aga_gpu_cper_info_from_entry, &args);
+    } else {
+        gpu = gpu_db()->find(key);
+        if (gpu) {
+            return aga_gpu_cper_info_from_entry(gpu, &args);
+        }
+    }
+    return SDK_RET_ENTRY_NOT_FOUND;
+}

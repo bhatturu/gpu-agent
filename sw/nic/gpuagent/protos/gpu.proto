@@ -41,6 +41,8 @@ service GPUSvc {
   rpc GPUMemoryPartitionSet(GPUMemoryPartitionSetRequest) returns (GPUMemoryPartitionSetResponse) {}
   // GPU memory partition get API
   rpc GPUMemoryPartitionGet(GPUMemoryPartitionGetRequest) returns (GPUMemoryPartitionGetResponse) {}
+  // GPU CPER get API
+  rpc GPUCPERGet (GPUCPERGetRequest) returns (GPUCPERGetResponse) {}
 
   // operational APIs or tasks
   // GPU reset API
@@ -715,10 +717,10 @@ message GPUGetRequest {
 message GPUGetResponse {
   // result of the API processing
   types.ApiStatus ApiStatus = 1;
-  // list of per GPU information
-  repeated GPU    Response  = 2;
   // specific error code, if any
-  types.ErrorCode ErrorCode = 3;
+  types.ErrorCode ErrorCode = 2;
+  // list of per GPU information
+  repeated GPU    Response  = 3;
 }
 
 // GPU update request message
@@ -854,4 +856,94 @@ message GPUMemoryPartitionGetResponse {
   types.ErrorCode             ErrorCode = 2;
   // list of per GPU information
   repeated GPUMemoryPartition Response  = 3;
+}
+
+// CPER error severity
+enum CPERSeverity {
+  // invalid severity
+  CPER_SEVERITY_NONE                  = 0;
+  // non-fatal uncorrected errors
+  CPER_SEVERITY_NON_FATAL_UNCORRECTED = 1;
+  // fatal errors
+  CPER_SEVERITY_FATAL                 = 2;
+  // non-fatal corrected errors
+  CPER_SEVERITY_NON_FATAL_CORRECTED   = 3;
+}
+
+// GPU CPER get request
+message GPUCPERGetRequest {
+  // list of GPU uuids
+  repeated bytes Id       = 1;
+  // severity of CPER entries to be retrieved
+  // CPER_SEVERITY_NONE implies all CPER records
+  CPERSeverity   Severity = 2;
+}
+
+// CPER notify type
+enum CPERNotificationType {
+  // invalid notification type
+  CPER_NOTIFICATION_TYPE_NONE          = 0;
+  // Corrected Memory Check (CMC)
+  CPER_NOTIFICATION_TYPE_CMC           = 1;
+  // Corrected Platform Error (CPE)
+  CPER_NOTIFICATION_TYPE_CPE           = 2;
+  // Machine Check Exception (MCE)
+  CPER_NOTIFICATION_TYPE_MCE           = 3;
+  // PCI express error
+  CPER_NOTIFICATION_TYPE_PCIE          = 4;
+  // initialization error
+  CPER_NOTIFICATION_TYPE_INIT          = 5;
+  // Non-Maskable Interrupt (NMI)
+  CPER_NOTIFICATION_TYPE_NMI           = 6;
+  // boot error
+  CPER_NOTIFICATION_TYPE_BOOT          = 7;
+  // Direct Memory Access Remapping (DMAR) error
+  CPER_NOTIFICATION_TYPE_DMAR          = 8;
+  // System Error Architecture (SEA)
+  CPER_NOTIFICATION_TYPE_SEA           = 9;
+  // System Error Interface (SEI)
+  CPER_NOTIFICATION_TYPE_SEI           = 10;
+  // Platform Error Interface (PEI)
+  CPER_NOTIFICATION_TYPE_PEI           = 11;
+  // Compute Express Link (CXL) component error
+  CPER_NOTIFICATION_TYPE_CXL_COMPONENT = 12;
+}
+
+// CPER entry information
+message CPEREntry {
+  // CPER entry identifier
+  string                RecordId         = 1;
+  // CPER error severity
+  CPERSeverity          Severity         = 2;
+  // CPER format revision
+  uint32                Revision         = 3;
+  // CPER error timestamp
+  string                Timestamp        = 4;
+  // CPER entry creator
+  string                CreatorId        = 5;
+  // CPER notify type
+  CPERNotificationType  NotificationType = 6;
+  // AMD field ids in CPER entry
+  // NOTE:
+  // https://docs.amd.com/r/en-US/AMD_Field_ID_70122_v1.0/AFID-Event-List has
+  // more information about AMD field ids and their usage
+  repeated uint64       AFId             = 7;
+}
+
+// GPU CPER entry
+message GPUCPEREntry {
+  // GPU id
+  bytes              GPU       = 1;
+  // CPER entries
+  repeated CPEREntry CPEREntry = 2;
+}
+
+// GPU CPER get response
+message GPUCPERGetResponse {
+  // result of the API processing
+  types.ApiStatus       ApiStatus = 1;
+  // specific error code, if any
+  types.ErrorCode       ErrorCode = 2;
+  // GPU CPER entries
+  repeated GPUCPEREntry CPER      = 3;
 }

@@ -61,6 +61,7 @@ var (
 	memClkFreqLo        uint32
 	memClkFreqHi        uint32
 	printHdr            bool
+	severity            string
 )
 
 const (
@@ -99,6 +100,13 @@ var gpuBadPageShowCmd = &cobra.Command{
 	Short: "show GPU bad page information",
 	Long:  "show GPU bad page information",
 	RunE:  gpuBadPageShowCmdHandler,
+}
+
+var gpuCPERShowCmd = &cobra.Command{
+	Use:   "cper-records",
+	Short: "show GPU CPER records",
+	Long:  "show GPU CPER information",
+	RunE:  gpuCPERShowCmdHandler,
 }
 
 var gpuStatsShowCmd = &cobra.Command{
@@ -148,6 +156,14 @@ func init() {
 	gpuShowCmd.AddCommand(gpuBadPageShowCmd)
 	gpuBadPageShowCmd.Flags().StringVarP(&gpuID, "id", "i", "",
 		"Specify GPU id")
+
+	gpuShowCmd.AddCommand(gpuCPERShowCmd)
+	gpuCPERShowCmd.Flags().StringVarP(&gpuID, "id", "i", "",
+		"Specify GPU id")
+	gpuCPERShowCmd.Flags().StringVarP(&severity, "severity", "s", "all",
+		"Specify CPER severity (\"fatal\", \"non-fatal-uncorrected\", "+
+			"\"non-fatal-corrected\" or \"all\")")
+	gpuCPERShowCmd.Flags().BoolP("json", "j", false, "Output in json")
 
 	DebugUpdateCmd.AddCommand(gpuUpdateCmd)
 	gpuUpdateCmd.Flags().StringVarP(&gpuID, "id", "i", "", "Specify GPU id")
@@ -226,8 +242,8 @@ func NewGPUComputePartition(resp *aga.GPUComputePartition) *ShadowGPUComputePart
 
 func printGPUPartitionsJson(resp *aga.GPUComputePartition) {
 	partition := NewGPUComputePartition(resp)
-	b, _ := json.MarshalIndent(partition, "  ", " ")
-	fmt.Println(string(b))
+	b, _ := json.MarshalIndent(partition, "  ", "  ")
+	fmt.Printf("  %s", string(b))
 }
 
 func gpuPartitionsShowCmdHandler(cmd *cobra.Command, args []string) error {
@@ -310,6 +326,137 @@ func gpuPartitionsShowCmdHandler(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+type ShadowGPUCPEREntry struct {
+	GPU       string
+	CPEREntry []*aga.CPEREntry
+}
+
+func NewCPER(cper *aga.GPUCPEREntry) *ShadowGPUCPEREntry {
+	return &ShadowGPUCPEREntry{
+		GPU:       utils.IdToStr(cper.GetGPU()),
+		CPEREntry: cper.GetCPEREntry(),
+	}
+}
+
+func printGPUCPEREntryJson(cper *aga.GPUCPEREntry) {
+	b, _ := json.MarshalIndent(NewCPER(cper), "  ", "  ")
+	fmt.Printf("  %s", string(b))
+}
+
+func gpuCPERShowCmdHandler(cmd *cobra.Command, args []string) error {
+	if len(args) > 0 {
+		return fmt.Errorf("Invalid argument")
+	}
+	if cmd != nil {
+		if cmd.Flags().Changed("id") {
+			if err := utils.IsUUIDValid(gpuID); err != nil {
+				return err
+			}
+		}
+		cmd.SilenceUsage = true
+	}
+	respMsg := &aga.GPUCPERGetResponse{}
+	var req *aga.GPUCPERGetRequest
+	if cmd != nil && cmd.Flags().Changed("id") {
+		// get specific GPU
+		req = &aga.GPUCPERGetRequest{
+			Id: [][]byte{uuid.FromStringOrNil(gpuID).Bytes()},
+		}
+	} else {
+		// get all GPUs
+		req = &aga.GPUCPERGetRequest{
+			Id: [][]byte{},
+		}
+	}
+	switch strings.ToLower(severity) {
+	case "all":
+		req.Severity = aga.CPERSeverity_CPER_SEVERITY_NONE
+	case "non-fatal-uncorrected":
+		req.Severity = aga.CPERSeverity_CPER_SEVERITY_NON_FATAL_UNCORRECTED
+	case "fatal":
+		req.Severity = aga.CPERSeverity_CPER_SEVERITY_FATAL
+	case "non-fatal-corrected":
+		req.Severity = aga.CPERSeverity_CPER_SEVERITY_NON_FATAL_CORRECTED
+	default:
+		return fmt.Errorf("Invalid value specified for \"--severity\"")
+	}
+	// connect to GPU agent
+	c, ctxt, cancel, err := utils.CreateNewAGAGRPClient()
+	if err != nil {
+		return fmt.Errorf("Could not connect to the GPU agent, is agent " +
+			"running?")
+	}
+	defer c.Close()
+	defer cancel()
+
+	client := aga.NewGPUSvcClient(c)
+	respMsg, err = client.GPUCPERGet(ctxt, req)
+	if err != nil {
+		return fmt.Errorf("Getting GPU CPER failed, err %v", err)
+	}
+
+	if respMsg.ApiStatus != aga.ApiStatus_API_STATUS_OK {
+		return fmt.Errorf("Operation failed with %v error", respMsg.ApiStatus)
+	}
+
+	// print CPER information
+	if cmd != nil && cmd.Flags().Changed("json") {
+		// json output requires that all GPUs are listed within [] braces
+		if cmd.Flags().Changed("json") {
+			fmt.Printf("[\n")
+		}
+		rcvdResp := false
+		for _, cper := range respMsg.CPER {
+			if rcvdResp == true {
+				// json output requires a , after each GPU
+				fmt.Printf(",\n")
+			}
+			printGPUCPEREntryJson(cper)
+			rcvdResp = true
+		}
+		// json output requires that all GPUs are listed within [] braces
+		if cmd.Flags().Changed("json") {
+			fmt.Printf("\n]\n")
+		}
+	} else {
+		hdrLine := strings.Repeat("-", 156)
+		fmt.Println(hdrLine)
+		fmt.Printf("%-20s%-40s%-16s%-25s%-10s%-10s%-15s%-20s\n",
+			"Timestamp", "GPU", "RecordId", "Severity", "Revision", "CreatorId",
+			"NtfnType", "AMDFieldId")
+		fmt.Println(hdrLine)
+		for _, cper := range respMsg.CPER {
+			gpuStr := utils.IdToStr(cper.GetGPU())
+			for _, entry := range cper.GetCPEREntry() {
+				severityStr := strings.Replace(entry.GetSeverity().String(),
+					"CPER_SEVERITY_", "", -1)
+				ntfnTypeStr :=
+					strings.Replace(entry.GetNotificationType().String(),
+						"CPER_NOTIFICATION_TYPE_", "", -1)
+				ntfnTypeStr = strings.Replace(ntfnTypeStr, "_", "-", -1)
+
+				var afIdBuilder strings.Builder
+				indent := strings.Repeat(" ", 121)
+				for i, afId := range entry.GetAFId() {
+					afIdBuilder.WriteString(strconv.FormatUint(afId, 10))
+					if (i+1)%3 == 0 {
+						if i != len(entry.GetAFId())-1 {
+							afIdBuilder.WriteString("\n" + indent)
+						}
+					} else if i != len(entry.GetAFId())-1 {
+						afIdBuilder.WriteString(", ")
+					}
+				}
+				afIdStr := afIdBuilder.String()
+				fmt.Printf("%-20s%-40s%-16s%-25s%-10d%-10s%-15s%-20s\n",
+					entry.GetTimestamp(), gpuStr, entry.GetRecordId(),
+					severityStr, entry.GetRevision(), entry.GetCreatorId(),
+					ntfnTypeStr, afIdStr)
+			}
+		}
+	}
+	return nil
+}
 func gpuShowCmdHandler(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		return fmt.Errorf("Invalid argument")
@@ -693,8 +840,8 @@ func printGPUStatus(gpu *aga.GPU, statusOnly bool) {
 	fmt.Printf(indent+"%-38s : %d\n", "DRM render id", status.GetDRMRenderId())
 	fmt.Printf(indent+"%-38s : %d\n", "DRM card id", status.GetDRMCardId())
 	fmt.Printf(indent+"%-38s : %s\n", "Virtualization mode",
-	    strings.ToLower(strings.Replace(status.GetVirtualizationMode().String(),
-				"GPU_VIRTUALIZATION_MODE_", "", -1)))
+		strings.ToLower(strings.Replace(status.GetVirtualizationMode().String(),
+			"GPU_VIRTUALIZATION_MODE_", "", -1)))
 	fmt.Printf(indent+"%-38s : 0x%x\n", "GPU handle", status.GetGPUHandle())
 	if status.GetSerialNum() != "" {
 		fmt.Printf(indent+"%-38s : %s\n", "Serial number",
@@ -728,7 +875,7 @@ func printGPUStatus(gpu *aga.GPU, statusOnly bool) {
 	case aga.GPUComputePartitionType_GPU_COMPUTE_PARTITION_TYPE_NONE:
 		break
 	default:
-		fmt.Printf(indent+"%-38s : %d\n", "Partition ID",
+		fmt.Printf(indent+"%-38s : %d\n", "Partition Id",
 			status.GetPartitionId())
 	}
 	fwVer := status.GetFirmwareVersion()
@@ -1555,8 +1702,8 @@ func NewGPU(resp *aga.GPU) *ShadowGPU {
 
 func printGPUJson(resp *aga.GPU) {
 	gpu := NewGPU(resp)
-	b, _ := json.MarshalIndent(gpu, "  ", " ")
-	fmt.Println(string(b))
+	b, _ := json.MarshalIndent(gpu, "  ", "  ")
+	fmt.Printf("  %s", string(b))
 }
 
 func gpuUpdateCmdPreRunE(cmd *cobra.Command, args []string) error {

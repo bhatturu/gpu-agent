@@ -675,4 +675,23 @@ smi_gpu_get_bad_page_records (void *gpu_obj,
     return SDK_RET_OK;
 }
 
+sdk_ret_t
+smi_gpu_get_cper_entries (aga_gpu_handle_t gpu_handle,
+                          aga_cper_severity_t severity, aga_cper_info_t *info)
+{
+    info = {};
+    auto cper_entry = &info->cper_entry[info->num_cper_entry++];
+
+    cper_entry->record_id = "7:1";
+    cper_entry->severity = AGA_CPER_SEVERITY_FATAL;
+    cper_entry->revision = 256;
+
+    cper_entry->timestamp = "2025-09-12 15:00:27";
+    cper_entry->notification_type = AGA_CPER_NOTIFICATION_TYPE_MCE;
+    cper_entry->creator_id = "amdgpu";
+    cper_entry->num_af_id = 1;
+    cper_entry->af_id[0] = 30;
+    return SDK_RET_OK;
+}
+
 }    // namespace aga

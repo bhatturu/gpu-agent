@@ -724,4 +724,101 @@ aga_gpu_api_info_to_proto (aga_gpu_info_t *info, void *ctxt)
     aga_gpu_api_stats_to_proto(proto_stats, &info->stats);
 }
 
+// convert aga cper severity to proto
+static inline amdgpu::CPERSeverity
+aga_cper_severity_to_proto (aga_cper_severity_t severity)
+{
+    switch (severity) {
+    case AGA_CPER_SEVERITY_NON_FATAL_UNCORRECTED:
+        return amdgpu::CPER_SEVERITY_NON_FATAL_UNCORRECTED;
+        break;
+    case AGA_CPER_SEVERITY_FATAL:
+        return amdgpu::CPER_SEVERITY_FATAL;
+        break;
+    case AGA_CPER_SEVERITY_NON_FATAL_CORRECTED:
+        return amdgpu::CPER_SEVERITY_NON_FATAL_CORRECTED;
+        break;
+    default:
+        break;
+    }
+    return amdgpu::CPER_SEVERITY_NONE;
+}
+
+// convert aga cper notification type to proto
+static inline amdgpu::CPERNotificationType
+aga_cper_notification_type_to_proto (aga_cper_notification_type_t ntfn_type)
+{
+    switch (ntfn_type) {
+    case AGA_CPER_NOTIFICATION_TYPE_CMC:
+        return amdgpu::CPER_NOTIFICATION_TYPE_CMC;
+        break;
+    case AGA_CPER_NOTIFICATION_TYPE_CPE:
+        return amdgpu::CPER_NOTIFICATION_TYPE_CPE;
+        break;
+    case AGA_CPER_NOTIFICATION_TYPE_MCE:
+        return amdgpu::CPER_NOTIFICATION_TYPE_MCE;
+        break;
+    case AGA_CPER_NOTIFICATION_TYPE_PCIE:
+        return amdgpu::CPER_NOTIFICATION_TYPE_PCIE;
+        break;
+    case AGA_CPER_NOTIFICATION_TYPE_INIT:
+        return amdgpu::CPER_NOTIFICATION_TYPE_INIT;
+        break;
+    case AGA_CPER_NOTIFICATION_TYPE_NMI:
+        return amdgpu::CPER_NOTIFICATION_TYPE_NMI;
+        break;
+    case AGA_CPER_NOTIFICATION_TYPE_BOOT:
+        return amdgpu::CPER_NOTIFICATION_TYPE_BOOT;
+        break;
+    case AGA_CPER_NOTIFICATION_TYPE_DMAR:
+        return amdgpu::CPER_NOTIFICATION_TYPE_DMAR;
+        break;
+    case AGA_CPER_NOTIFICATION_TYPE_SEA:
+        return amdgpu::CPER_NOTIFICATION_TYPE_SEA;
+        break;
+    case AGA_CPER_NOTIFICATION_TYPE_SEI:
+        return amdgpu::CPER_NOTIFICATION_TYPE_SEI;
+        break;
+    case AGA_CPER_NOTIFICATION_TYPE_PEI:
+        return amdgpu::CPER_NOTIFICATION_TYPE_PEI;
+        break;
+    case AGA_CPER_NOTIFICATION_TYPE_CXL_COMPONENT:
+        return amdgpu::CPER_NOTIFICATION_TYPE_CXL_COMPONENT;
+        break;
+    default:
+        break;
+    }
+    return amdgpu::CPER_NOTIFICATION_TYPE_NONE;
+}
+
+// populate gpu cper information proto buf
+static inline void
+aga_gpu_cper_api_info_to_proto (aga_cper_info_t *info,
+                                void *ctxt)
+{
+    GPUCPEREntry *cper;
+    GPUCPERGetResponse *proto_rsp = (GPUCPERGetResponse *)ctxt;
+
+    if (!info->num_cper_entry) {
+        return;
+    }
+    cper = proto_rsp->add_cper();
+    cper->set_gpu(info->gpu.id, OBJ_MAX_KEY_LEN);
+    for (uint32_t i = 0; i < info->num_cper_entry; i++) {
+        auto cper_entry = cper->add_cperentry();
+        cper_entry->set_recordid(info->cper_entry[i].record_id);
+        cper_entry->set_severity(
+            aga_cper_severity_to_proto(info->cper_entry[i].severity));
+        cper_entry->set_revision(info->cper_entry[i].revision);
+        cper_entry->set_timestamp(info->cper_entry[i].timestamp);
+        cper_entry->set_creatorid(info->cper_entry[i].creator_id);
+        cper_entry->set_notificationtype(
+            aga_cper_notification_type_to_proto(
+                info->cper_entry[i].notification_type));
+        for (uint32_t j = 0; j < info->cper_entry[i].num_af_id; j++) {
+            cper_entry->add_afid(info->cper_entry[i].af_id[j]);
+        }
+    }
+}
+
 #endif    // __AGA_SVC_GPU_TO_PROTO_HPP__
