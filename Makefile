@@ -107,6 +107,8 @@ AMDSMI_BRANCH ?= rocm-7.0.0
 AMDSMI_COMMIT ?= 37d158a
 GIMSMI_BRANCH ?= mainline
 GIMSMI_COMMIT ?= mainline/8.3.0.K
+GPUAGENT_BRANCH ?= main
+GPUAGENT_COMMIT ?= 8fef2a6
 
 ROCM_VERSION ?= 7.0
 
@@ -123,8 +125,12 @@ export ${AMDSMI_BRANCH}
 export ${AMDSMI_COMMIT}
 export ${GIMSMI_BRANCH}
 export ${GIMSMI_COMMIT}
+export ${GPUAGENT_BRANCH}
+export ${GPUAGENT_COMMIT}
 
 ASSETS_PATH :=${TOP_DIR}/assets
+
+export ${ASSETS_PATH}
 # 22.04 - jammy
 # 24.04 - noble
 UBUNTU_VERSION ?= jammy
@@ -226,6 +232,7 @@ clean: pkg-clean
 	rm -rf docker/*.tar.gz
 	rm -rf build
 	rm -rf helm-charts/*.tgz
+	rm -rf helm-charts-k8s
 
 GOLANGCI_LINT = $(shell pwd)/bin/golangci-lint
 .PHONY: golangci-lint
@@ -466,10 +473,4 @@ gimsmi-compile-all:
 build-all: 
 	${MAKE} amdsmi-compile-all
 	${MAKE} gimsmi-compile-all
-	# no need to run this everytime, we build and copy assets once
-	#${MAKE} rocprofiler-compile
-	#${MAKE} gpuagent-compile
-	@echo "Docker image build is available under docker/ directory"
-	# TBD once we have fully working gpuagent shall include in docker build
-	#${MAKE} docker
 

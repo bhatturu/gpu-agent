@@ -40,11 +40,12 @@ done to respective components, then the component needs to be rebuilt
 accordingly. Exporter container built after any component built will pack the newly built components.
 
 
-|Component        |  Directory              |    Compilation Target            |
-|-----------------|-------------------------|----------------------------------|
-|amd-smi          | $(TOP_DIR)/libamdsmi    | `make amdsmi-compile-all`     | 
-|gpuagent         | $(TOP_DIR)/gpuagent     | `make gpuagent-compile-full`  |
-|rocprofilerclient| $(TOP_DIR)/rocprofilerclient `make rocprofiler-compile`    |
+| Component         | Directory                    | Compilation Target         |
+|-------------------|------------------------------|----------------------------|
+| amd-smi           | $(TOP_DIR)/libamdsmi         | `make amdsmi-compile-all`  |
+| gim-smi           | $(TOP_DIR)/libgimsmi         | `make gimsmi-compile-all`  |
+| gpuagent          | $(TOP_DIR)/gpuagent          | `make gpuagent-compile`    |
+| rocprofilerclient | $(TOP_DIR)/rocprofilerclient | `make rocprofiler-compile` |
 
 
 ### Build and Launch Docker Build Container Shell
@@ -79,12 +80,13 @@ To build a Debian package for Ubuntu:
 
 #### Build dependent libraries for packaging (once)
 ```bash
-make profiler-libdependent-assets
+make libcopy-assets
 ```
 
 #### Build package with all dependent libraries
 ```bash
 make pkg
+make UBUNTU_VERSION=noble pkg
 ```
 
 This will create `.deb` packages in the `bin` directory.
@@ -139,12 +141,6 @@ The AMD Device Metrics Exporter relies on [GPU Agent](https://github.com/ROCm/gp
 
 Developers can make changes directly in the GPU Agent repository, build the GPU Agent binary, and then integrate the built binaries into the Device Metrics Exporter project. Copy over the static binary into the `assets` folder in the AMD Device Metrics Exporter and follow these steps:
 
-#### Build Container (one time)
-```bash
-make gpuagent-build
-```
-
-#### Compile GPU Agent
 ```bash
 make gpuagent-compile
 ```
@@ -152,38 +148,32 @@ make gpuagent-compile
 ## Build ROC Profiler Module
 
 set the correct rocm version and run the target to create new libraries
-assocaited with specific rocm version
+associated with specific rocm version
 
 ```bash
-ROCM_VERSION=6.4.1 make profiler-libdependent-assets
-ROCM_VERSION=6.4.1 make rocprofiler-build
-ROCM_VERSION=6.4.1 make rocprofiler-compile
+ROCM_VERSION=7.0 make libcopy-assets
 ```
 
 ## Build AMD SMI
 This is a built out of [AMD SMI Lib](git@github.com:ROCm/amdsmi.git), to
 access AMD GPU hardware driver
 
-#### Build Container (one time)
 ```bash
-make amdsmi-build
+make amdsmi-compile-all
 ```
 
-#### Compile AMDSMI
+## Build GIM SMI
+This is build out of [GIM SMI Lib], to access Virtualized AMD GPU hardware
+driver
+
 ```bash
-make amdsmi-compile
+make gimsmi-compile-all
 ```
 
 ## Build Rocprofiler Library
 This is exporter library built out of ROCm rocprofiler-sdk to access profiler
 metrics.
 
-#### Build Container(one time)
-```bash
-make rocprofiler-build
-```
-
-#### Compile application rocprofiler library
 ```bash
 make rocprofiler-compile
 ```
