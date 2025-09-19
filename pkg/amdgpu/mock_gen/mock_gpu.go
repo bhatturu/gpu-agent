@@ -58,6 +58,26 @@ func (m *MockGPUSvcClient) EXPECT() *MockGPUSvcClientMockRecorder {
 	return m.recorder
 }
 
+// GPUCPERGet mocks base method.
+func (m *MockGPUSvcClient) GPUCPERGet(ctx context.Context, in *amdgpu.GPUCPERGetRequest, opts ...grpc.CallOption) (*amdgpu.GPUCPERGetResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GPUCPERGet", varargs...)
+	ret0, _ := ret[0].(*amdgpu.GPUCPERGetResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GPUCPERGet indicates an expected call of GPUCPERGet.
+func (mr *MockGPUSvcClientMockRecorder) GPUCPERGet(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GPUCPERGet", reflect.TypeOf((*MockGPUSvcClient)(nil).GPUCPERGet), varargs...)
+}
+
 // GPUComputePartitionGet mocks base method.
 func (m *MockGPUSvcClient) GPUComputePartitionGet(ctx context.Context, in *amdgpu.GPUComputePartitionGetRequest, opts ...grpc.CallOption) (*amdgpu.GPUComputePartitionGetResponse, error) {
 	m.ctrl.T.Helper()
@@ -220,6 +240,21 @@ func NewMockGPUSvcServer(ctrl *gomock.Controller) *MockGPUSvcServer {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockGPUSvcServer) EXPECT() *MockGPUSvcServerMockRecorder {
 	return m.recorder
+}
+
+// GPUCPERGet mocks base method.
+func (m *MockGPUSvcServer) GPUCPERGet(arg0 context.Context, arg1 *amdgpu.GPUCPERGetRequest) (*amdgpu.GPUCPERGetResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GPUCPERGet", arg0, arg1)
+	ret0, _ := ret[0].(*amdgpu.GPUCPERGetResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GPUCPERGet indicates an expected call of GPUCPERGet.
+func (mr *MockGPUSvcServerMockRecorder) GPUCPERGet(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GPUCPERGet", reflect.TypeOf((*MockGPUSvcServer)(nil).GPUCPERGet), arg0, arg1)
 }
 
 // GPUComputePartitionGet mocks base method.

@@ -64,6 +64,7 @@ const (
 	GPUSvc_GPUComputePartitionGet_FullMethodName = "/amdgpu.GPUSvc/GPUComputePartitionGet"
 	GPUSvc_GPUMemoryPartitionSet_FullMethodName  = "/amdgpu.GPUSvc/GPUMemoryPartitionSet"
 	GPUSvc_GPUMemoryPartitionGet_FullMethodName  = "/amdgpu.GPUSvc/GPUMemoryPartitionGet"
+	GPUSvc_GPUCPERGet_FullMethodName             = "/amdgpu.GPUSvc/GPUCPERGet"
 	GPUSvc_GPUReset_FullMethodName               = "/amdgpu.GPUSvc/GPUReset"
 )
 
@@ -85,6 +86,8 @@ type GPUSvcClient interface {
 	GPUMemoryPartitionSet(ctx context.Context, in *GPUMemoryPartitionSetRequest, opts ...grpc.CallOption) (*GPUMemoryPartitionSetResponse, error)
 	// GPU memory partition get API
 	GPUMemoryPartitionGet(ctx context.Context, in *GPUMemoryPartitionGetRequest, opts ...grpc.CallOption) (*GPUMemoryPartitionGetResponse, error)
+	// GPU CPER get API
+	GPUCPERGet(ctx context.Context, in *GPUCPERGetRequest, opts ...grpc.CallOption) (*GPUCPERGetResponse, error)
 	// operational APIs or tasks
 	// GPU reset API
 	GPUReset(ctx context.Context, in *GPUResetRequest, opts ...grpc.CallOption) (*GPUResetResponse, error)
@@ -158,6 +161,16 @@ func (c *gPUSvcClient) GPUMemoryPartitionGet(ctx context.Context, in *GPUMemoryP
 	return out, nil
 }
 
+func (c *gPUSvcClient) GPUCPERGet(ctx context.Context, in *GPUCPERGetRequest, opts ...grpc.CallOption) (*GPUCPERGetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GPUCPERGetResponse)
+	err := c.cc.Invoke(ctx, GPUSvc_GPUCPERGet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *gPUSvcClient) GPUReset(ctx context.Context, in *GPUResetRequest, opts ...grpc.CallOption) (*GPUResetResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GPUResetResponse)
@@ -186,6 +199,8 @@ type GPUSvcServer interface {
 	GPUMemoryPartitionSet(context.Context, *GPUMemoryPartitionSetRequest) (*GPUMemoryPartitionSetResponse, error)
 	// GPU memory partition get API
 	GPUMemoryPartitionGet(context.Context, *GPUMemoryPartitionGetRequest) (*GPUMemoryPartitionGetResponse, error)
+	// GPU CPER get API
+	GPUCPERGet(context.Context, *GPUCPERGetRequest) (*GPUCPERGetResponse, error)
 	// operational APIs or tasks
 	// GPU reset API
 	GPUReset(context.Context, *GPUResetRequest) (*GPUResetResponse, error)
@@ -216,6 +231,9 @@ func (UnimplementedGPUSvcServer) GPUMemoryPartitionSet(context.Context, *GPUMemo
 }
 func (UnimplementedGPUSvcServer) GPUMemoryPartitionGet(context.Context, *GPUMemoryPartitionGetRequest) (*GPUMemoryPartitionGetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GPUMemoryPartitionGet not implemented")
+}
+func (UnimplementedGPUSvcServer) GPUCPERGet(context.Context, *GPUCPERGetRequest) (*GPUCPERGetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GPUCPERGet not implemented")
 }
 func (UnimplementedGPUSvcServer) GPUReset(context.Context, *GPUResetRequest) (*GPUResetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GPUReset not implemented")
@@ -349,6 +367,24 @@ func _GPUSvc_GPUMemoryPartitionGet_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GPUSvc_GPUCPERGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GPUCPERGetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GPUSvcServer).GPUCPERGet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GPUSvc_GPUCPERGet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GPUSvcServer).GPUCPERGet(ctx, req.(*GPUCPERGetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _GPUSvc_GPUReset_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GPUResetRequest)
 	if err := dec(in); err != nil {
@@ -397,6 +433,10 @@ var GPUSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GPUMemoryPartitionGet",
 			Handler:    _GPUSvc_GPUMemoryPartitionGet_Handler,
+		},
+		{
+			MethodName: "GPUCPERGet",
+			Handler:    _GPUSvc_GPUCPERGet_Handler,
 		},
 		{
 			MethodName: "GPUReset",

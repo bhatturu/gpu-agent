@@ -423,6 +423,18 @@ func (ga *GPUAgentClient) getEvents(severity amdgpu.EventSeverity) (*amdgpu.Even
 	return res, err
 }
 
+func (ga *GPUAgentClient) getGPUCPER() (*amdgpu.GPUCPERGetResponse, error) {
+	ctx, cancel := context.WithTimeout(ga.ctx, queryTimeout)
+	defer cancel()
+
+	res, err := ga.gpuclient.GPUCPERGet(ctx, &amdgpu.GPUCPERGetRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 // ListWorkloads - get all workloads from every client , lock must be taken by
 // the caller
 func (ga *GPUAgentClient) ListWorkloads() (wls map[string]scheduler.Workload, err error) {

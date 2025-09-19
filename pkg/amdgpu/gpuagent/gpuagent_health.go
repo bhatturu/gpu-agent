@@ -160,6 +160,7 @@ func (ga *GPUAgentClient) processHealthValidation() error {
 
 	var gpumetrics *amdgpu.GPUGetResponse
 	var evtData *amdgpu.EventResponse
+	var gpuCper *amdgpu.GPUCPERGetResponse
 	var newGPUState map[string]*metricssvc.GPUState
 
 	errOccured := false
@@ -178,6 +179,24 @@ func (ga *GPUAgentClient) processHealthValidation() error {
 				logger.Log.Printf("gpuid[%v] is set to unhealthy for evt[%+v]", gpuid, e)
 			} else {
 				logger.Log.Printf("ignoring invalid gpuid[%v] is set to unhealthy for evt[%+v]", gpuuid, e)
+			}
+		}
+	}
+	cperErrCheck := func(c *amdgpu.GPUCPEREntry) {
+		uuid, _ := uuid.FromBytes(c.GPU)
+		gpuuid := uuid.String()
+		for _, record := range c.CPEREntry {
+			ts := record.GetTimestamp()
+			logger.Log.Printf("gpuuid=%v TimeStamp=%v RecordId=%v Severity=%v Revision=%v CreatorId=%v",
+				gpuuid, ts, record.RecordId, record.Severity.String(), record.Revision, record.CreatorId)
+			logger.Log.Printf("NotificationType=%v AFID=%+v", record.NotificationType.String(), record.AFId)
+			if record.Severity == amdgpu.CPERSeverity_CPER_SEVERITY_FATAL {
+				if gpuid, ok := gpuUUIDMap[gpuuid]; ok {
+					newGPUState[gpuid].Health = strings.ToLower(metricssvc.GPUHealth_UNHEALTHY.String())
+					logger.Log.Printf("gpuid[%v] is set to unhealthy for cper[%+v]", gpuid, c)
+				} else {
+					logger.Log.Printf("ignoring invalid gpuid[%v] is set to unhealthy for cper[%+v]", gpuuid, c)
+				}
 			}
 		}
 	}
@@ -202,16 +221,26 @@ func (ga *GPUAgentClient) processHealthValidation() error {
 		gpuUUIDMap[gpuuid] = gpuid
 	}
 
-	// for gim driver we disable events for now
-	if !ga.enableSriov {
+	// disable events for gpus with sriov or sim enabled
+	if !(ga.enableSriov || utils.IsSimEnabled()) {
 		evtData, err = ga.getEvents(amdgpu.EventSeverity_EVENT_SEVERITY_CRITICAL)
 		if err != nil || (evtData != nil && evtData.ApiStatus != 0) {
-			errOccured = true
+			// ignore event errors log only
 			logger.Log.Printf("gpuagent get events failed %v", err)
 		} else {
 			// business logic for health detection
 			for _, evt := range evtData.Event {
 				eventErrCheck(evt)
+			}
+		}
+		gpuCper, err = ga.getGPUCPER()
+		if err != nil || (gpuCper != nil && gpuCper.ApiStatus != 0) {
+			// ignore cper errors log only
+			logger.Log.Printf("gpuagent get cper failed %v", err)
+		} else {
+			// business logic for health detection
+			for _, cper := range gpuCper.CPER {
+				cperErrCheck(cper)
 			}
 		}
 	}

@@ -113,9 +113,29 @@ func setupTest(t *testing.T) func(t *testing.T) {
 		},
 	}
 
+	cper_mockresp := &amdgpu.GPUCPERGetResponse{
+		ApiStatus: amdgpu.ApiStatus_API_STATUS_OK,
+		CPER: []*amdgpu.GPUCPEREntry{
+			{
+				GPU: []byte("72ff740f-0000-1000-804c-3b58bf67050e"),
+				CPEREntry: []*amdgpu.CPEREntry{
+					{
+						RecordId:         "1",
+						Severity:         amdgpu.CPERSeverity_CPER_SEVERITY_FATAL,
+						Revision:         1,
+						Timestamp:        "2022-01-01T00:00:00Z",
+						NotificationType: amdgpu.CPERNotificationType_CPER_NOTIFICATION_TYPE_CMC,
+						AFId:             []uint64{30, 34},
+					},
+				},
+			},
+		},
+	}
+
 	gomock.InOrder(
 		gpuMockCl.EXPECT().GPUGet(gomock.Any(), gomock.Any()).Return(gpumock_resp, nil).AnyTimes(),
 		eventMockCl.EXPECT().EventGet(gomock.Any(), gomock.Any()).Return(event_mockcriticalresp, nil).AnyTimes(),
+		gpuMockCl.EXPECT().GPUCPERGet(gomock.Any(), gomock.Any()).Return(cper_mockresp, nil).AnyTimes(),
 	)
 
 	mConfig = config.NewConfigHandler("config.json", globals.GPUAgentPort)

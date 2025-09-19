@@ -44,6 +44,10 @@ func GetNodeName() string {
 	return ""
 }
 
+func IsSimEnabled() bool {
+	return os.Getenv("SIMENABLED") == "1"
+}
+
 func IsDebianInstall() bool {
 	_, err := os.Stat(ServiceFile)
 	return err == nil
