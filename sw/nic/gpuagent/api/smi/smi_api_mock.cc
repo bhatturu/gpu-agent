@@ -21,6 +21,9 @@ limitations under the License.
 //----------------------------------------------------------------------------
 
 #include <random>
+#include <sstream>
+#include <iomanip>
+#include <iostream>
 #include "nic/sdk/include/sdk/base.hpp"
 #include "nic/sdk/lib/event_thread/event_thread.hpp"
 #include "nic/gpuagent/core/aga_core.hpp"
@@ -679,14 +682,20 @@ sdk_ret_t
 smi_gpu_get_cper_entries (aga_gpu_handle_t gpu_handle,
                           aga_cper_severity_t severity, aga_cper_info_t *info)
 {
-    info = {};
+    uint64_t gpu_key;
+    std::ostringstream oss;
     auto cper_entry = &info->cper_entry[info->num_cper_entry++];
 
-    cper_entry->record_id = "7:1";
+    gpu_key = (uint64_t)gpu_handle;
+    oss << (gpu_key % 8) + 1 << ":" << (gpu_key+ 5) % 8 + 1;
+    cper_entry->record_id = oss.str();
     cper_entry->severity = AGA_CPER_SEVERITY_FATAL;
     cper_entry->revision = 256;
 
-    cper_entry->timestamp = "2025-09-12 15:00:27";
+    oss.str("");
+    oss << std::setfill('0') << "2025-09-" << std::setw(2) <<
+        (gpu_key % 31) + 1 << " 15:00:" << std::setw(2) << (gpu_key % 60) + 1;
+    cper_entry->timestamp = oss.str();
     cper_entry->notification_type = AGA_CPER_NOTIFICATION_TYPE_MCE;
     cper_entry->creator_id = "amdgpu";
     cper_entry->num_af_id = 1;
