@@ -1,30 +1,39 @@
 DEBIAN_CONTROL = ${TOP_DIR}/debian/DEBIAN/control
+DEBIAN_SRIOV_CONTROL = ${TOP_DIR}/debian-sriov/DEBIAN/control
 BUILD_VER_ENV = ${DEBIAN_VERSION}~$(UBUNTU_VERSION_NUMBER)
 GPUAGENT_LIBS := ${ASSETS_PATH}/amd_smi_lib/x86_64/${UBUNTU_LIBDIR}/lib
 GPUAGENT_LIBS_RHEL9 := ${ASSETS_PATH}/amd_smi_lib/x86_64/RHEL9/lib
+GPUAGENT_SRIOV_LIBS := ${ASSETS_PATH}/gim_smi_lib/x86_64/${UBUNTU_LIBDIR}/lib
+GPUAGENT_SRIOV_LIBS_RHEL9 := ${ASSETS_PATH}/gim_smi_lib/x86_64/RHEL9/lib
 PROFILER_DEB_LIBS := ${TOP_DIR}/build/assets/${UBUNTU_LIBDIR}/profilerlibs/
 PROFILER_RPM_LIBS_RHEL9 := ${TOP_DIR}/build/assets/RHEL9/profilerlibs/
 ROCPROFILER_ASSETS := ${ASSETS_PATH}/rocprofiler
 PKG_PATH := ${TOP_DIR}/debian/usr/local/bin
+PKG_SRIOV_PATH := ${TOP_DIR}/debian-sriov/usr/local/bin
 RPM_PATH := ${TOP_DIR}/SOURCES/
 PKG_LIB_PATH := ${TOP_DIR}/debian/usr/local/metrics
+PKG_SRIOV_LOCAL_PATH := ${TOP_DIR}/debian-sriov/usr/local
+PKG_SRIOV_LIB_PATH := ${TOP_DIR}/debian-sriov/usr/local/metrics
 ROCPROFLER_SDK_ASSETS :=  ${ASSETS_PATH}/rocprofiler-sdk
 SDK_COUNTER_DEF := ${TOP_DIR}/debian/usr/local/metrics/share/rocprofiler-sdk
 LUA_PROTO := ${TOP_DIR}/pkg/amdgpu/proto/luaplugin.proto
+LIB_CONF_PATH := ${TOP_DIR}/debian/usr/local/etc/metrics/gpuagent.conf
 PKG_LUA_PATH := ${TOP_DIR}/debian/usr/local/etc/metrics/slurm
+PKG_SRIOV_LUA_PATH := ${TOP_DIR}/debian-sriov/usr/local/etc/metrics/slurm
 METRICS_CONF_DIR := ${TOP_DIR}/debian/etc
+METRICS_SRIOV_CONF_DIR := ${TOP_DIR}/debian-sriov/etc
 METRICS_CONF_PATH := ${METRICS_CONF_DIR}/metrics
-GPUAGENT_BUILT_BIN := ${TOP_DIR}/build/assets/gpuagent
+METRICS_SRIOV_CONF_PATH := ${METRICS_SRIOV_CONF_DIR}/metrics
 BUILT_LIB_PATH := ${TOP_DIR}/build/assets/${UBUNTU_LIBDIR}/exporterout/
 BUILT_LIB_RHEL9_PATH := ${TOP_DIR}/build/assets/RHEL9/exporterout/lib
 RPM_DIR_NAME := amdgpu-exporter-$(RPM_BUILD_VERSION)-$(RPM_RELEASE_LABEL)
 RPM_PACKAGE_DIR := ${TOP_DIR}/${RPM_DIR_NAME}
 
 
-.PHONY: deppkg debpkg-clean rpmpkg rpmpkg-clean pkg pkg-clean
+.PHONY: deppkg debpkg-clean rpmpkg rpmpkg-clean pkg pkg-clean debpkg-sriov-clean debpkg-sriov
 pkg: debpkg rpmpkg
 
-pkg-clean: debpkg-clean rpmpkg-clean
+pkg-clean: debpkg-clean debpkg-sriov-clean rpmpkg-clean
 
 rpmpkg-clean:
 	echo "clean rpm package"
@@ -88,6 +97,10 @@ debpkg-clean:
 	rm -rf ${TOP_DIR}/bin/*.deb
 	rm -rf ${PKG_LIB_PATH} ${PKG_PATH}
 
+debpkg-sriov-clean:
+	rm -rf ${TOP_DIR}/bin/amdgpu-exporter-sriov*.deb
+	rm -rf ${PKG_SRIOV_PATH} ${PKG_SRIOV_LOCAL_PATH}
+
 debpkg: debpkg-clean
 	${MAKE} amdexporter
 	@echo "Building debian for $(BUILD_VER_ENV)"
@@ -96,21 +109,10 @@ debpkg: debpkg-clean
 	@mkdir -p ${METRICS_CONF_PATH}
 	@mkdir -p ${PKG_PATH}
 	@mkdir -p ${SDK_COUNTER_DEF}
-	@if [ -f ${GPUAGENT_BUILT_BIN} ]; then \
-		echo "Copying newly built gpuagent";\
-		cp -rvf ${GPUAGENT_BUILT_BIN} ${PKG_PATH}/; \
-	else \
-		echo "Copying prebuilt gpuagent";\
-		tar -xf ${ASSETS_PATH}/gpuagent_static.bin.gz -C ${PKG_PATH}/; \
-	fi
-	@if [ -d ${BUILT_LIB_PATH} ]; then \
-		echo "Copying newly built amdsmi and dependent libraries";\
-		mkdir -p ${PKG_LIB_PATH}/lib/;\
-		cp -rvf ${BUILT_LIB_PATH}/ ${PKG_LIB_PATH}/lib/;\
-	else \
-		echo "Copy prebuilt libraries"; \
-		cp -rvf ${GPUAGENT_LIBS}/ ${PKG_LIB_PATH}; \
-	fi
+	@echo "Copying prebuilt gpuagent"
+	@tar -xf ${ASSETS_PATH}/gpuagent_static.bin.gz -C ${PKG_PATH}/
+	@echo "Copy prebuilt libraries"
+	@cp -rvf ${GPUAGENT_LIBS}/ ${PKG_LIB_PATH}
 	@if [ ! -d $(PROFILER_DEB_LIBS) ]; then \
 		echo "profiler dependent assets not built, run target libcopy-assets-${UBUNTU_LIBDIR}";\
 		exit 1;\
@@ -157,4 +159,52 @@ debpkg: debpkg-clean
 	@git checkout $(DEBIAN_CONTROL)
 	# rename for internal build
 	@mv -vf ${TOP_DIR}/bin/amdgpu-exporter_*~${UBUNTU_VERSION_NUMBER}_amd64.deb ${TOP_DIR}/bin/amdgpu-exporter_${UBUNTU_VERSION_NUMBER}_amd64.deb
+
+debpkg-sriov: debpkg-sriov-clean
+	${MAKE} amdexporter
+	@echo "Building sriov debian for $(BUILD_VER_ENV)"
+	@mkdir -p ${PKG_SRIOV_LIB_PATH}
+	@mkdir -p ${METRICS_SRIOV_CONF_PATH}
+	@mkdir -p ${PKG_SRIOV_PATH}
+	@mkdir -p ${PKG_SRIOV_LUA_PATH}
+	@echo "Copying prebuilt gpuagent"
+	@tar -xf ${ASSETS_PATH}/gpuagent_sriov_static.bin.gz -C ${PKG_SRIOV_PATH}/
+	@echo "Copy prebuilt libraries"
+	@cp -rvf ${GPUAGENT_SRIOV_LIBS}/ ${PKG_SRIOV_LIB_PATH}
+	@cp -rvf  ${PKG_LUA_PATH} ${PKG_SRIOV_LUA_PATH}
+	@cp -vf ${LIB_CONF_PATH} ${PKG_SRIOV_LUA_PATH}/../
+	@echo "Copying techsupport tool"
+	@cp -vaf ${TOP_DIR}/tools/techsupport/metrics-exporter-ts.sh ${PKG_SRIOV_PATH}/
+	@chmod +x ${PKG_SRIOV_PATH}/metrics-exporter-ts.sh
+	ls -lart ${PKG_SRIOV_LIB_PATH}/lib
+	#copy default config
+	@jq '.CommonConfig.HealthService.Enable = false | del(.GPUConfig.ExtraPodLabels, .GPUConfig.Fields, .GPUConfig.ProfilerMetrics, .NICConfig)' $(CONFIG_DIR)/config.json > ${METRICS_SRIOV_CONF_PATH}/config.json
+	@cat ${METRICS_SRIOV_CONF_PATH}/config.json
+	# list all the files
+	@ls -lart ${PKG_SRIOV_LIB_PATH}/lib
+	#copy and strip files
+	@chmod +x ${PKG_SRIOV_PATH}/gpuagent
+	@ls -alsh ${PKG_SRIOV_PATH}/gpuagent
+	#strip prebuilt binaries
+	@strip ${PKG_SRIOV_PATH}/gpuagent
+	@mv -vf ${PKG_SRIOV_PATH}/gpuagent ${PKG_SRIOV_PATH}/gpuagent-sriov
+	@ls -alsh ${PKG_SRIOV_PATH}/gpuagent-sriov
+	@cd ${PKG_SRIOV_PATH} && strip ${PKG_SRIOV_PATH}/gpuagent-sriov
+	@cp -vf ${LUA_PROTO} ${PKG_SRIOV_LUA_PATH}/plugin.proto
+	@cp -vf ${ASSETS_PATH}/gpuctl.gobin ${PKG_SRIOV_PATH}/gpuctl
+	@cp -vf $(CURDIR)/bin/amd-metrics-exporter ${PKG_SRIOV_PATH}/amd-metrics-exporter-sriov
+	@strip ${PKG_SRIOV_PATH}/amd-metrics-exporter-sriov
+	@cp -vf $(CURDIR)/bin/metricsclient ${PKG_SRIOV_PATH}/
+	@cd ${TOP_DIR}
+	@sed -i "s/BUILD_VER_ENV/$(BUILD_VER_ENV)/g" $(DEBIAN_SRIOV_CONTROL)
+	@dpkg-deb -Zxz --build debian-sriov ${TOP_DIR}/bin
+	#remove copied files
+	@rm -rf ${PKG_SRIOV_PATH}
+	@rm -rf ${PKG_SRIOV_LIB_PATH}
+	@rm -rf ${METRICS_SRIOV_CONF_DIR}
+	@rm -rf ${PKG_SRIOV_LUA_PATH}
+	# revert the dynamic version set file
+	@git checkout $(DEBIAN_SRIOV_CONTROL)
+	# rename for internal build
+	@mv -vf ${TOP_DIR}/bin/amdgpu-exporter-sriov_*~${UBUNTU_VERSION_NUMBER}_amd64.deb ${TOP_DIR}/bin/amdgpu-exporter-sriov_${UBUNTU_VERSION_NUMBER}_amd64.deb
 

@@ -21,10 +21,16 @@
 
 DEPLOYMENT="baremetal"
 SYSTEM_SERVICE_NAME="amd-metrics-exporter.service"
+SRIOV_SERVICE_NAME="amd-metrics-exporter-sriov.service"
 
 if [ ! -f "/etc/systemd/system/$SYSTEM_SERVICE_NAME" ] && [ ! -f "/lib/systemd/system/$SYSTEM_SERVICE_NAME" ]; then
     DEPLOYMENT="container"
 fi
+
+if [ ! -f "/etc/systemd/system/$SRIOV_SERVICE_NAME" ] && [ ! -f "/lib/systemd/system/$SRIOV_SERVICE_NAME" ]; then
+    DEPLOYMENT="container"
+fi
+
 
 echo "Deployment type: $DEPLOYMENT"
 # Initialize log files array for archiving
@@ -49,6 +55,14 @@ if [ "$DEPLOYMENT" == "baremetal" ]; then
     
 fi
 
+# Check for SRIOV service
+if systemctl list-unit-files | grep -q "$SRIOV_SERVICE_NAME"; then
+    echo "Collecting SRIOV service logs..."
+    sudo journalctl -xu amd-metrics-exporter-sriov > amd-metrics-exporter-sriov.log
+    sudo journalctl -xu gpuagent-sriov > amd-gpu-agent-sriov.log
+    LOG_FILES+=("amd-metrics-exporter-sriov.log")
+fi
+
 # Add existing log files if they exist
 [ -f "/var/log/exporter.log" ] && LOG_FILES+=("/var/log/exporter.log")
 for gpu_log in /var/log/gpu-agent*.log; do
@@ -57,6 +71,15 @@ done
 
 # Add configuration file if it exists
 [ -f "/etc/metrics/config.json" ] && LOG_FILES+=("/etc/metrics/config.json")
+
+
+# Collect gpuctl output
+if command -v gpuctl &> /dev/null; then
+    gpuctl show gpu all > gpuctl-show-gpu-all.log 2>&1
+    LOG_FILES+=("gpuctl-show-gpu-all.log")
+else
+    echo "gpuctl command not found, skipping GPU information collection"
+fi
 
 # Archive log files
 ARCHIVE_NAME="amd-metrics-exporter-techsupport-$(date +%Y%m%d-%H%M%S).tar.gz"

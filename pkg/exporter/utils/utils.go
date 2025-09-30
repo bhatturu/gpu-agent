@@ -31,7 +31,8 @@ import (
 )
 
 const (
-	ServiceFile = "/usr/lib/systemd/system/amd-metrics-exporter.service"
+	ServiceFile      = "/usr/lib/systemd/system/amd-metrics-exporter.service"
+	SriovServiceFile = "/usr/lib/systemd/system/amd-metrics-exporter-sriov.service"
 )
 
 func GetNodeName() string {
@@ -49,8 +50,13 @@ func IsSimEnabled() bool {
 }
 
 func IsDebianInstall() bool {
-	_, err := os.Stat(ServiceFile)
-	return err == nil
+	serviceFiles := []string{ServiceFile, SriovServiceFile}
+	for _, file := range serviceFiles {
+		if _, err := os.Stat(file); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func IsKubernetes() bool {
