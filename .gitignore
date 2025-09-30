@@ -12,3 +12,5 @@ build*
 helm-charts/config.json
 sw/nic/build/
 rocprofilerclient/build/
+build/
+amdgpu-exporter-*/

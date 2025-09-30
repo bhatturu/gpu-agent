@@ -2,7 +2,7 @@
 version: 2.0
 builds:
   build-debian-package-ub22.04:
-    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make libcopy-assets-UBUNTU22 pkg"]
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make libcopy-assets-UBUNTU22 debpkg"]
     owners: ["email:prshanmug@amd.com"]
     area:
     sub-area:
@@ -11,13 +11,22 @@ builds:
         - /device-metrics-exporter/bin/amdgpu-exporter_22.04_amd64.deb
 
   build-debian-package-ub24.04:
-    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make UBUNTU_VERSION=noble libcopy-assets-UBUNTU24 pkg"]
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make UBUNTU_VERSION=noble libcopy-assets-UBUNTU24 debpkg"]
     owners: ["email:prshanmug@amd.com"]
     area:
     sub-area:
     feature:
     artifacts:
         - /device-metrics-exporter/bin/amdgpu-exporter_24.04_amd64.deb
+
+  build-rpm-package-rhel9:
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make libcopy-assets-RHEL9 rpmpkg"]
+    owners: ["email:prshanmug@amd.com"]
+    area:
+    sub-area:
+    feature:
+    artifacts:
+        - /device-metrics-exporter/bin/amdgpu-exporter-rhel9.x86_64.rpm
 
   build-device-metrics-exporter-docker-sriov-ubi9.6:
     commands: ["sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make all && \

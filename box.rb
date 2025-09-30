@@ -1,4 +1,4 @@
-from "registry.test.pensando.io:5000/device-metrics-exporter-build:v1.5"
+from "registry.test.pensando.io:5000/device-metrics-exporter-build:v1.7"
 
 user = getenv("USER")
 group = getenv("GROUP_NAME")
@@ -15,10 +15,6 @@ run "curl -k -o /usr/bin/asset-push http://pm.test.pensando.io/tools/asset-push"
 run "chmod +x /usr/bin/asset-push"
 copy "asset-build/exporter-asset-push.sh", "/exporter-asset-push.sh"
 run "chmod +x /exporter-asset-push.sh"
-
-# install yq
-run "wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64"
-run "chmod a+x /usr/local/bin/yq"
 
 if user == "root"
   # update user .bash_profile
