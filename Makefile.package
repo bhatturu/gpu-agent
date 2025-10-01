@@ -17,7 +17,7 @@ METRICS_CONF_PATH := ${METRICS_CONF_DIR}/metrics
 GPUAGENT_BUILT_BIN := ${TOP_DIR}/build/assets/gpuagent
 BUILT_LIB_PATH := ${TOP_DIR}/build/assets/${UBUNTU_LIBDIR}/exporterout/
 BUILT_LIB_RHEL9_PATH := ${TOP_DIR}/build/assets/RHEL9/exporterout/lib
-RPM_DIR_NAME := amdgpu-exporter-${DEBIAN_VERSION}
+RPM_DIR_NAME := amdgpu-exporter-$(RPM_BUILD_VERSION)-$(RPM_RELEASE_LABEL)
 RPM_PACKAGE_DIR := ${TOP_DIR}/${RPM_DIR_NAME}
 
 
@@ -72,8 +72,8 @@ rpmpkg: rpmpkg-clean
 	@mkdir -p ${RPM_PATH}
 	@tar czvf ${RPM_DIR_NAME}.tar.gz ${RPM_DIR_NAME}
 	@mv -vf ${RPM_DIR_NAME}.tar.gz ${RPM_PATH}/
-	@tar czf amdgpu-exporter-${RPM_BUILD_VERSION}.tar.gz ${RPM_DIR_NAME}
-	@mv amdgpu-exporter-${RPM_BUILD_VERSION}.tar.gz ${RPM_PATH}
+	@tar czf amdgpu-exporter-$(RPM_BUILD_VERSION)-$(RPM_RELEASE_LABEL).tar.gz ${RPM_DIR_NAME}
+	@mv amdgpu-exporter-$(RPM_BUILD_VERSION)-$(RPM_RELEASE_LABEL).tar.gz ${RPM_PATH}
 	# set the version in the spec file
 	@sed -i "s/RPM_BUILD_VERSION/$(RPM_BUILD_VERSION)/g" rpmbuild/amdgpu-exporter.spec
 	@sed -i "s/RPM_RELEASE_LABEL/$(RPM_RELEASE_LABEL)/g" rpmbuild/amdgpu-exporter.spec

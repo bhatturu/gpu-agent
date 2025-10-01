@@ -84,6 +84,7 @@ targets:
         - build-helm-artifact
         - build-debian-package-ub22.04
         - build-debian-package-ub24.04
+        - build-rpm-package-rhel9
         - e2e-build-mock-exporter
 
   test-runner-sanity:
