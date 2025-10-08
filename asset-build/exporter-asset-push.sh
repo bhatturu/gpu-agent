@@ -50,6 +50,7 @@ copy_artifacts () {
     cp /device-metrics-exporter/bin/amdgpu-exporter-sriov_24.04_amd64.deb  $BUNDLE_DIR/amdgpu-exporter-sriov__${DEBIAN_VERSION}~24.04_amd64.deb
     # copy rpm rhel9 packages
     cp /device-metrics-exporter/bin/amdgpu-exporter-rhel9.x86_64.rpm $BUNDLE_DIR/amdgpu-exporter-${DEBIAN_VERSION}.x86_64.rpm
+    cp /device-metrics-exporter/bin/amdgpu-exporter-sriov-rhel9.x86_64.rpm $BUNDLE_DIR/amdgpu-exporter-sriov-${DEBIAN_VERSION}.x86_64.rpm
     # copy helm charts
     cp /device-metrics-exporter/helm-charts/device-metrics-exporter-charts.tgz $BUNDLE_DIR/device-metrics-exporter-charts-$RELEASE.tgz
     # copy techsupport scripts
