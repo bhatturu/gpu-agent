@@ -734,6 +734,47 @@ func (s *E2ESuite) Test019ECCErrorInjection(c *C) {
 	}, 10*time.Second, 1*time.Second)
 }
 
+func (s *E2ESuite) Test020ProfilerFailureHandling(c *C) {
+	log.Print("Testing profiler failure handling")
+
+	// First, ensure profiler fields are included in the metrics
+	fields := []string{
+		"gpu_prof_sm_active",
+	}
+	s.SetProfilerState(true)
+	err := s.SetFields(fields)
+	assert.Nil(c, err)
+	time.Sleep(5 * time.Second) // Wait for config update to take effect
+
+	// Verify that profiler fields are present in the metrics
+	assert.Eventually(c, func() bool {
+		response, err := s.getExporterResponse()
+		if err != nil || response == "" {
+			return false
+		}
+
+		// profiler fields should not be present in the metrics,
+		// since we have only profiler field configured, the gpu metrics parsing will fail
+		// which is expected in this state
+		_, err = testutils.ParsePrometheusMetrics(response)
+		if err == nil {
+			return false
+		}
+
+		return true
+	}, 10*time.Second, 1*time.Second)
+
+	// Simulate core dump to disable profiler
+	s.SetProfilerState(false)
+	time.Sleep(5 * time.Second) // Wait for config update to take effect
+
+	// check logs for profiler disabled message
+	assert.Eventually(c, func() bool {
+		return s.CheckExporterLogForString("rocpclient has been disabled after system failure")
+	}, 10*time.Second, 1*time.Second)
+
+}
+
 func verifyMetricsLablesFields(allgpus map[string]*testutils.GPUMetric, labels []string, fields []string) error {
 	if len(allgpus) == 0 {
 		return fmt.Errorf("invalid input, expecting non empty payload")
