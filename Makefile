@@ -160,6 +160,7 @@ RPM_BUILD_VERSION := $(word 1,$(subst -, ,$(DEBIAN_VERSION)))
 RPM_RELEASE_LABEL_TMP := $(word 2,$(subst -, ,$(DEBIAN_VERSION)))
 RPM_RELEASE_LABEL := $(if $(RPM_RELEASE_LABEL_TMP),$(RPM_RELEASE_LABEL_TMP),0)
 REL_IMAGE_TAG := $(subst $\",,v$(PACKAGE_VERSION))
+HELM_INSTALL_URL := https://github.com/ROCm/device-metrics-exporter/releases/download/${REL_IMAGE_TAG}/device-metrics-exporter-charts-${REL_IMAGE_TAG}\.tgz
 
 export ${DEBIAN_VERSION}
 export ${RPM_BUILD_VERSION}
@@ -167,10 +168,23 @@ export ${RPM_RELEASE_LABEL}
 
 .PHONY: update-version
 update-version:
+	@echo "Replacing versions with $(PACKAGE_VERSION)..."
+	@echo "Helm URL : $(HELM_INSTALL_URL)"
 	sed -i -e 's|version = .*|version = ${PACKAGE_VERSION}|' docs/conf.py
-	sed -i -e 's|tag:.*|tag: ${REL_IMAGE_TAG}|' helm-charts/values.yaml
-	sed -i -e 's|debian_version = .*|debian_version = ${DEBIAN_VERSION}|' docs/conf.py
-
+	for file in docs/installation/kubernetes-helm.md \
+	    helm-charts/values.yaml; do \
+	    sed -i -e 's|tag:.*|tag: ${REL_IMAGE_TAG}|' $$file; \
+	done
+	sed -i 's|https://github\.com/ROCm/device-metrics-exporter/releases/download/v.?\.?\.?/device-metrics-exporter-charts-v?\.?\.?\.tgz \\|${HELM_INSTALL_URL} \\|g' docs/installation/kubernetes-helm.md
+	sed -i -e 's|version="[^"]*"|version="${REL_IMAGE_TAG}"|' docker/Dockerfile.exporter-release
+	sed -i -e 's|release="[^"]*"|release="${REL_IMAGE_TAG}"|' docker/Dockerfile.exporter-release
+	for file in docs/installation/docker.md \
+		docs/installation/singularity.md \
+		docs/configuration/configmap.md \
+		docs/configuration/docker.md \
+		docs/integrations/prometheus-grafana.md; do \
+		sed -i 's#v[0-9]\+\.[0-9]\+\.[0-9]\+#${REL_IMAGE_TAG}#g' $$file; \
+	done
 
 
 TO_GEN_TESTRUNNER := pkg/testrunner/proto

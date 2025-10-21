@@ -24,7 +24,7 @@ kubelet:
   podResourceAPISocketPath: /var/lib/kubelet/pod-resources
 image:
   repository: docker.io/rocm/device-metrics-exporter
-  tag: v1.2.0
+  tag: v1.5.0
   pullPolicy: Always
 configMap: "" # Optional: Add custom configuration
 service:
@@ -45,6 +45,6 @@ serviceMonitor:
 
 ```bash
 helm install exporter \
-  https://github.com/ROCm/device-metrics-exporter/releases/download/v|version|/device-metrics-exporter-charts-v|version|.tgz \
+  https://github.com/ROCm/device-metrics-exporter/releases/download/v1.5.0/device-metrics-exporter-charts-v1.5.0.tgz \
   -n mynamespace -f values.yaml --create-namespace
 ```
