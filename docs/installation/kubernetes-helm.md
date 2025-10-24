@@ -44,7 +44,7 @@ serviceMonitor:
 - Install using Helm:
 
 ```bash
-helm install exporter \
-  https://github.com/ROCm/device-metrics-exporter/releases/download/v1.5.0/device-metrics-exporter-charts-v1.5.0.tgz \
-  -n mynamespace -f values.yaml --create-namespace
+helm repo add exporter https://rocm.github.io/device-metrics-exporter
+helm repo update
+helm install exporter exporter/device-metrics-exporter-charts --namespace kube-amd-gpu --create-namespace -f values.yaml
 ```

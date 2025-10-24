@@ -109,7 +109,7 @@ AMDSMI_COMMIT ?= 37d158a
 GIMSMI_BRANCH ?= mainline
 GIMSMI_COMMIT ?= mainline/8.3.0.K
 GPUAGENT_BRANCH ?= main
-GPUAGENT_COMMIT ?= 6e5d3a5
+GPUAGENT_COMMIT ?= 4cd3409
 
 ROCM_VERSION ?= 7.0
 
@@ -175,7 +175,6 @@ update-version:
 	    helm-charts/values.yaml; do \
 	    sed -i -e 's|tag:.*|tag: ${REL_IMAGE_TAG}|' $$file; \
 	done
-	sed -i 's|https://github\.com/ROCm/device-metrics-exporter/releases/download/v.?\.?\.?/device-metrics-exporter-charts-v?\.?\.?\.tgz \\|${HELM_INSTALL_URL} \\|g' docs/installation/kubernetes-helm.md
 	sed -i -e 's|version="[^"]*"|version="${REL_IMAGE_TAG}"|' docker/Dockerfile.exporter-release
 	sed -i -e 's|release="[^"]*"|release="${REL_IMAGE_TAG}"|' docker/Dockerfile.exporter-release
 	for file in docs/installation/docker.md \

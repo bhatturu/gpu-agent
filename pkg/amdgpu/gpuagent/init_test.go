@@ -64,7 +64,6 @@ func setupTest(t *testing.T) func(t *testing.T) {
 	eventMockCl = mock_gen.NewMockEventSvcClient(mockCtl)
 	slurmSchedMockCl = mock_gen.NewMockSchedulerClient(mockCtl)
 	k8sSchedMockCl = mock_gen.NewMockSchedulerClient(mockCtl)
-	k8sSchedMockCl = mock_gen.NewMockSchedulerClient(mockCtl)
 
 	gpumock_resp := &amdgpu.GPUGetResponse{
 		ApiStatus: amdgpu.ApiStatus_API_STATUS_OK,
@@ -123,7 +122,7 @@ func setupTest(t *testing.T) func(t *testing.T) {
 						RecordId:         "1",
 						Severity:         amdgpu.CPERSeverity_CPER_SEVERITY_FATAL,
 						Revision:         1,
-						Timestamp:        "2022-01-01T00:00:00Z",
+						Timestamp:        "2025-10-09 05:09:13",
 						NotificationType: amdgpu.CPERNotificationType_CPER_NOTIFICATION_TYPE_CMC,
 						AFId:             []uint64{30, 34},
 					},
@@ -132,11 +131,9 @@ func setupTest(t *testing.T) func(t *testing.T) {
 		},
 	}
 
-	gomock.InOrder(
-		gpuMockCl.EXPECT().GPUGet(gomock.Any(), gomock.Any()).Return(gpumock_resp, nil).AnyTimes(),
-		eventMockCl.EXPECT().EventGet(gomock.Any(), gomock.Any()).Return(event_mockcriticalresp, nil).AnyTimes(),
-		gpuMockCl.EXPECT().GPUCPERGet(gomock.Any(), gomock.Any()).Return(cper_mockresp, nil).AnyTimes(),
-	)
+	gpuMockCl.EXPECT().GPUGet(gomock.Any(), gomock.Any()).Return(gpumock_resp, nil).AnyTimes()
+	gpuMockCl.EXPECT().GPUCPERGet(gomock.Any(), gomock.Any()).Return(cper_mockresp, nil).AnyTimes()
+	eventMockCl.EXPECT().EventGet(gomock.Any(), gomock.Any()).Return(event_mockcriticalresp, nil).AnyTimes()
 
 	mConfig = config.NewConfigHandler("config.json", globals.GPUAgentPort)
 
