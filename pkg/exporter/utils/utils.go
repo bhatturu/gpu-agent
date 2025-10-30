@@ -27,6 +27,7 @@ import (
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/logger"
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/scheduler"
 	"github.com/ROCm/device-metrics-exporter/pkg/types"
+	"github.com/gofrs/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -231,6 +232,12 @@ func NormalizeExtraPodLabels(extraPodLabels map[string]string) map[string]string
 	return extraPodLabelsMap
 }
 
+func NormalizeStringWithoutPrefix(str, prefix string) string {
+	normalizedStr := strings.TrimPrefix(str, prefix)
+	normalizedStr = strings.ToLower(normalizedStr)
+	return normalizedStr
+}
+
 func GetPodLabels(podInfo *scheduler.PodResourceInfo, k8sPodLabelsMap map[string]map[string]string) map[string]string {
 	if podInfo != nil {
 		podName, podNs := podInfo.Pod, podInfo.Namespace
@@ -245,4 +252,9 @@ func GetPodLabels(podInfo *scheduler.PodResourceInfo, k8sPodLabelsMap map[string
 		}
 	}
 	return map[string]string{}
+}
+
+func UUIDToString(uuidBytes []byte) string {
+	uuid, _ := uuid.FromBytes(uuidBytes)
+	return uuid.String()
 }

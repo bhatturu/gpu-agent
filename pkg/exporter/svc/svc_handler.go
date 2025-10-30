@@ -37,15 +37,17 @@ import (
 
 // SvcHandler is a struct that manages the gRPC server and metrics services.
 type SvcHandler struct {
-	grpc                *grpc.Server
-	mh                  *metricsutil.MetricsHandler
-	gpuHealthSvc        *gpumetricsserver.MetricsSvcImpl
-	nicHealthSvc        *nicmetricsserver.MetricsSvcImpl
-	enableNICMonitoring bool
-	enableGPUMonitoring bool
-	enableDebugAPI      bool
-	serverWg            sync.WaitGroup
-	errChan             chan error
+	grpc                 *grpc.Server
+	mh                   *metricsutil.MetricsHandler
+	gpuHealthSvc         *gpumetricsserver.MetricsSvcImpl
+	nicHealthSvc         *nicmetricsserver.MetricsSvcImpl
+	ifoeHealthSvc        *nicmetricsserver.MetricsSvcImpl
+	enableNICMonitoring  bool
+	enableGPUMonitoring  bool
+	enableIFOEMonitoring bool
+	enableDebugAPI       bool
+	serverWg             sync.WaitGroup
+	errChan              chan error
 }
 
 // SvcHandlerOption set desired option
@@ -69,6 +71,13 @@ func WithDebugAPIOption(enableDebugAPI bool) SvcHandlerOption {
 func WithGPUMonitoring(enableGPUMonitoring bool) SvcHandlerOption {
 	return func(s *SvcHandler) {
 		s.enableGPUMonitoring = enableGPUMonitoring
+	}
+}
+
+// WithIFOEMonitoring is an option to enable or disable the IFOE agent.
+func WithIFOEMonitoring(enableIFOEMonitoring bool) SvcHandlerOption {
+	return func(s *SvcHandler) {
+		s.enableIFOEMonitoring = enableIFOEMonitoring
 	}
 }
 
@@ -96,6 +105,11 @@ func (s *SvcHandler) RegisterGPUHealthClient(client gpumetricsserver.HealthInter
 // RegisterNICHealthClient registers a NIC health client with the NIC metrics service.
 func (s *SvcHandler) RegisterNICHealthClient(client nicmetricsserver.HealthInterface) error {
 	return s.nicHealthSvc.RegisterHealthClient(client)
+}
+
+// RegisterIFOEHealthClient registers an IFOE health client with the IFOE metrics service.
+func (s *SvcHandler) RegisterIFOEHealthClient(client nicmetricsserver.HealthInterface) error {
+	return s.ifoeHealthSvc.RegisterHealthClient(client)
 }
 
 // Stop stops the gRPC server.
