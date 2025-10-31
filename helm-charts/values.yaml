@@ -18,6 +18,16 @@ kubelet:
   #    - default to /var/lib/kubelet/pod-resources
   podResourceAPISocketPath: /var/lib/kubelet/pod-resources
 
+# -- monitoring configuration
+monitor:
+  # -- Enable or disable specific resource monitoring components.
+  resources:
+    gpu: true      # Monitor GPU resources (enable for GPU nodes)
+    nic: false     # Monitor NIC resources (enable for network metrics)
+
+# -- Use host network for the metrics exporter pods
+hostNetwork: false
+
 image:
   # -- repository URL for the metrics exporter image
   repository: docker.io/rocm/device-metrics-exporter
