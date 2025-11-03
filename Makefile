@@ -151,6 +151,8 @@ ifneq (,$(findstring nic-,$(PROJECT_VERSION)))
   # extract v1.0.0 from the nic-v1.0.0 format
   NIC_BUILD := 1
   HELM_CHARTS_VERSION := $(subst ",,$(subst nic-,,$(PROJECT_VERSION)))
+else ifneq (,$(findstring exporter-,$(PROJECT_VERSION)))
+  HELM_CHARTS_VERSION := $(subst ",,$(subst exporter-,,$(PROJECT_VERSION)))
 endif
 
 # Derive DEBIAN_VERSION from RELEASE tag
