@@ -53,7 +53,8 @@ builds:
         - /device-metrics-exporter/docker/device-metrics-exporter-mock-latest.tar.gz
 
   build-helm-artifact:
-    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make helm-build"]
+    commands: ["sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && \
+              PROJECT_VERSION=${RELEASE:-v1.5.0} make helm"]
     owners: ["email:prshanmug@amd.com"]
     area:
     sub-area:
