@@ -35,6 +35,7 @@ import (
 const (
 	ServiceFile      = "/usr/lib/systemd/system/amd-metrics-exporter.service"
 	SriovServiceFile = "/usr/lib/systemd/system/amd-metrics-exporter-sriov.service"
+	NICServiceFile   = "/usr/lib/systemd/system/amd-nic-metrics-exporter.service"
 )
 
 func GetNodeName() string {
@@ -52,7 +53,7 @@ func IsSimEnabled() bool {
 }
 
 func IsDebianInstall() bool {
-	serviceFiles := []string{ServiceFile, SriovServiceFile}
+	serviceFiles := []string{ServiceFile, SriovServiceFile, NICServiceFile}
 	for _, file := range serviceFiles {
 		if _, err := os.Stat(file); err == nil {
 			return true
@@ -62,11 +63,11 @@ func IsDebianInstall() bool {
 }
 
 func IsKubernetes() bool {
-	if s := os.Getenv("KUBERNETES_SERVICE_HOST"); s != "" {
-		return true
-	}
 	if IsDebianInstall() {
 		return false
+	}
+	if s := os.Getenv("KUBERNETES_SERVICE_HOST"); s != "" {
+		return true
 	}
 	if _, err := os.Stat(globals.PodResourceSocket); err == nil {
 		return true

@@ -48,6 +48,9 @@ copy_artifacts () {
     cp /device-metrics-exporter/bin/amdgpu-exporter_24.04_amd64.deb  $BUNDLE_DIR/amdgpu-exporter_${DEBIAN_VERSION}~24.04_amd64.deb
     cp /device-metrics-exporter/bin/amdgpu-exporter-sriov_22.04_amd64.deb  $BUNDLE_DIR/amdgpu-exporter-sriov__${DEBIAN_VERSION}~22.04_amd64.deb
     cp /device-metrics-exporter/bin/amdgpu-exporter-sriov_24.04_amd64.deb  $BUNDLE_DIR/amdgpu-exporter-sriov__${DEBIAN_VERSION}~24.04_amd64.deb
+    # copy NIC debian ubuntu packages
+    cp /device-metrics-exporter/bin/amdnic-exporter_22.04_amd64.deb  $BUNDLE_DIR/amdnic-exporter_${DEBIAN_VERSION}~22.04_amd64.deb
+    cp /device-metrics-exporter/bin/amdnic-exporter_24.04_amd64.deb  $BUNDLE_DIR/amdnic-exporter_${DEBIAN_VERSION}~24.04_amd64.deb
     # copy rpm rhel9 packages
     cp /device-metrics-exporter/bin/amdgpu-exporter-rhel9.x86_64.rpm $BUNDLE_DIR/amdgpu-exporter-${DEBIAN_VERSION}.x86_64.rpm
     cp /device-metrics-exporter/bin/amdgpu-exporter-sriov-rhel9.x86_64.rpm $BUNDLE_DIR/amdgpu-exporter-sriov-${DEBIAN_VERSION}.x86_64.rpm
