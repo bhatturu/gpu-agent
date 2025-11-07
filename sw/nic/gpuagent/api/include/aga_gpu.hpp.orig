@@ -576,32 +576,6 @@ typedef struct aga_gpu_violation_stats_s {
     uint64_t vr_thermal_residency_accumulated;
     /// High Bandwidth Memory (HBM) thermal residency accumulated
     uint64_t hbm_thermal_residency_accumulated;
-    /// processor hot residency percentage
-    uint64_t processor_hot_residency_percentage;
-    /// Package Power Tracking (PPT) residency percentage
-    uint64_t ppt_residency_percentage;
-    /// socket thermal residency percentage
-    uint64_t socket_thermal_residency_percentage;
-    /// Voltage Rail (VR) thermal residency percentage
-    uint64_t vr_thermal_residency_percentage;
-    /// High Bandwidth Memory (HBM) thermal residency percentage
-    uint64_t hbm_thermal_residency_percentage;
-    /// gfx clock below host limit power accumulated per XCC
-    uint64_t gfx_clk_below_host_limit_power_accumulated[AGA_GPU_MAX_XCC];
-    /// gfx clock below host limit thermal accumulated per XCC
-    uint64_t gfx_clk_below_host_limit_thermal_accumulated[AGA_GPU_MAX_XCC];
-    /// gfx low utilization accumulated per XCC
-    uint64_t gfx_low_utilization_accumulated[AGA_GPU_MAX_XCC];
-    /// gfx clock below host limit total accumulated per XCC
-    uint64_t gfx_clk_below_host_limit_total_accumulated[AGA_GPU_MAX_XCC];
-    /// gfx clock below host limit power percentage per XCC
-    uint64_t gfx_clk_below_host_limit_power_percentage[AGA_GPU_MAX_XCC];
-    /// gfx clock below host limit thermal percentage per XCC
-    uint64_t gfx_clk_below_host_limit_thermal_percentage[AGA_GPU_MAX_XCC];
-    /// gfx low utilization percentage per XCC
-    uint64_t gfx_low_utilization_percentage[AGA_GPU_MAX_XCC];
-    /// gfx clock below host limit total percentage per XCC
-    uint64_t gfx_clk_below_host_limit_total_percentage[AGA_GPU_MAX_XCC];
 } aga_gpu_violation_stats_t;
 
 /// \brief GPU statistics

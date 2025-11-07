@@ -1098,20 +1098,6 @@ func printUsageHdr(indent string) {
 	}
 }
 
-func printViolationAccumulatedHdr(indent string) {
-	if printHdr == false {
-		fmt.Printf(indent + "GPU GFX clock host limit accumulated:\n")
-		printHdr = true
-	}
-}
-
-func printViolationPercentageHdr(indent string) {
-	if printHdr == false {
-		fmt.Printf(indent + "GPU GFX clock host limit percentage:\n")
-		printHdr = true
-	}
-}
-
 func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 	var indent string
 	spec := gpu.GetSpec()
@@ -1664,7 +1650,6 @@ func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 		}
 	}
 	if stats.GetViolationStats() != nil {
-		printHdr = false
 		vStats := stats.GetViolationStats()
 		if vStats.GetCurrentAccumulatedCounter() != UINT64_MAX_VAL {
 			fmt.Printf(indent+"%-38s : %d\n", "Current accumulated counter",
@@ -1693,168 +1678,6 @@ func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 			fmt.Printf(indent+"%-38s : %d\n",
 				"HBM thermal residency accumulated",
 				vStats.GetHBMThermalResidencyAccumulated())
-		}
-		if vStats.GetProcessorHotResidencyPercentage() != UINT64_MAX_VAL {
-			fmt.Printf(indent+"%-38s : %d%%\n",
-				"Processor hot residency percentage",
-				vStats.GetProcessorHotResidencyPercentage())
-		}
-		if vStats.GetPPTResidencyPercentage() != UINT64_MAX_VAL {
-			fmt.Printf(indent+"%-38s : %d%%\n",
-				"PPT residency percentage",
-				vStats.GetPPTResidencyPercentage())
-		}
-		if vStats.GetSocketThermalResidencyPercentage() != UINT64_MAX_VAL {
-			fmt.Printf(indent+"%-38s : %d%%\n",
-				"Socket thermal residency percentage",
-				vStats.GetSocketThermalResidencyPercentage())
-		}
-		if vStats.GetVRThermalResidencyPercentage() != UINT64_MAX_VAL {
-			fmt.Printf(indent+"%-38s : %d%%\n",
-				"VR thermal residency percentage",
-				vStats.GetVRThermalResidencyPercentage())
-		}
-		if vStats.GetHBMThermalResidencyPercentage() != UINT64_MAX_VAL {
-			fmt.Printf(indent+"%-38s : %d%%\n",
-				"HBM thermal residency percentage",
-				vStats.GetHBMThermalResidencyPercentage())
-		}
-		validEntry := false
-		gStr := fmt.Sprintf("  %-36s : ", "Power")
-		for _, gfx := range stats.GetViolationStats().GetGFXBelowHostLimitPowerAccumulated() {
-			// only if at least one of the gfx busy value is a valid value do we
-			// print the field
-			if gfx == UINT64_MAX_VAL {
-				gStr = fmt.Sprintf("%sN/A ", gStr)
-			} else {
-				validEntry = true
-				gStr = fmt.Sprintf("%s%d ", gStr, gfx)
-			}
-		}
-		if validEntry {
-			printViolationAccumulatedHdr(indent)
-			fmt.Printf(indent+"%s\n", gStr)
-			validEntry = false
-		}
-
-		gStr = fmt.Sprintf("  %-36s : ", "Thermal")
-		for _, gfx := range stats.GetViolationStats().GetGFXBelowHostLimitTHMAccumulated() {
-			// only if at least one of the gfx busy value is a valid value do we
-			// print the field
-			if gfx == UINT64_MAX_VAL {
-				gStr = fmt.Sprintf("%sN/A ", gStr)
-			} else {
-				validEntry = true
-				gStr = fmt.Sprintf("%s%d ", gStr, gfx)
-			}
-		}
-		if validEntry {
-			printViolationAccumulatedHdr(indent)
-			fmt.Printf(indent+"%s\n", gStr)
-			validEntry = false
-		}
-
-		gStr = fmt.Sprintf("  %-36s : ", "Low Utilization")
-		for _, gfx := range stats.GetViolationStats().GetGFXLowUtilizationAccumulated() {
-			// only if at least one of the gfx busy value is a valid value do we
-			// print the field
-			if gfx == UINT64_MAX_VAL {
-				gStr = fmt.Sprintf("%sN/A ", gStr)
-			} else {
-				validEntry = true
-				gStr = fmt.Sprintf("%s%d ", gStr, gfx)
-			}
-		}
-		if validEntry {
-			printViolationAccumulatedHdr(indent)
-			fmt.Printf(indent+"%s\n", gStr)
-			validEntry = false
-		}
-
-		gStr = fmt.Sprintf("  %-36s : ", "Total")
-		for _, gfx := range stats.GetViolationStats().GetGFXBelowHostLimitTotalAccumulated() {
-			// only if at least one of the gfx busy value is a valid value do we
-			// print the field
-			if gfx == UINT64_MAX_VAL {
-				gStr = fmt.Sprintf("%sN/A ", gStr)
-			} else {
-				validEntry = true
-				gStr = fmt.Sprintf("%s%d ", gStr, gfx)
-			}
-		}
-		if validEntry {
-			printViolationAccumulatedHdr(indent)
-			fmt.Printf(indent+"%s\n", gStr)
-			validEntry = false
-		}
-
-		gStr = fmt.Sprintf("  %-36s : ", "Power")
-		for _, gfx := range stats.GetViolationStats().GetGFXBelowHostLimitPowerPercentage() {
-			// only if at least one of the gfx busy value is a valid value do we
-			// print the field
-			if gfx == UINT64_MAX_VAL || gfx > 100 {
-				gStr = fmt.Sprintf("%sN/A ", gStr)
-			} else {
-				validEntry = true
-				printHdr = false
-				gStr = fmt.Sprintf("%s%d%% ", gStr, gfx)
-			}
-		}
-		if validEntry {
-			printViolationPercentageHdr(indent)
-			fmt.Printf(indent+"%s\n", gStr)
-			validEntry = false
-		}
-
-		gStr = fmt.Sprintf("  %-36s : ", "Thermal")
-		for _, gfx := range stats.GetViolationStats().GetGFXBelowHostLimitTHMPercentage() {
-			// only if at least one of the gfx busy value is a valid value do we
-			// print the field
-			if gfx == UINT64_MAX_VAL || gfx > 100 {
-				gStr = fmt.Sprintf("%sN/A ", gStr)
-			} else {
-				validEntry = true
-				gStr = fmt.Sprintf("%s%d%% ", gStr, gfx)
-			}
-		}
-		if validEntry {
-			printViolationPercentageHdr(indent)
-			fmt.Printf(indent+"%s\n", gStr)
-			validEntry = false
-		}
-
-		gStr = fmt.Sprintf("  %-36s : ", "Low Utilization")
-		for _, gfx := range stats.GetViolationStats().GetGFXLowUtilizationPercentage() {
-			// only if at least one of the gfx busy value is a valid value do we
-			// print the field
-			if gfx == UINT64_MAX_VAL || gfx > 100 {
-				gStr = fmt.Sprintf("%sN/A ", gStr)
-			} else {
-				validEntry = true
-				gStr = fmt.Sprintf("%s%d%% ", gStr, gfx)
-			}
-		}
-		if validEntry {
-			printViolationPercentageHdr(indent)
-			fmt.Printf(indent+"%s\n", gStr)
-			validEntry = false
-		}
-
-		gStr = fmt.Sprintf("  %-36s : ", "Total")
-		for _, gfx := range stats.GetViolationStats().GetGFXBelowHostLimitTotalPercentage() {
-			// only if at least one of the gfx busy value is a valid value do we
-			// print the field
-			if gfx == UINT64_MAX_VAL || gfx > 100 {
-				gStr = fmt.Sprintf("%sN/A ", gStr)
-			} else {
-				validEntry = true
-				gStr = fmt.Sprintf("%s%d%% ", gStr, gfx)
-			}
-		}
-		if validEntry {
-			printViolationPercentageHdr(indent)
-			fmt.Printf(indent+"%s\n", gStr)
-			validEntry = false
 		}
 	}
 

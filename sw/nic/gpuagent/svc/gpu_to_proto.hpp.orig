@@ -610,34 +610,6 @@ aga_gpu_violation_stats_to_proto (amdgpu::GPUViolationStats *proto_stats,
                      stats->vr_thermal_residency_accumulated);
     proto_stats->set_hbmthermalresidencyaccumulated(
                      stats->hbm_thermal_residency_accumulated);
-    proto_stats->set_processorhotresidencypercentage(
-                     stats->processor_hot_residency_percentage);
-    proto_stats->set_pptresidencypercentage(
-                     stats->ppt_residency_percentage);
-    proto_stats->set_socketthermalresidencypercentage(
-                     stats->socket_thermal_residency_percentage);
-    proto_stats->set_vrthermalresidencypercentage(
-                     stats->vr_thermal_residency_percentage);
-    proto_stats->set_hbmthermalresidencypercentage(
-                     stats->hbm_thermal_residency_percentage);
-    for (uint16_t i = 0; i < AGA_GPU_MAX_XCC; i++) {
-        proto_stats->add_gfxbelowhostlimitpoweraccumulated(
-                         stats->gfx_clk_below_host_limit_power_accumulated[i]);
-        proto_stats->add_gfxbelowhostlimitthmaccumulated(
-                         stats->gfx_clk_below_host_limit_thermal_accumulated[i]);
-        proto_stats->add_gfxlowutilizationaccumulated(
-                         stats->gfx_low_utilization_accumulated[i]);
-        proto_stats->add_gfxbelowhostlimittotalaccumulated(
-                         stats->gfx_clk_below_host_limit_total_accumulated[i]);
-        proto_stats->add_gfxbelowhostlimitpowerpercentage(
-                         stats->gfx_clk_below_host_limit_power_percentage[i]);
-        proto_stats->add_gfxbelowhostlimitthmpercentage(
-                         stats->gfx_clk_below_host_limit_thermal_percentage[i]);
-        proto_stats->add_gfxlowutilizationpercentage(
-                         stats->gfx_low_utilization_percentage[i]);
-        proto_stats->add_gfxbelowhostlimittotalpercentage(
-                         stats->gfx_clk_below_host_limit_total_percentage[i]);
-    }
 }
 
 // populate proto buf stats from gpu stats
