@@ -2,7 +2,7 @@
 version: 2.0
 builds:
   build-debian-package-ub22.04:
-    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make libcopy-assets-UBUNTU22 debpkg debpkg-sriov"]
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make libcopy-assets-UBUNTU22 debpkg debpkg-sriov nic-debpkg"]
     owners: ["email:prshanmug@amd.com"]
     area:
     sub-area:
