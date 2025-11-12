@@ -49,7 +49,7 @@ func GetNodeName() string {
 }
 
 func IsSimEnabled() bool {
-	return os.Getenv("SIMENABLED") == "1"
+	return os.Getenv("SIM_ENABLE") == "1"
 }
 
 func IsDebianInstall() bool {
