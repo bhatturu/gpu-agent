@@ -10,6 +10,8 @@ builds:
     artifacts:
         - /device-metrics-exporter/bin/amdgpu-exporter_22.04_amd64.deb
         - /device-metrics-exporter/bin/amdgpu-exporter-sriov_22.04_amd64.deb
+        - /device-metrics-exporter/bin/amdnic-exporter_22.04_amd64.deb
+        - /device-metrics-exporter/bin/amdnic-exporter_24.04_amd64.deb
 
   build-debian-package-ub24.04:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make UBUNTU_VERSION=noble libcopy-assets-UBUNTU24 debpkg debpkg-sriov"]

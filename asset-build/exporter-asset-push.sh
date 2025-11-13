@@ -31,9 +31,13 @@ setup_dir () {
 }
 
 copy_artifacts () {
-    DEBIAN_VERSION="${RELEASE:9}"
-    if [ "$tag" != "latest" ]; then
-      DEBIAN_VERSION="${RELEASE:1}"
+    if [[ "$tag" == "latest" ]]; then
+      DEBIAN_VERSION="0.0.1"
+    elif [[ "$tag" == nic-v* ]]; then
+      DEBIAN_VERSION="${tag#nic-v}"
+    else
+      # Remove leading 'v' if present (e.g., v1.2.3 -> 1.2.3)
+      DEBIAN_VERSION="${tag#v}"
     fi
     # copy docker image ubi9.4
     cp /device-metrics-exporter/docker/device-metrics-exporter-latest.tar.gz $BUNDLE_DIR/device-metrics-exporter-latest-$RELEASE.tar.gz
