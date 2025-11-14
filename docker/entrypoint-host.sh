@@ -20,7 +20,7 @@ set -euo pipefail
 # entry point script run on creating a node management container
 LD_PRELOAD=/home/amd/lib/libgim_amd_smi.so /home/amd/bin/gpuagent &
 
-# sleep before starting promethesu server
+# sleep before starting exporter
 sleep 10
-# start prometheus server
+# start exporter
 /home/amd/bin/server -sriov-enable

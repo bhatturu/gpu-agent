@@ -33,10 +33,10 @@ done
 
 if [ "$MONITOR_GPU" == "true" ]; then
   LD_PRELOAD=/home/amd/lib/libamd_smi.so.25 /home/amd/bin/gpuagent &
-  # sleep before starting prometheus server
+  # sleep before starting exporter
   sleep 10
 fi
 
-# start prometheus serve
+# start exporter
 # Run the underlying binary with all arguments passed to the script
 /home/amd/bin/server "$@"
