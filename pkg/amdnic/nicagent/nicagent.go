@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ROCm/device-metrics-exporter/pkg/amdnic/gen/nicmetricssvc"
 	k8sclient "github.com/ROCm/device-metrics-exporter/pkg/client"
@@ -33,6 +34,10 @@ import (
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/utils"
 	_ "github.com/alta/protopatch/patch" // nolint: gosec
 	lru "github.com/hashicorp/golang-lru/v2"
+)
+
+var (
+	longCmdTimeout = 20 * time.Second
 )
 
 type NICAgentClient struct {
@@ -268,7 +273,14 @@ func (na *NICAgentClient) podnameToPidCacheGet(podInfo *scheduler.PodResourceInf
 }
 
 func (na *NICAgentClient) getNetDevicesList(podInfo *scheduler.PodResourceInfo) ([]NetDevice, error) {
-
+	startTime := time.Now()
+	defer func() {
+		elapsed := time.Since(startTime)
+		ms := float64(elapsed.Milliseconds())
+		if ms > 100 {
+			logger.Log.Printf("getNetDevicesList took %.2f ms for pod %v", ms, podInfo)
+		}
+	}()
 	var netDevices []NetDevice
 	var cmd string
 	var pid int
@@ -307,6 +319,16 @@ func (na *NICAgentClient) getNetDevicesList(podInfo *scheduler.PodResourceInfo) 
 		for i, p := range parts {
 			if p == "link" && i+1 < partsLen {
 				roceDevName = strings.Split(parts[i+1], "/")[0]
+				vendorID, err := getVendor(roceDevName)
+				if err != nil {
+					logger.Log.Printf("failed to get vendor ID for %s: %v", roceDevName, err)
+					roceDevName = ""
+					break // skip this device
+				}
+				if vendorID != AMDVendorID {
+					roceDevName = ""
+					break // skip non-AMD devices
+				}
 				if err := na.addRdmaDevPcieAddrIfAbsent(roceDevName); err != nil {
 					return netDevices, err
 				}
@@ -409,11 +431,15 @@ func (na *NICAgentClient) getMetricsAll() error {
 	for _, client := range na.nicClients {
 		wg.Add(1)
 		go func(client NICInterface) {
+			startTime := time.Now()
 			defer wg.Done()
 			if client.IsActive() {
 				if err := client.UpdateNICStats(workloads); err != nil {
 					logger.Log.Printf("failed to update NIC stats, err: %v", err)
 				}
+			}
+			if time.Since(startTime) > 2*time.Second {
+				logger.Log.Printf("warning: %s UpdateNICStats took %.2f seconds", client.GetClientName(), time.Since(startTime).Seconds())
 			}
 		}(client)
 	}
