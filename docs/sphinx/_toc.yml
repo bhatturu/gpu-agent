@@ -23,6 +23,7 @@ subtrees:
     entries:
       - file: configuration/configuration-settings   
       - file: configuration/docker
+      - file: configuration/network-exporter-docker
       - file: configuration/configmap
       - file: configuration/troubleshooting 
       - file: configuration/metricslist
