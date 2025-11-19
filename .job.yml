@@ -63,6 +63,7 @@ builds:
     feature:
     artifacts:
         - /device-metrics-exporter/helm-charts/device-metrics-exporter-charts.tgz
+        - /device-metrics-exporter/helm-charts/nic-device-metrics-exporter-charts.tgz
 
   build-test-runner-docker:
     commands: ["/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && HOURLY_TAG_LABEL=$RELEASE AGFHC=0 TESTRUNNER_IMAGE_TAG=latest make docker-test-runner-cicd"]

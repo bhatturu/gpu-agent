@@ -149,7 +149,6 @@ NIC_BUILD ?= 0
 
 ifneq (,$(findstring nic-,$(PROJECT_VERSION)))
   # extract v1.0.0 from the nic-v1.0.0 format
-  NIC_BUILD := 1
   HELM_CHARTS_VERSION := $(subst ",,$(subst nic-,,$(PROJECT_VERSION)))
 else ifneq (,$(findstring exporter-,$(PROJECT_VERSION)))
   HELM_CHARTS_VERSION := $(subst ",,$(subst exporter-,,$(PROJECT_VERSION)))
@@ -464,13 +463,19 @@ else
 endif
 	cd $(HELM_CHARTS_DIR); helm lint
 
-# cicd target to build helm chart - requires PROJECT_VERSION, EXPORTER_IMAGE_TAG to be set
+# cicd target to build helm chart - requires PROJECT_VERSION to be set
 .PHONY: helm
-helm: helm-lint
+helm:
 	@rm -rf helm-charts-k8s
 	@rm -rf helm-charts/nic-device-metrics-exporter*
 	@rm -rf helm-charts/device-metrics-exporter*
-	@rm -rf helm-charts/manifests.yaml
+	@echo "\n+++++++++++++++++ Building NIC monitoring helm chart ++++++++++++++++\n"
+	NIC_BUILD=1 ${MAKE} helm-build
+	@echo "\n+++++++++++++++++ Building GPU monitoring helm chart ++++++++++++++++\n"
+	${MAKE} helm-build
+
+.PHONY: helm-build
+helm-build: helm-lint
 	# updating project version in helm Chart.yaml
 	@yq eval -i '.appVersion = "$(HELM_CHARTS_VERSION)"' helm-charts/Chart.yaml
 	@yq eval -i '.version = "$(HELM_CHARTS_VERSION)"' helm-charts/Chart.yaml
@@ -480,7 +485,7 @@ helm: helm-lint
 
 # update monitoring flags in values.yaml based on RELEASE tag
 ifeq ($(NIC_BUILD),1)
-	@echo "Detected NIC build from tag ${PROJECT_VERSION} — enabling NIC monitoring";
+	@echo "NIC build — enabling NIC monitoring";
 	@yq eval -i '.name = "nic-device-metrics-exporter-charts"' helm-charts/Chart.yaml;
 	@yq eval -i '.monitor.resources.nic = true | .monitor.resources.gpu = false' helm-charts/values.yaml;
 	@yq eval -i '.hostNetwork = true' helm-charts/values.yaml;
@@ -488,7 +493,7 @@ ifeq ($(NIC_BUILD),1)
 	@yq eval -i '.service.NodePort.port = 5001' helm-charts/values.yaml;
 	@yq eval -i '.service.NodePort.nodePort = 32501' helm-charts/values.yaml;
 else
-	@echo "Standard build detected — enabling GPU monitoring";
+	@echo "Standard build — enabling GPU monitoring";
 	@yq eval -i '.name = "device-metrics-exporter-charts"' helm-charts/Chart.yaml;
 	@yq eval -i '.monitor.resources.nic = false | .monitor.resources.gpu = true' helm-charts/values.yaml;
 	@yq eval -i '.hostNetwork = false' helm-charts/values.yaml;
