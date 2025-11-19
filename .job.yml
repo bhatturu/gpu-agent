@@ -2,7 +2,7 @@
 version: 2.0
 builds:
   build-debian-package-ub22.04:
-    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make libcopy-assets-UBUNTU22 debpkg debpkg-sriov nic-debpkg"]
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make libcopy-assets-UBUNTU22 debpkg debpkg-sriov"]
     owners: ["email:prshanmug@amd.com"]
     area:
     sub-area:
@@ -10,8 +10,6 @@ builds:
     artifacts:
         - /device-metrics-exporter/bin/amdgpu-exporter_22.04_amd64.deb
         - /device-metrics-exporter/bin/amdgpu-exporter-sriov_22.04_amd64.deb
-        - /device-metrics-exporter/bin/amdnic-exporter_22.04_amd64.deb
-        - /device-metrics-exporter/bin/amdnic-exporter_24.04_amd64.deb
 
   build-debian-package-ub24.04:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make UBUNTU_VERSION=noble libcopy-assets-UBUNTU24 debpkg debpkg-sriov"]
@@ -22,6 +20,13 @@ builds:
     artifacts:
         - /device-metrics-exporter/bin/amdgpu-exporter_24.04_amd64.deb
         - /device-metrics-exporter/bin/amdgpu-exporter-sriov_24.04_amd64.deb
+
+  build-nic-debian-package:
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make nic-debpkg"]
+    owners: ["email:yshankar@amd.com"]
+    artifacts:
+        - /device-metrics-exporter/bin/amdnic-exporter_22.04_amd64.deb
+        - /device-metrics-exporter/bin/amdnic-exporter_24.04_amd64.deb
 
   build-rpm-package-rhel9:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make libcopy-assets-RHEL9 rpmpkg rpmpkg-sriov"]
@@ -93,6 +98,7 @@ targets:
         - build-debian-package-ub24.04
         - build-rpm-package-rhel9
         - e2e-build-mock-exporter
+        - build-nic-debian-package
 
   test-runner-sanity:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter"]

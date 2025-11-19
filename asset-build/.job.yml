@@ -15,6 +15,7 @@ targets:
       - build-rpm-package-rhel9
       - build-helm-artifact
       - e2e-build-mock-exporter
+      - build-nic-debian-package
 
   copy-test-runner-artifacts:
     commands: ["sh", "-c", "pwd && cd ./asset-build && ./test-runner-asset-push.sh"]

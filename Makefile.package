@@ -37,8 +37,8 @@ NIC_PKG_PATH := ${TOP_DIR}/nic-debian/usr/local/bin
 NIC_METRICS_CONF_DIR := ${TOP_DIR}/nic-debian/etc
 NIC_METRICS_CONF_PATH := ${NIC_METRICS_CONF_DIR}/metrics
 
-.PHONY: deppkg debpkg-clean rpmpkg rpmpkg-clean pkg pkg-clean debpkg-sriov-clean debpkg-sriov rpmpkg-sriov
-pkg: debpkg rpmpkg
+.PHONY: deppkg debpkg-clean rpmpkg rpmpkg-clean pkg pkg-clean debpkg-sriov-clean debpkg-sriov rpmpkg-sriov nic-debpkg
+pkg: debpkg rpmpkg nic-debpkg
 
 pkg-clean: debpkg-clean debpkg-sriov-clean rpmpkg-clean
 
@@ -150,7 +150,7 @@ rpmpkg-sriov: rpmpkg-clean
 	@mv -v ${TOP_DIR}/RPMS/x86_64/amdgpu-exporter-sriov*.x86_64.rpm ${TOP_DIR}/bin/amdgpu-exporter-sriov-rhel9.x86_64.rpm
 
 debpkg-clean:
-	rm -rf ${TOP_DIR}/bin/*.deb
+	rm -rf ${TOP_DIR}/bin/amdgpu-exporter*.deb
 	rm -rf ${PKG_LIB_PATH} ${PKG_PATH}
 
 debpkg-sriov-clean:
@@ -266,7 +266,7 @@ debpkg-sriov: debpkg-sriov-clean
 	# rename for internal build
 	@mv -vf ${TOP_DIR}/bin/amdgpu-exporter-sriov_*~${UBUNTU_VERSION_NUMBER}_amd64.deb ${TOP_DIR}/bin/amdgpu-exporter-sriov_${UBUNTU_VERSION_NUMBER}_amd64.deb
 
-nic-debpkg:
+nic-debpkg: nic-debpkg-clean
 	${MAKE} amdexporter
 	@echo "Building debian package for $(BUILD_VER_ENV)"
 
@@ -291,6 +291,7 @@ nic-debpkg:
 
 	# Clean up copied files
 	@rm -rf $(NIC_METRICS_CONF_PATH)
+	@rm -rf $(NIC_PKG_PATH)
 
 	# Revert dynamic version change in control file
 	@git checkout $(NIC_DEBIAN_CONTROL)
@@ -301,3 +302,6 @@ nic-debpkg:
 	@cp -vf $(TOP_DIR)/bin/amdnic-exporter_$(DEBIAN_VERSION)_amd64.deb \
 		$(TOP_DIR)/bin/amdnic-exporter_24.04_amd64.deb
 	@rm $(TOP_DIR)/bin/amdnic-exporter_$(DEBIAN_VERSION)_amd64.deb
+
+nic-debpkg-clean:
+	rm -rf ${TOP_DIR}/bin/amdnic-exporter*.deb
