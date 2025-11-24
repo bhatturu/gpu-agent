@@ -2,19 +2,6 @@
 
 AMD Device Metrics Exporter enables real-time collection of telemetry data in Prometheus format from AMD GPUs in HPC and AI environments. It provides comprehensive metrics including temperature, utilization, memory usage, power consumption, and more.
 
-## Quick Start
-
-The Metrics Exporter container is available on Docker Hub:
-
-```bash
-docker run -d \
-  --device=/dev/dri \
-  --device=/dev/kfd \
-  -p 5000:5000 \
-  --name device-metrics-exporter \
-  rocm/device-metrics-exporter:v1.5.0
-```
-
 ## Features
 
 - Prometheus-compatible metrics endpoint
@@ -28,12 +15,6 @@ docker run -d \
 - Slurm integration support
 - Configurable service ports
 - Container-based deployment
-
-## Requirements
-
-- Ubuntu 22.04 or later
-- ROCm 6.2.x, 6.3.x
-- Docker (or compatible container runtime)
 
 ## Documentation
 
