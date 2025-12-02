@@ -18,7 +18,6 @@ set -euo pipefail
 #
 #
 # entry point script run on creating a node management container
-
 # default is gpu monitoring enabled
 MONITOR_GPU="true"
 
@@ -32,7 +31,7 @@ for arg in "$@"; do
 done
 
 if [ "$MONITOR_GPU" == "true" ]; then
-  LD_PRELOAD=/home/amd/lib/libamd_smi.so.25 /home/amd/bin/gpuagent &
+  LD_PRELOAD=/home/amd/lib/libamd_smi.so.26 /home/amd/bin/gpuagent &
   # sleep before starting exporter
   sleep 10
 fi
