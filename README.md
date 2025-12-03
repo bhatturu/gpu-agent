@@ -75,6 +75,7 @@ $ make build-container
 
 # Things to note
  - For updating any amdsmi library to any other version, make sure the libamdsmi.so libraries are built correctly and are available in sw/nic/build/x86_64/sim/lib/ path. These are required during runtime, mismatch in library version may lead to runtime issues. These libraries are built from [amdsmi git](https://github.com/rocm/amdsmi/). The commit/tag the current gpuagent is built on can be found in [file](sw/nic/third-party/rocm/amd_smi_lib/version.txt)
+ - apply patches on amdsmi found in [here](patch/amdsmi)
  - amdsmi build instructions are available [here](sw/nic/gpuagent/api/smi/amdsmi/README.md)
 
 # Troubleshooting
