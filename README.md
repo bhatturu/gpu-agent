@@ -1,58 +1,82 @@
-GPU Agent provides programmable APIs to configure and monitor AMD Instinct GPUs
+# GPU Agent provides programmable APIs to configure and monitor AMD Instinct GPUs
 
-To build GPU Agent, follow the steps below:
+## To build GPU Agent, follow the steps below:
 
-1. setup workspace (required once)
+### setup workspace (required once)
 
-```
-# git submodule update --init  --recursive -f
-```
-
-2. create build container image (required once)
-
-```
-# make build-container
+```bash
+$ git submodule update --init  --recursive -f
 ```
 
-3. vendor setup workspace (required once)
+### create build container image (required once)
+
+```bash
+$ make build-container
+```
+
+### Building artifacts
+  
+  Follow either of the two methods below to build gpuagent and gpuctl binaries
+  
+  #### Manual Steps
+  
+  vendor setup workspace for manual building (required once)
+
   - choose build/developer environment
-    - rhel9 
+      - rhel9 
       ```bash
-      $ GPUAGENT_BLD_CONTAINER_IMAGE=gpuagent-builder-rhel:9 make docker-shell
+      [user@host]# GPUAGENT_BLD_CONTAINER_IMAGE=gpuagent-builder-rhel:9 make docker-shell
       ```
 
-    - ubuntu 22.04
+      - ubuntu 22.04
       ```bash
-       $ GPUAGENT_BLD_CONTAINER_IMAGE=gpuagent-bldr-ubuntu:22.04 make docker-shell
+       [user@host]# GPUAGENT_BLD_CONTAINER_IMAGE=gpuagent-bldr-ubuntu:22.04 make docker-shell
       ```
 
+  - golang dependency setup (required once)
+      ```bash
+      [user@build-container ]# make gopkglist
+      ```
   - golang vendor setup
-  ```bash
-  [root@dev gpu-agent]# cd sw/nic/gpuagent/
-  [root@dev gpuagent]# go mod vendor
-
-  ```
-
-4. building artifacts
-  - choose build base os
-    - rhel9
       ```bash
-      # GPUAGENT_BLD_CONTAINER_IMAGE=gpuagent-builder-rhel:9 make gpuagent
+      [user@build-container ]# cd sw/nic/gpuagent/
+      [user@build-container ]# go mod vendor
       ```
 
-    - ubuntu 22.04
+  - bild gpuagent (within build-container)
       ```bash
-      $ GPUAGENT_BLD_CONTAINER_IMAGE=gpuagent-bldr-ubuntu:22.04 make docker-shell
+      [user@build-container ]# make
       ```
 
-5. artifacts location
+  #### Full target build in single step (from host)
+
+  Choose build base os
+
+  - rhel9
+    ```bash
+    [user@host]# GPUAGENT_BLD_CONTAINER_IMAGE=gpuagent-builder-rhel:9 make gpuagent
+    ```
+
+  - ubuntu 22.04
+    ```bash
+    [user@host]# GPUAGENT_BLD_CONTAINER_IMAGE=gpuagent-bldr-ubuntu:22.04 make gpuagent
+    ```
+
+### Artifacts location
   - gpuagent binary can be found at - ${TOP_DIR}/sw/nic/build/x86_64/sim/bin/gpuagent
   - gpuctl binary can be found at - ${TOP_DIR}/sw/nic/build/x86_64/sim/bin/gpuctl
 
-6. To clean the build artifacts (run it within build-container)
+### To clean the build artifacts (run it within build-container)
 
 ```bash
 [root@dev gpu-agent]# make -C sw/nic/gpuagent clean
 [root@dev gpu-agent]# 
 ```
 
+# Things to note
+ - For updating any amdsmi library to any other version, make sure the libamdsmi.so libraries are built correctly and are available in sw/nic/build/x86_64/sim/lib/ path. These are required during runtime, mismatch in library version may lead to runtime issues. These libraries are built from [amdsmi git](https://github.com/rocm/amdsmi/). The commit/tag the current gpuagent is built on can be found in [file](sw/nic/third-party/rocm/amd_smi_lib/version.txt)
+ - amdsmi build instructions are available [here](sw/nic/gpuagent/api/smi/amdsmi/README.md)
+
+# Troubleshooting
+ - If you face any issue with golang dependencies, re-run `make gopkglist` and `go mod vendor` command.
+ - some go files are generated during build time, if you face any issue related to missing files, run `make gpuagent` command within build-container, then re-run `go mod vendor` command.

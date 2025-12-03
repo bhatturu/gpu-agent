@@ -13,7 +13,7 @@
 [submodule "sw/nic/third-party/abseil-cpp"]
 	path = sw/nic/third-party/abseil-cpp
 	url = git@github.com:abseil/abseil-cpp.git
-	branch = 20250512.1
+	branch = master
 [submodule "sw/nic/third-party/boost"]
 	path = sw/nic/third-party/boost_1_88_0
 	url = git@github.com:boostorg/boost.git
