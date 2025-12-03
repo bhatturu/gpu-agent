@@ -35,12 +35,12 @@
     5. sudo make install
 ```
 
-this generates amd-smi .so file under /opt/rocm/lib64/, example /opt/rocm/lib64/libamd_smi.so.24.6
+this generates amd-smi .so file under /opt/rocm/lib64/, example /opt/rocm/lib64/libamd_smi.so.2.*
 
 ### upload new amd-smi library to assets using the following steps:
 
-1. cp /opt/rocm/lib64/libamd_smi.so.24.6 /sw/nic/third-party/rocm/amd_smi_lib/x86_64/lib/
+1. cp /opt/rocm/lib64/libamd_smi.so.2* /sw/nic/third-party/rocm/amd_smi_lib/x86_64/lib/
 2. fix symlinks in /sw/nic/third-party/rocm/amd_smi_lib/x86_64/lib/ as required
 3. copy the required version of amdsmi.h from https://github.com/ROCm/amdsmi/ to /sw/nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h
-4. upload assets to minio server using
+4. upload assets to minio server using (internal)
     1. tar cvz $(cat /sw/minio/third_party_libs.txt) | /bin/asset-push -ac assets-colo.pensando.io:9000 sw-repository third_party_libs ${NEW_VERSION} /dev/stdin
