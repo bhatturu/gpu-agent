@@ -598,43 +598,6 @@ smi_fill_vram_status_ (aga_gpu_handle_t gpu_handle,
 }
 
 sdk_ret_t
-smi_get_gpu_partition_info (aga_gpu_handle_t gpu_handle, bool *capable,
-                            aga_gpu_compute_partition_type_t *compute_partition,
-                            aga_gpu_memory_partition_type_t *memory_partition)
-{
-    amdsmi_status_t amdsmi_ret;
-    amdsmi_memory_partition_config_t mem_part_config = {};
-    amdsmi_accelerator_partition_profile_t part_config = {};
-    uint32_t partition_id[AMDSMI_MAX_ACCELERATOR_PARTITIONS];
-
-    // set as false for now
-    *capable = false;
-    *compute_partition = AGA_GPU_COMPUTE_PARTITION_TYPE_NONE;
-    *memory_partition = AGA_GPU_MEMORY_PARTITION_TYPE_NONE;
-    // fill compute partition type
-    amdsmi_ret = amdsmi_get_gpu_accelerator_partition_profile(gpu_handle,
-                     &part_config, partition_id);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get accelerator partition config for GPU {}, "
-                      "err {}", gpu_handle, amdsmi_ret);
-    } else {
-        *compute_partition =
-            smi_to_aga_gpu_compute_partition_type(part_config.profile_type);
-    }
-    // fill memory partition type
-    amdsmi_ret = amdsmi_get_gpu_memory_partition_config(gpu_handle,
-                                                        &mem_part_config);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get memory partition config for GPU {}, "
-                      "err {}", gpu_handle, amdsmi_ret);
-    } else {
-        *memory_partition =
-            smi_to_aga_gpu_memory_partition_type(mem_part_config.mp_mode);
-    }
-    return SDK_RET_OK;
-}
-
-sdk_ret_t
 smi_get_gpu_partition_id (aga_gpu_handle_t gpu_handle, uint32_t *partition_id)
 {
     // for now set partition id as 0
@@ -983,6 +946,39 @@ smi_gpu_fill_device_topology (aga_gpu_handle_t gpu_handle,
     return SDK_RET_OK;
 }
 
+/// \brief function to get parent aga_obj_key_t for a given GPU
+/// \param[in]  gpu_handle  GPU handle
+/// \param[out] key         aga_obj_key_t of the parent GPU
+sdk_ret_t
+smi_get_parent_gpu_uuid (aga_gpu_handle_t gpu_handle, aga_obj_key_t *parent_key)
+{
+    amdsmi_bdf_t pcie_bdf;
+    amdsmi_status_t status;
+    amdsmi_asic_info_t asic_info;
+
+    // get device BDF
+    status = amdsmi_get_gpu_device_bdf(gpu_handle, &pcie_bdf);
+    if (unlikely(status != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get PCIe BDF of GPU {}, err {}",
+                      gpu_handle, status);
+        return amdsmi_ret_to_sdk_ret(status);
+    }
+    // get GPU asic info
+    status = amdsmi_get_gpu_asic_info(gpu_handle, &asic_info);
+    if (unlikely(status != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get ASIC information of GPU {}, err {}",
+                      gpu_handle, status);
+        return amdsmi_ret_to_sdk_ret(status);
+    }
+    // compute the parent GPU uuid
+    parent_key->reset();
+    memcpy(&parent_key->id[0], asic_info.asic_serial, 4);
+    *(uint16_t *)(&parent_key->id[6]) = 0x1000;
+    *(uint64_t *)(&parent_key->id[8]) = pcie_bdf.as_uint;
+
+    return SDK_RET_OK;
+}
+
 /// \brief function to get aga_obj_key_t for a given GPU
 /// \param[in]  gpu_handle  GPU handle
 /// \param[out] key         aga_obj_key_t of the GPU
@@ -1017,19 +1013,73 @@ smi_gpu_uuid_get (aga_gpu_handle_t gpu_handle, aga_obj_key_t *key)
     return SDK_RET_OK;
 }
 
+static sdk_ret_t
+smi_fill_gpu_profile_ (uint32_t id, aga_gpu_handle_t handle,
+                       aga_gpu_profile_t& gpu)
+{
+    sdk_ret_t ret;
+    amdsmi_status_t status;
+    amdsmi_accelerator_partition_profile_t profile;
+    amdsmi_memory_partition_config_t mem_part_config = {};
+    uint32_t partition_id[AMDSMI_MAX_ACCELERATOR_PARTITIONS] = { 0 };
+
+    gpu.id = id;
+    gpu.handle = handle;
+    // get GPU uuid
+    ret = smi_gpu_uuid_get(gpu.handle, &gpu.key);
+    if (ret != SDK_RET_OK) {
+        AGA_TRACE_ERR("GPU discovery failed due to error in getting UUID of "
+                      "GPU {}", gpu.handle);
+        return ret;
+    }
+    // set partition information to default values
+    gpu.partition_capable = false;
+    gpu.partition_id = 0;
+    gpu.compute_partition = AGA_GPU_COMPUTE_PARTITION_TYPE_NONE;
+    gpu.memory_partition = AGA_GPU_MEMORY_PARTITION_TYPE_NONE;
+    // get accelerator partition profile
+    status = amdsmi_get_gpu_accelerator_partition_profile(gpu.handle, &profile,
+                                                          partition_id);
+    if (unlikely(status != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get accelerator partition config for GPU {}, "
+                      "err {}", gpu.key.str(), status);
+    } else {
+        gpu.compute_partition =
+            smi_to_aga_gpu_compute_partition_type(profile.profile_type);
+        gpu.partition_id = partition_id[0];
+        if (profile.num_partitions == std::numeric_limits<uint32_t>::max()) {
+            // num partitions is set to the max uint32_t value for GPUs which
+            // don't support partitions
+            gpu.partition_capable = false;
+        } else {
+            gpu.partition_capable = true;
+        }
+    }
+    // set memory partition type
+    status = amdsmi_get_gpu_memory_partition_config(gpu.handle,
+                                                    &mem_part_config);
+    if (unlikely(status != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get memory partition config for GPU {}, "
+                      "err {}", gpu.key.str(), status);
+    } else {
+        gpu.memory_partition =
+            smi_to_aga_gpu_memory_partition_type(mem_part_config.mp_mode);
+    }
+    return SDK_RET_OK;
+}
+
 sdk_ret_t
-smi_discover_gpus (uint32_t *num_gpus, aga_gpu_handle_t *gpu_handles,
-                   aga_obj_key_t *gpu_keys)
+smi_discover_gpus (uint32_t *num_gpu, aga_gpu_profile_t *gpu)
 {
     sdk_ret_t ret;
     uint32_t num_procs;
     amdsmi_status_t status;
     aga_gpu_handle_t proc_handles[AGA_MAX_GPU];
 
-    if (!num_gpus) {
+    if (!num_gpu) {
         return SDK_RET_ERR;
     }
-    *num_gpus = 0;
+    *num_gpu = 0;
     // for each socket get the number of processors
     status = amdsmi_get_processor_handles(NULL, &num_procs, NULL);
     if (unlikely(status != AMDSMI_STATUS_SUCCESS)) {
@@ -1045,18 +1095,14 @@ smi_discover_gpus (uint32_t *num_gpus, aga_gpu_handle_t *gpu_handles,
     }
     // get uuids of each GPU
     for (uint32_t j = 0; j < num_procs; j++) {
-        gpu_handles[*num_gpus] = proc_handles[j];
-        if (gpu_keys) {
-            ret = smi_gpu_uuid_get(proc_handles[j],
-                                   &gpu_keys[*num_gpus]);
-            if (ret != SDK_RET_OK) {
-                AGA_TRACE_ERR("GPU discovery failed due to error in "
-                              "getting UUID of GPU {}",
-                              proc_handles[j]);
-                return ret;
-            }
+        ret = smi_fill_gpu_profile_(*num_gpu, proc_handles[j],
+                                    gpu[*num_gpu]);
+        if (ret != SDK_RET_OK) {
+            AGA_TRACE_ERR("GPU discovery failed when processing GPU {}",
+                          proc_handles[j]);
+            return ret;
         }
-        (*num_gpus)++;
+        (*num_gpu)++;
     }
     return SDK_RET_OK;
 }

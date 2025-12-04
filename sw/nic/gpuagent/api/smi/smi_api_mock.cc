@@ -643,46 +643,28 @@ smi_gpu_fill_device_topology (aga_gpu_handle_t gpu_handle,
 }
 
 sdk_ret_t
-smi_get_gpu_partition_id (aga_gpu_handle_t gpu_handle, uint32_t *partition_id)
+smi_get_parent_gpu_uuid (aga_gpu_handle_t gpu_handle, aga_obj_key_t *parent_key)
 {
-    *partition_id = 0;
+    *parent_key = g_gpu_map[gpu_handle].key;
     return SDK_RET_OK;
 }
 
 sdk_ret_t
-smi_get_gpu_virtualization_mode (aga_gpu_handle_t gpu_handle,
-                                 aga_gpu_virtualization_mode_t *mode)
-{
-    *mode = AGA_VIRTUALIZATION_MODE_BAREMETAL;
-    return SDK_RET_OK;
-}
-
-sdk_ret_t
-smi_get_gpu_partition_info (aga_gpu_handle_t gpu_handle, bool *capable,
-                            aga_gpu_compute_partition_type_t *compute_partition,
-                            aga_gpu_memory_partition_type_t *memory_partition)
-{
-    *capable = true;
-    *compute_partition = AGA_GPU_COMPUTE_PARTITION_TYPE_SPX;
-    *memory_partition = AGA_GPU_MEMORY_PARTITION_TYPE_NPS1;
-    return SDK_RET_OK;
-}
-
-sdk_ret_t
-smi_discover_gpus (uint32_t *num_gpus, aga_gpu_handle_t *gpu_handles,
-                   aga_obj_key_t *gpu_keys)
+smi_discover_gpus (uint32_t *num_gpus, aga_gpu_profile_t *gpu)
 {
     if (!num_gpus) {
         return SDK_RET_ERR;
     }
-    *num_gpus = AGA_MOCK_NUM_GPU;
+    *num_gpu = AGA_MOCK_NUM_GPU;
     for (uint32_t i = 0; i < *num_gpus; i++) {
-        gpu_handles[i] = gpu_get_handle(i);
-    }
-    if (gpu_keys) {
-        for (uint32_t i = 0; i < *num_gpus; i++) {
-            gpu_keys[i] = gpu_uuid(i, gpu_get_unique_id(i));
-        }
+        gpu[i].handle = gpu_get_handle(i);
+        gpu[i].key = gpu_uuid(i, gpu_get_unique_id(i));
+        // set GPU ids
+        gpu[i].id = i;
+        // set partition information
+        gpu[i].partition_capable = true;
+        gpu[i].compute_partition = AGA_GPU_COMPUTE_PARTITION_TYPE_SPX;
+        gpu[i].memory_partition = AGA_GPU_MEMORY_PARTITION_TYPE_NPS1;
     }
     return SDK_RET_OK;
 }

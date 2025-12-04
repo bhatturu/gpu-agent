@@ -56,91 +56,86 @@ create_gpus (void)
 {
     sdk_ret_t ret;
     uint32_t num_gpu;
-    uint32_t partition_id;
-    bool partition_capable;
     aga_gpu_spec_t spec = { 0 };
-    aga_obj_key_t gpu_key[AGA_MAX_GPU];
-    aga_gpu_handle_t gpu_handles[AGA_MAX_GPU];
-    std::unordered_map<aga_obj_key_t, uint32_t,
-        aga_obj_key_hash> key_count_map;
-    std::unordered_map<aga_obj_key_t, bool,
-        aga_obj_key_hash> parent_gpu_map;
+    aga::gpu_entry *parent_gpu = NULL;
+    aga_gpu_profile_t gpu[AGA_MAX_GPU];
 
-    ret = aga::smi_discover_gpus(&num_gpu, gpu_handles, gpu_key);
+    ret = aga::smi_discover_gpus(&num_gpu, gpu);
     if (ret != SDK_RET_OK) {
         AGA_TRACE_ERR("GPU discovery failed, err {}", ret());
         return SDK_RET_ERR;
     }
-    // go through GPUs to detect partitions if any; when a GPU is
-    // partitioned, all the children share the same UUID; we use this to detect
-    // partitions
-    for (uint32_t i = 0; i < num_gpu; i++) {
-        key_count_map[gpu_key[i]]++;
-    }
-    // first create parent GPUs for any partitioned GPUs discovered
-    for (uint32_t i = 0; i < num_gpu; i++) {
-        // check if it is a partitioned GPU (multiple GPUs with the same UUID)
-        if (key_count_map[gpu_key[i]] > 1) {
-            if (parent_gpu_map.find(gpu_key[i]) != parent_gpu_map.end()) {
-                // parent GPU already created
-                continue;
-            }
-            // set parent GPU uuid
-            spec.key = gpu_key[i];
-            // parent GPUs cannot have a parent themselves
-            spec.parent_gpu.reset();
-        } else {
-            continue;
-        }
-        AGA_TRACE_DEBUG("Creating parent GPU {}", spec.key.str());
-        // attempt to create gpu object
-        ret = aga_gpu_create(&spec);
-        if (unlikely(ret != SDK_RET_OK)) {
-            AGA_TRACE_ERR("GPU {} creation failed, err {}", spec.key.str(),
-                          ret());
-            // continue to next gpu
-            continue;
-        }
-        // add parent GPU to map
-        parent_gpu_map[spec.key] = true;
-    }
+    // NOTE:
+    // when a GPU is partitioned, the partitions are in sequential order
+
     // start creating the GPU objects
     AGA_TRACE_DEBUG("Creating {} GPU objects ...", num_gpu);
     for (uint32_t i = 0; i < num_gpu; i++) {
-        spec.key = gpu_key[i];
-        // check if it is a partitioned GPU
-        if (key_count_map[gpu_key[i]] > 1) {
-            // set parent GPU key
-            spec.parent_gpu = spec.key;
-            // set GPU partition ID
-            ret = aga::smi_get_gpu_partition_id(gpu_handles[i],
-                                                &partition_id);
-            if (unlikely(ret != SDK_RET_OK)) {
-                AGA_TRACE_ERR("GPU {} creation failed, err {}", spec.key.str(),
-                              ret());
+        // create parent GPUs for partitioned GPUs; we check if it is a
+        // partitioned GPU by checking the compute partition type is not NONE or
+        // SPX; this is only set for the first partition (partition id 0)
+        if ((gpu[i].compute_partition != AGA_GPU_COMPUTE_PARTITION_TYPE_NONE) &&
+             (gpu[i].compute_partition != AGA_GPU_COMPUTE_PARTITION_TYPE_SPX)) {
+            // this is the first partition; create the parent GPU
+            // construct parent GPU uuid
+            ret = aga::smi_get_parent_gpu_uuid(gpu[i].handle, &spec.key);
+            if (ret != SDK_RET_OK) {
+                AGA_TRACE_ERR("Failed to compute parent GPU uuid for GPU {}",
+                              gpu[i].key.str());
                 // continue to next gpu
                 continue;
             }
-            // all child GPUs share the UUID of the parent; to differentiate we
-            // encode the partition id in the UUID
-            *(uint32_t *)&spec.key.id[4] = partition_id;
-        } else {
-            // set parent gpu to be invalid
+            // parent GPUs cannot have a parent themselves
             spec.parent_gpu.reset();
-            // set partition ID to invalid
-            partition_id = AGA_GPU_INVALID_PARTITION_ID;
+            // set partition types
+            spec.memory_partition_type = gpu[i].memory_partition;
+            spec.compute_partition_type = gpu[i].compute_partition;
+            AGA_TRACE_DEBUG("Creating parent GPU {}", spec.key.str());
+            // attempt to create gpu object
+            ret = aga_gpu_create(&spec);
+            if (unlikely(ret != SDK_RET_OK)) {
+                AGA_TRACE_ERR("Parent GPU {} creation failed, err {}",
+                              spec.key.str(), ret());
+                // continue to next gpu
+                continue;
+            }
+            // find the parent GPU, so thht we can add children to it
+            parent_gpu = gpu_db()->find(&spec.key);
+            if (!parent_gpu) {
+                AGA_TRACE_ERR("Parent GPU {} entry not found", spec.key.str());
+                // continue to next gpu
+                continue;
+            }
+            // stash first partition handle in the parent so that it can be
+            // propogated to all its children
+            parent_gpu->set_first_partition_handle(gpu[i].handle);
+        } else if (gpu[i].partition_id) {
+            // this is a subsequent partition; ignore if we didn't create a
+            // parent GPU
+            if (!parent_gpu) {
+                AGA_TRACE_ERR("Parent GPU not found for GPU {}, ignore ...",
+                              gpu[i].key.str());
+                continue;
+            }
+        } else {
+            // non-partition case; reset parent GPU
+            parent_gpu = NULL;
         }
-        // get partition informatino for GPU
-        ret = aga::smi_get_gpu_partition_info(gpu_handles[i],
-                                              &partition_capable,
-                                              &spec.compute_partition_type,
-                                              &spec.memory_partition_type);
-        if (unlikely(ret != SDK_RET_OK)) {
-            AGA_TRACE_ERR("Failed to get GPU {} partition information, err {}",
-                          spec.key.str(), ret());
+        // create GPU
+        spec.key = gpu[i].key;
+        if (parent_gpu) {
+            spec.parent_gpu = parent_gpu->key();
+            // get the partition types from the parent GPUs
+            spec.memory_partition_type = parent_gpu->memory_partition_type();
+            spec.compute_partition_type = parent_gpu->compute_partition_type();
+        } else {
+            spec.parent_gpu.reset();
+            spec.memory_partition_type = gpu[i].memory_partition;
+            spec.compute_partition_type = gpu[i].compute_partition;
         }
-        AGA_TRACE_DEBUG("Creating GPU {} id {} handle {}",
-                        spec.key.str(), i, gpu_handles[i]);
+        AGA_TRACE_DEBUG("Creating GPU {} id {} handle {} partition id {}",
+                        spec.key.str(), gpu[i].id, gpu[i].handle,
+                        gpu[i].partition_id);
         // attempt to create gpu object
         ret = aga_gpu_create(&spec);
         if (unlikely(ret != SDK_RET_OK)) {
@@ -157,64 +152,29 @@ create_gpus (void)
             // continue to next gpu
             continue;
         }
-        AGA_TRACE_DEBUG("GPU {} partition capability set {}", spec.key.str(),
-                        entry->is_partionable());
         // set GPU id
-        entry->set_id(i);
+        entry->set_id(gpu[i].id);
         // set GPU handle
-        entry->set_handle(gpu_handles[i]);
+        entry->set_handle(gpu[i].handle);
         // set partition capability
-        entry->set_partition_capability(partition_capable);
+        entry->set_partition_capability(gpu[i].partition_capable);
         // set partition id
-        entry->set_partition_id(partition_id);
+        entry->set_partition_id(gpu[i].partition_id);
         // initialize immutable attributes in GPU spec and status
         entry->init_immutable_attrs();
         // insert in handle db
         gpu_db()->insert_in_handle_db(entry);
         // if GPU is a child GPU, add to the parent GPU
         if (spec.parent_gpu.valid()) {
-            auto parent_entry = gpu_db()->find(&spec.parent_gpu);
-            if (!parent_entry) {
-                // should we error out; this shouldn't happen
-                AGA_TRACE_ERR("Parent GPU {} for GPU {} not found",
-                              spec.parent_gpu.str(), spec.key.str());
-                continue;
-            }
-            parent_entry->add_child_gpu(&spec.key);
-            parent_entry->set_compute_partition_type(
-                              spec.compute_partition_type);
-            parent_entry->set_memory_partition_type(
-                              spec.memory_partition_type);
-            // if this child GPU is the first partition, stash its handle in the
-            // parent so that it can be propogated to all its children
-            if (!partition_id) {
-                parent_entry->set_first_partition_handle(gpu_handles[i]);
-            }
+            parent_gpu->add_child_gpu(&spec.key);
+            // set first partition handle
+            entry->set_first_partition_handle(
+                       parent_gpu->first_partition_handle());
         } else {
             // when the GPU is not partitioned set the first partition handle to
             // be the same as the GPU handle
-            entry->set_first_partition_handle(gpu_handles[i]);
+            entry->set_first_partition_handle(gpu[i].handle);
         }
-    }
-    for (auto& pair : parent_gpu_map) {
-        auto parent_gpu = gpu_db()->find((aga_obj_key_t *)&pair.first);
-        if (!parent_gpu) {
-            // shouldn't happen
-            AGA_TRACE_ERR("Parent GPU {} not found", pair.first.str());
-            continue;
-        }
-        auto child_gpus = parent_gpu->child_gpus();
-        for (uint32_t i = 0; i < child_gpus.size(); i++) {
-            auto child = gpu_db()->find(&child_gpus[i]);
-            if (!child) {
-                // shouldn't happen
-                AGA_TRACE_ERR("Child GPU {} not found", child_gpus[i].str());
-                continue;
-            }
-            child->set_first_partition_handle(
-                       parent_gpu->first_partition_handle());
-        }
-
     }
     return SDK_RET_OK;
 }
