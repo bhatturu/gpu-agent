@@ -139,8 +139,6 @@ func init() {
 	gpuShowCmd.Flags().BoolP("status", "s", false, "Show GPU status")
 	gpuShowCmd.Flags().Bool("summary", false, "Display number of objects")
 	gpuShowCmd.Flags().StringVarP(&gpuID, "id", "i", "", "Specify GPU id")
-	gpuShowCmd.Flags().BoolP("partitioned", "p", false,
-		"Show only partitioned GPUs")
 
 	gpuShowCmd.AddCommand(gpuAllShowCmd)
 	gpuAllShowCmd.Flags().StringVarP(&gpuID, "id", "i", "", "Specify GPU id")
@@ -217,7 +215,7 @@ func printGPUPartitions(resp *aga.GPUComputePartition) {
 		if i != 0 {
 			fmt.Printf("%-56s%-40s\n", "", utils.IdToStr(partition))
 		} else {
-			fmt.Printf("%-40s\n", "", utils.IdToStr(partition))
+			fmt.Printf("%-40s\n", utils.IdToStr(partition))
 		}
 	}
 }
@@ -502,23 +500,9 @@ func gpuShowCmdHandler(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Operation failed with %v error", respMsg.ApiStatus)
 	}
 
-	var response []*aga.GPU
-	for _, resp := range respMsg.Response {
-		status := resp.GetStatus()
-		if len(status.GetGPUPartition()) > 0 {
-			if cmd != nil && cmd.Flags().Changed("partitioned") {
-				response = append(response, resp)
-			}
-		} else {
-			if cmd == nil || !cmd.Flags().Changed("partitioned") {
-				response = append(response, resp)
-			}
-		}
-	}
-
 	// print GPUs
 	if cmd != nil && cmd.Flags().Changed("yaml") {
-		yamlArr, _ := yaml.Marshal(response)
+		yamlArr, _ := yaml.Marshal(respMsg.Response)
 		fmt.Println(string(yamlArr))
 	} else if cmd != nil && cmd.Flags().Changed("json") {
 		// json output requires that all GPUs are listed within [] braces
@@ -526,7 +510,7 @@ func gpuShowCmdHandler(cmd *cobra.Command, args []string) error {
 			fmt.Printf("[\n")
 		}
 		rcvdResp := false
-		for _, resp := range response {
+		for _, resp := range respMsg.Response {
 			if rcvdResp == true {
 				// json output requires a , after each GPU
 				fmt.Printf(",\n")
@@ -539,17 +523,17 @@ func gpuShowCmdHandler(cmd *cobra.Command, args []string) error {
 			fmt.Printf("\n]\n")
 		}
 	} else if cmd != nil && cmd.Flags().Changed("summary") {
-		printGPUSummary(len(response))
+		printGPUSummary(len(respMsg.Response))
 	} else if cmd != nil && cmd.Flags().Changed("status") {
-		for _, resp := range response {
+		for _, resp := range respMsg.Response {
 			printGPUStatus(resp, true)
 		}
-		printGPUSummary(len(response))
+		printGPUSummary(len(respMsg.Response))
 	} else {
-		for _, resp := range response {
+		for _, resp := range respMsg.Response {
 			printGPUSpec(resp, true)
 		}
-		printGPUSummary(len(response))
+		printGPUSummary(len(respMsg.Response))
 	}
 	return nil
 }
@@ -804,7 +788,7 @@ func printGPUSpec(gpu *aga.GPU, specOnly bool) {
 	}
 	// TODO: fill GPU RAS Spec
 	if specOnly {
-		fmt.Printf("\n%s\n", strings.Repeat("-", 80))
+		fmt.Printf("\n%s\n", strings.Repeat("-", 90))
 	}
 }
 
@@ -1059,7 +1043,7 @@ func printGPUStatus(gpu *aga.GPU, statusOnly bool) {
 		}
 	}
 	if statusOnly {
-		fmt.Printf("\n%s\n", strings.Repeat("-", 80))
+		fmt.Printf("\n%s\n", strings.Repeat("-", 90))
 	}
 }
 
@@ -1858,7 +1842,7 @@ func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 		}
 	}
 
-	fmt.Printf("\n%s\n", strings.Repeat("-", 80))
+	fmt.Printf("\n%s\n", strings.Repeat("-", 90))
 }
 
 type ShadowGPU struct {

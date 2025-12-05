@@ -752,6 +752,24 @@ typedef struct aga_gpu_info_s {
     aga_gpu_stats_t stats;
 } aga_gpu_info_t;
 
+/// GPU profile
+typedef struct aga_gpu_profile_s {
+    /// GPU id
+    uint32_t id;
+    /// GPU uuid
+    aga_obj_key_t key;
+    /// GPU handle
+    aga_gpu_handle_t handle;
+    /// is the GPU partition capable
+    bool partition_capable;
+    /// GPU compute partition type
+    aga_gpu_compute_partition_type_t compute_partition;
+    /// GPU compute partition id
+    uint32_t partition_id;
+    /// GPU memory partition type
+    aga_gpu_memory_partition_type_t memory_partition;
+} aga_gpu_profile_t;
+
 /// device type enum
 typedef enum aga_device_type_e {
     AGA_DEVICE_TYPE_NONE = 0,

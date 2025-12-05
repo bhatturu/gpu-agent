@@ -114,12 +114,15 @@ sdk_ret_t smi_gpu_fill_device_topology(aga_gpu_handle_t handle,
 
 /// \brief     discover gpu devices
 /// \param[out] num_gpus    number of GPU devices discovered
-/// \param[out] gpu_handles handle of gpu devices discovered
-/// \param[out] gpu_keys    uuids of gpu devices discovered
+/// \param[out] gpu         profile of GPU devices discovered
 /// \return    SDK_RET_OK or error code in case of failure
-sdk_ret_t smi_discover_gpus(uint32_t *num_gpus,
-                            aga_gpu_handle_t *gpu_handles,
-                            aga_obj_key_t *gpu_keys);
+sdk_ret_t smi_discover_gpus(uint32_t *num_gpu, aga_gpu_profile_t *gpu);
+
+/// \brief     function to compute parent GPU's uuid
+/// \param[in]  gpu_handle    handle of GPU device
+/// \param[out] parent_key    computed uuid of parent GPU
+sdk_ret_t smi_get_parent_gpu_uuid(aga_gpu_handle_t gpu_handle,
+                                  aga_obj_key_t *parent_key);
 
 /// \brief function to get number of bad pages for GPU
 /// \param[in]  gpu             GPU object
@@ -136,23 +139,6 @@ sdk_ret_t smi_gpu_get_bad_page_count(void *gpu_obj,
 sdk_ret_t smi_gpu_get_bad_page_records(void *gpu_obj,
                                        uint32_t num_bad_pages,
                                        aga_gpu_bad_page_record_t *records);
-
-/// \brief function to get GPU partition id
-/// \param[in]  gpu_handle   handle of GPU device
-/// \param[out] partition_id partition id of the GPU
-sdk_ret_t smi_get_gpu_partition_id(aga_gpu_handle_t gpu_handle,
-                                   uint32_t *partition_id);
-
-/// \brief function to get GPU partition information
-/// \param[in]  gpu_handle    handle of GPU device
-/// \param[out] partition_capable   true if platform supports partitioning
-/// \param[out] compute_partition   compute partition type
-/// \param[out] memory_partition    memory partition type
-/// \return SDK_RET_OK or error code in case of failure
-sdk_ret_t smi_get_gpu_partition_info(aga_gpu_handle_t gpu_handle,
-              bool *partition_capable,
-              aga_gpu_compute_partition_type_t *compute_partition,
-              aga_gpu_memory_partition_type_t *memory_partition);
 
 /// \brief function to fill immutable attributes in GPU spec and status
 /// \param[in]  gpu_handle    handle of GPU device

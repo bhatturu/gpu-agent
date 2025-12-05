@@ -114,6 +114,10 @@ aga_gpu_info_from_entry (void *entry, void *ctxt)
         // some API operation is in progress on this object, skip it
         return false;
     }
+    if (gpu->is_parent_gpu()) {
+        // no need to show parent GPUs as they are placeholders
+        return false;
+    }
     memset(&info, 0, sizeof(aga_gpu_info_t));
     // call entry read
     gpu->read(&info);

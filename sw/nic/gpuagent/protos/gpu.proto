@@ -416,11 +416,13 @@ message GPUStatus {
   uint32                      PartitionId        = 22;
   // GPU partitions (aka. child GPUs)
   // NOTE:
-  // only valid for physical GPUs which have been partitioned
+  // deprecated; no longer in use 
   repeated bytes              GPUPartition       = 23;
   // physical GPU (aka. parent GPU)
   // NOTE:
   // only valid for GPU partitions (child GPUs)
+  // to get information about the physical GPU and its child GPUs use
+  // GPUComputePartitionGet
   bytes                       PhysicalGPU        = 24;
   // GPU KFD id
   uint64                      KFDId              = 25;

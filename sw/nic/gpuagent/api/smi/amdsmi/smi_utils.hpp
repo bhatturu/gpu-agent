@@ -357,23 +357,28 @@ smi_to_aga_gpu_page_status (amdsmi_memory_page_status_t page_status)
     return AGA_GPU_PAGE_STATUS_NONE;
 }
 
-/// \brief convert amdsmi partition type string to aga comptue partition type
+/// \brief convert amdsmi accelerator partition to aga comptue partition type
 /// \param[in] partition_type amdsmi partition type string
 /// \return    aga gpu compute partition type
 static inline aga_gpu_compute_partition_type_t
-smi_to_aga_gpu_compute_partition_type (std::string partition_type)
+smi_to_aga_gpu_compute_partition_type (
+    amdsmi_accelerator_partition_type_t partition_type)
 {
-    if (partition_type == "SPX") {
+    switch (partition_type) {
+    case AMDSMI_ACCELERATOR_PARTITION_SPX:
         return AGA_GPU_COMPUTE_PARTITION_TYPE_SPX;
-    } else if (partition_type == "DPX") {
+    case AMDSMI_ACCELERATOR_PARTITION_DPX:
         return AGA_GPU_COMPUTE_PARTITION_TYPE_DPX;
-    } else if (partition_type == "TPX") {
+    case AMDSMI_ACCELERATOR_PARTITION_TPX:
         return AGA_GPU_COMPUTE_PARTITION_TYPE_TPX;
-    } else if (partition_type == "QPX") {
+    case AMDSMI_ACCELERATOR_PARTITION_QPX:
         return AGA_GPU_COMPUTE_PARTITION_TYPE_QPX;
-    } else if (partition_type == "CPX") {
+    case AMDSMI_ACCELERATOR_PARTITION_CPX:
         return AGA_GPU_COMPUTE_PARTITION_TYPE_CPX;
+    default:
+        break;
     }
+
 
     return AGA_GPU_COMPUTE_PARTITION_TYPE_NONE;
 }

@@ -1508,6 +1508,7 @@ sdk_ret_t
 smi_state::init(aga_api_init_params_t *init_params) {
     sdk_ret_t ret;
     amdsmi_status_t status;
+    aga_gpu_profile_t gpu[AGA_MAX_GPU];
 
     // initialize smi library
     status = amdsmi_init(AMDSMI_INIT_AMD_GPUS);
@@ -1516,9 +1517,12 @@ smi_state::init(aga_api_init_params_t *init_params) {
         return amdsmi_ret_to_sdk_ret(status);
     }
     // discover gpus
-    ret = aga::smi_discover_gpus(&num_gpu_, gpu_handles_, NULL);
+    ret = aga::smi_discover_gpus(&num_gpu_, gpu);
     if (ret != SDK_RET_OK) {
         return ret;
+    }
+    for (uint32_t i = 0; i < num_gpu_; i++) {
+        gpu_handles_[i] = gpu[i].handle;
     }
     // spawn event monitor thread
     spawn_event_monitor_thread_();
