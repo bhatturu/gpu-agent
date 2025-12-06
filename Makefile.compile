@@ -102,8 +102,6 @@ gpuagent-asset-copy:
 	@echo "gpuagent assets copied successfully"
 	@cd ${TOP_DIR}
 
-	
-
 .PHONY: rocprofiler-compile
 rocprofiler-compile:
 	${MAKE} rocprofiler-build
