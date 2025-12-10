@@ -27,7 +27,10 @@ limitations under the License.
 #include "nic/gpuagent/api/include/aga_event.hpp"
 #include "nic/gpuagent/api/smi/smi.hpp"
 
-#define AGA_MOCK_NUM_GPU    16
+extern uint16_t g_num_gpu_mock;
+extern aga_gpu_handle_t g_gpu_handles[AGA_MAX_GPU];
+
+#define AGA_MOCK_NUM_GPU    (g_num_gpu_mock)
 
 namespace aga {
 
@@ -50,6 +53,9 @@ aga_event_id_t event_buffer_get_event_id(void *event_buffer,
 /// \param[in]  event_idx       event index
 /// \return     event identifier
 char *event_buffer_get_message(void *event_buffer, uint32_t event_idx);
+
+/// \brief      generate unique ids used for handle and uuid of GPUs
+void gpu_gen_unique_ids(void);
 
 /// \brief      get GPU handle given linear GPU index
 /// \param[in]  gpu_idx         linear GPU index
