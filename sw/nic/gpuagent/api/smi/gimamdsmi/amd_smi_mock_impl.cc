@@ -21,30 +21,14 @@
 ///
 //----------------------------------------------------------------------------
 
+#include "time.h"
 #include "nic/sdk/include/sdk/base.hpp"
 #include "nic/gpuagent/api/smi/smi.hpp"
 #include "nic/gpuagent/api/smi/smi_api_mock_impl.hpp"
 #include "nic/gpuagent/api/smi/gimamdsmi/smi_utils.hpp"
 
-/// global variables
-static const aga_gpu_handle_t g_gpu_handles[AGA_MOCK_NUM_GPU] = {
-    (aga_gpu_handle_t)0x82d0655d514f2a30,
-    (aga_gpu_handle_t)0xb0a8e71cda21053d,
-    (aga_gpu_handle_t)0xf995d85297ccd9dc,
-    (aga_gpu_handle_t)0x68cccfa2b07a7844,
-    (aga_gpu_handle_t)0x5c7d5bf36c641653,
-    (aga_gpu_handle_t)0x66a63cfe0171bbf6,
-    (aga_gpu_handle_t)0x2ec4a124a4fbcc4e,
-    (aga_gpu_handle_t)0x77e5e048b6a83187,
-    (aga_gpu_handle_t)0xf09b845d31ae3857,
-    (aga_gpu_handle_t)0x3157ecb6077a5d44,
-    (aga_gpu_handle_t)0x4c084d1f803abfe4,
-    (aga_gpu_handle_t)0xfca7aec17c68886b,
-    (aga_gpu_handle_t)0x75da07dd38df86d0,
-    (aga_gpu_handle_t)0x3d8f866be4a9c06f,
-    (aga_gpu_handle_t)0xc2ba04903dff37d3,
-    (aga_gpu_handle_t)0x6971c8479bd8510f
-};
+/// global array of GPU handles
+static aga_gpu_handle_t g_gpu_handles[AGA_MAX_GPU];
 
 namespace aga {
 
@@ -73,6 +57,20 @@ event_buffer_get_message (void *event_buffer_, uint32_t event_idx)
 
     event_buffer = (amdsmi_evt_notification_data_t *)event_buffer_;
     return event_buffer[event_idx].message;
+}
+
+void
+gpu_gen_unique_ids (void)
+{
+    uint64_t high, low;
+
+    // seed the random number generator
+    srand((unsigned int)time(NULL));
+    for (uint32_t i = 0; i < AGA_MOCK_NUM_GPU; i++) {
+        high = (uint64_t)rand();
+        low = (uint64_t)rand();
+        g_gpu_handles[i] = (aga_gpu_handle_t)((high << 32) | low);
+    }
 }
 
 aga_gpu_handle_t

@@ -24,6 +24,8 @@ limitations under the License.
 #include <sstream>
 #include <iomanip>
 #include <iostream>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include "nic/sdk/include/sdk/base.hpp"
 #include "nic/sdk/lib/event_thread/event_thread.hpp"
 #include "nic/gpuagent/core/aga_core.hpp"
@@ -40,6 +42,27 @@ limitations under the License.
 #define AGA_SMI_EVENT_MONITOR_START_DELAY    10.0
 /// event monitoring frequency (in seconds)
 #define AGA_SMI_EVENT_MONITOR_INTERVAL       3.0
+
+/// number of GPUs mocked; by default 16, when PLATFORM is set to be helios the
+/// number of GPUs is 4
+uint16_t g_num_gpu_mock = 16;
+/// global array of GPU handles
+aga_gpu_handle_t g_gpu_handles[AGA_MAX_GPU];
+
+/// struct to hold GPU information
+typedef struct gpu_cfg_s {
+    /// GPU id
+    uint32_t gpu_id;
+    /// GPU uuid
+    aga_obj_key_t key;
+    /// bdf
+    std::string bdf;
+    /// GPU handle
+    aga_gpu_handle_t handle;
+} gpu_cfg_t;
+
+/// unordered map to store GPU config info
+std::unordered_map<aga_gpu_handle_t, gpu_cfg_t> g_gpu_map;
 
 namespace aga {
 
@@ -210,7 +233,8 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
     strncpy(status->memory_vendor, "hynix", AGA_MAX_STR_LEN);
     smi_fill_clock_status_(gpu_handle, status);
     // fill the PCIe bus id
-    strncpy(status->pcie_status.pcie_bus_id, "0000:59:00.0", AGA_MAX_STR_LEN);
+    strncpy(status->pcie_status.pcie_bus_id, g_gpu_map[gpu_handle].bdf.c_str(),
+            AGA_MAX_STR_LEN);
     status->pcie_status.slot_type = AGA_PCIE_SLOT_TYPE_OAM;
     status->pcie_status.width = 16;
     status->pcie_status.max_width = 16;
@@ -642,6 +666,45 @@ smi_gpu_fill_device_topology (aga_gpu_handle_t gpu_handle,
     return SDK_RET_OK;
 }
 
+static inline sdk_ret_t
+parse_uuid_to_key_and_handle (const std::string& uuid, aga_obj_key_t& key,
+                              aga_gpu_handle_t& handle)
+{
+    uint32_t byte_val;
+    uint64_t gpu_handle;
+    std::string hex_str;
+
+    // remove "-" from the uuid string
+    for (char c : uuid) {
+        if (c != '-') {
+            hex_str += c;
+        }
+    }
+    if (hex_str.size() < 32) {
+        return SDK_RET_ERR;
+    }
+
+    // parse the uuid string and construct aga_obj_key_t
+    for (uint32_t i = 0; i < OBJ_MAX_KEY_LEN; i++) {
+        if (sscanf(hex_str.c_str() + (i * 2), "%2x", &byte_val) != 1) {
+            AGA_TRACE_ERR("Invalid GPU UUID {} parsed", uuid.c_str());
+            return SDK_RET_ERR;
+        }
+        key.id[i] = static_cast<char>(byte_val);
+    }
+
+    // compute GPU handle from the uuid
+    gpu_handle = 0;
+
+    std::string handle_str = hex_str.substr(0, 16);
+    if (sscanf(handle_str.c_str(), "%16lx", &gpu_handle) != 1) {
+        AGA_TRACE_ERR("Failed to generate GPU handle for GPU {}", uuid.c_str());
+        return SDK_RET_ERR;
+    }
+    handle = aga_gpu_handle_t(gpu_handle);
+    return SDK_RET_OK;
+}
+
 sdk_ret_t
 smi_get_parent_gpu_uuid (aga_gpu_handle_t gpu_handle, aga_obj_key_t *parent_key)
 {
@@ -650,14 +713,95 @@ smi_get_parent_gpu_uuid (aga_gpu_handle_t gpu_handle, aga_obj_key_t *parent_key)
 }
 
 sdk_ret_t
-smi_discover_gpus (uint32_t *num_gpus, aga_gpu_profile_t *gpu)
+parse_gpu_config_file (const char *cfg_file, uint32_t *num_gpu,
+                       aga_gpu_profile_t *gpu)
 {
-    if (!num_gpus) {
+    sdk_ret_t ret;
+    gpu_cfg_t cfg;
+    std::string uuid;
+    uint32_t gpu_id = 0;
+    boost::property_tree::ptree pt;
+    std::string file_path(cfg_file);
+
+    try {
+        boost::property_tree::read_json(cfg_file, pt);
+
+        g_num_gpu_mock = pt.get<uint32_t>("gpu_count");
+        *num_gpu = g_num_gpu_mock;
+        for (const auto& item : pt.get_child("gpu")) {
+            uuid = item.second.get<std::string>("uuid");
+            cfg.bdf = item.second.get<std::string>("bdf");
+            cfg.gpu_id = gpu_id;
+            // get aga_obj_key_t and handle from uuid string
+            ret = parse_uuid_to_key_and_handle(uuid, cfg.key, cfg.handle);
+            if (ret != SDK_RET_OK) {
+                return ret;
+            }
+            // insert into a global map
+            g_gpu_map[cfg.handle] = cfg;
+            g_gpu_handles[gpu_id] = cfg.handle;
+            gpu[gpu_id].handle = cfg.handle;
+            gpu[gpu_id].key = cfg.key;
+            gpu[gpu_id].id = cfg.gpu_id;
+            gpu[gpu_id].partition_capable = true;
+            gpu[gpu_id].compute_partition = AGA_GPU_COMPUTE_PARTITION_TYPE_SPX;
+            gpu[gpu_id].memory_partition = AGA_GPU_MEMORY_PARTITION_TYPE_NPS1;
+            // increment GPU id
+            gpu_id++;
+        }
+    } catch (const std::exception& e) {
+        AGA_TRACE_ERR("Unable to parse GPU config file {}", cfg_file);
         return SDK_RET_ERR;
     }
+    return SDK_RET_OK;
+}
+
+sdk_ret_t
+smi_discover_gpus (uint32_t *num_gpu, aga_gpu_profile_t *gpu)
+{
+    sdk_ret_t ret;
+    gpu_cfg_t cfg;
+    const char *platform, *cfg_file;
+    // this function is called periodically by the device discovery thread; we
+    // don't want to generate new GPUs each time this function is called
+    static bool gpu_gen_completed = false;
+
+     if (!num_gpu) {
+        return SDK_RET_ERR;
+    }
+
+    // if env variable GPU_CONFIG_FILE is set, we get the number of GPUs, their
+    // uuids and BDFs from it and derive the GPU handle from the uuid; this
+    // supercedes PLATFORM env
+    cfg_file = std::getenv("GPU_CONFIG_FILE");
+    if (cfg_file != NULL) {
+        ret = parse_gpu_config_file(cfg_file, num_gpu, gpu);
+        if (ret == SDK_RET_OK) {
+            return ret;
+        }
+    }
+
+    // the number of GPUs depends on the platform being mocked; if the platform
+    // is helios the number of GPUs will be 4 otherwise it will be 16 (default)
+    platform = std::getenv("PLATFORM");
+    if (platform != NULL) {
+        if (strcmp(platform, "helios") == 0) {
+            g_num_gpu_mock = 4;
+        }
+    }
+
     *num_gpu = AGA_MOCK_NUM_GPU;
-    for (uint32_t i = 0; i < *num_gpus; i++) {
+
+    // generate unique ids for each GPU
+    if (!gpu_gen_completed) {
+        gpu_gen_unique_ids();
+        gpu_gen_completed = true;
+    }
+
+    // set GPU ids
+    for (uint32_t i = 0; i < *num_gpu; i++) {
         gpu[i].handle = gpu_get_handle(i);
+        // set GPU uuids
         gpu[i].key = gpu_uuid(i, gpu_get_unique_id(i));
         // set GPU ids
         gpu[i].id = i;
@@ -665,6 +809,14 @@ smi_discover_gpus (uint32_t *num_gpus, aga_gpu_profile_t *gpu)
         gpu[i].partition_capable = true;
         gpu[i].compute_partition = AGA_GPU_COMPUTE_PARTITION_TYPE_SPX;
         gpu[i].memory_partition = AGA_GPU_MEMORY_PARTITION_TYPE_NPS1;
+        // construct GPU config and add to map only once
+        if (!gpu_gen_completed) {
+            cfg.key = gpu[i].key;
+            cfg.gpu_id = gpu[i].id;
+            cfg.handle = gpu[i].handle;
+            cfg.bdf = "0000:" + std::to_string(cfg.gpu_id + 1) + ":00.0";
+            g_gpu_map[cfg.handle] = cfg;
+        }
     }
     return SDK_RET_OK;
 }
