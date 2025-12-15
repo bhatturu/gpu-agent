@@ -70,12 +70,19 @@ copy_artifacts () {
 docker_push () {
     EXPORTER_IMAGE_URL=registry.test.pensando.io:5000/device-metrics-exporter
     EXPORTER_SRIOV_IMAGE_URL=registry.test.pensando.io:5000/device-metrics-exporter-sriov
+    EXPORTER_MOCK_IMAGE_URL=registry.test.pensando.io:5000/device-metrics-exporter-mock
 
     # rhel 9 image push
     docker load -i /device-metrics-exporter/docker/device-metrics-exporter-latest.tar.gz
     docker inspect $EXPORTER_IMAGE_URL:latest | grep "HOURLY"
     docker tag $EXPORTER_IMAGE_URL:latest $EXPORTER_IMAGE_URL:$tag
     docker push $EXPORTER_IMAGE_URL:$tag
+
+    # mock exporter image push
+    docker load -i /device-metrics-exporter/docker/device-metrics-exporter-mock-latest.tar.gz
+    docker inspect $EXPORTER_MOCK_IMAGE_URL:latest | grep "HOURLY"
+    docker tag $EXPORTER_MOCK_IMAGE_URL:latest $EXPORTER_MOCK_IMAGE_URL:$tag
+    docker push $EXPORTER_MOCK_IMAGE_URL:$tag
 
     # azurelinux3 image push
     #azuretag="$tag-azl3"

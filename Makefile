@@ -367,8 +367,8 @@ docker-sriov-ub22: gen amdexporter
 	${MAKE} -C docker docker-sriov-save TOP_DIR=$(CURDIR)
 
 .PHONY: docker-mock
-docker-mock: gen amdexporter
-	${MAKE} -C docker TOP_DIR=$(CURDIR) MOCK=1 EXPORTER_IMAGE_NAME=$(EXPORTER_IMAGE_NAME)-mock
+docker-mock: gen amdexporter mock-rocpctl
+	${MAKE} -C docker TOP_DIR=$(CURDIR) EXPORTER_IMAGE_NAME=$(EXPORTER_IMAGE_NAME)-mock docker-mock
 	${MAKE} -C docker docker-save TOP_DIR=$(CURDIR) EXPORTER_IMAGE_NAME=$(EXPORTER_IMAGE_NAME)-mock
 
 .PHONY: docker-test-runner
@@ -549,3 +549,6 @@ build-all:
 	${MAKE} amdsmi-compile-all
 	${MAKE} gimsmi-compile-all
 
+.PHONY: mock-rocpctl
+mock-rocpctl:
+	${MAKE} -C tools/mock-rocpctl BIN_PATH=$(CURDIR)/bin
