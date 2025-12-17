@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/ROCm/device-metrics-exporter/pkg/amdnic/gen/nicmetricssvc"
+	"github.com/ROCm/device-metrics-exporter/pkg/amdnic/nicagent/cmdexec"
 	k8sclient "github.com/ROCm/device-metrics-exporter/pkg/client"
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/globals"
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/logger"
@@ -56,6 +57,7 @@ type NICAgentClient struct {
 	rdmaDevToPcieAddr       map[string]string
 	podnameToPidCache       *lru.Cache[string, int]
 	podnameToNetDeviceCache *lru.Cache[string, []NetDevice]
+	cmdExec                 cmdexec.CommandExecuter
 }
 
 // NICAgentClientOptions defines the options for the NICAgentClient
@@ -107,6 +109,7 @@ func NewAgent(mh *metricsutil.MetricsHandler, opts ...NICAgentClientOptions) *NI
 		nodeHealthLabellerCfg: &utils.NodeHealthLabellerConfig{
 			LabelPrefix: globals.NICHealthLabelPrefix,
 		},
+		cmdExec: cmdexec.NewExecuter(),
 	}
 
 	for _, o := range opts {
@@ -179,7 +182,7 @@ func (na *NICAgentClient) addRdmaDevPcieAddrIfAbsent(rdmaDev string) error {
 	defer na.Unlock()
 	if _, ok := na.rdmaDevToPcieAddr[rdmaDev]; !ok {
 		cmd := fmt.Sprintf(GetPcieAddrFromRdmaDevCmd, rdmaDev)
-		out, err := ExecWithContext(cmd)
+		out, err := ExecWithContext(cmd, na.cmdExec)
 		if err != nil {
 			return fmt.Errorf("failed to execute cmd %s: %s", cmd, err)
 		}
@@ -234,7 +237,7 @@ func (na *NICAgentClient) getPidOfPod(podName, ns string) (int, error) {
 		return -1, fmt.Errorf("found unsupported runtime %s for %s", ctrRuntime, logStr)
 	}
 
-	processID, err := ExecWithContext(cmd)
+	processID, err := ExecWithContext(cmd, na.cmdExec)
 	if err != nil {
 		logStr = fmt.Sprintf("runtime %s, containerID %s, %s", ctrRuntime, containerID, logStr)
 		return -1, fmt.Errorf("failed to find pid for %s: %v", logStr, err)
@@ -305,7 +308,7 @@ func (na *NICAgentClient) getNetDevicesList(podInfo *scheduler.PodResourceInfo) 
 		cmd = ShowRdmaDevicesCmd
 	}
 
-	res, err := ExecWithContext(cmd)
+	res, err := ExecWithContext(cmd, na.cmdExec)
 	if err != nil {
 		return netDevices, fmt.Errorf("failed to run cmd %s: %v", cmd, err)
 	}
@@ -319,7 +322,7 @@ func (na *NICAgentClient) getNetDevicesList(podInfo *scheduler.PodResourceInfo) 
 		for i, p := range parts {
 			if p == "link" && i+1 < partsLen {
 				roceDevName = strings.Split(parts[i+1], "/")[0]
-				vendorID, err := getVendor(roceDevName)
+				vendorID, err := getVendor(roceDevName, na.cmdExec)
 				if err != nil {
 					logger.Log.Printf("failed to get vendor ID for %s: %v", roceDevName, err)
 					roceDevName = ""
@@ -344,7 +347,7 @@ func (na *NICAgentClient) getNetDevicesList(podInfo *scheduler.PodResourceInfo) 
 				} else {
 					cmd = fmt.Sprintf(ShowNetDeviceCmd, intfName)
 				}
-				res, err := ExecWithContext(cmd)
+				res, err := ExecWithContext(cmd, na.cmdExec)
 				if err == nil {
 					words := strings.Fields(string(res))
 					for idx, w := range words {
@@ -433,7 +436,7 @@ func (na *NICAgentClient) getMetricsAll() error {
 		go func(client NICInterface) {
 			startTime := time.Now()
 			defer wg.Done()
-			if client.IsActive() {
+			if utils.IsSimEnabled() || client.IsActive() {
 				if err := client.UpdateNICStats(workloads); err != nil {
 					logger.Log.Printf("failed to update NIC stats, err: %v", err)
 				}
