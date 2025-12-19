@@ -68,7 +68,7 @@ func initLogger(console bool) {
 
 	// Configure output for enhanced logger
 	if console {
-		Log.logrus.SetOutput(os.Stdout)
+		Log.SetOutput(os.Stdout)
 		Log.Log = log.New(os.Stdout, logPrefix, log.Lmsgprefix)
 	} else {
 		if os.Getenv("LOGDIR") != "" {
@@ -79,7 +79,7 @@ func initLogger(console bool) {
 		outfile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			// Fallback to stdout if file creation fails
-			Log.logrus.SetOutput(os.Stdout)
+			Log.SetOutput(os.Stdout)
 			Log.Log = log.New(os.Stdout, logPrefix, log.Lmsgprefix)
 		} else {
 			Log.initLoggerRotation()
