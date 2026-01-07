@@ -19,6 +19,10 @@ docker rmi registry.test.pensando.io:5000/device-metrics-exporter-sriov/exporter
 docker pull registry.test.pensando.io:5000/device-metrics-exporter-sriov/exporter:$PRIVATE_TAG
 docker tag registry.test.pensando.io:5000/device-metrics-exporter-sriov/exporter:$PRIVATE_TAG amdpsdo/device-metrics-exporter-sriov:$PUBLIC_TAG
 
+docker rmi registry.test.pensando.io:5000/device-metrics-exporter-ainic/exporter:$PRIVATE_TAG
+docker pull registry.test.pensando.io:5000/device-metrics-exporter-ainic/exporter:$PRIVATE_TAG
+docker tag registry.test.pensando.io:5000/device-metrics-exporter-ainic/exporter:$PRIVATE_TAG amdpsdo/device-metrics-exporter-ainic:$PUBLIC_TAG
+
 #docker rmi registry.test.pensando.io:5000/device-metrics-exporter/exporter:$AZ_PRIVATE_TAG
 #docker pull registry.test.pensando.io:5000/device-metrics-exporter/exporter:$AZ_PRIVATE_TAG
 #docker tag registry.test.pensando.io:5000/device-metrics-exporter/exporter:$AZ_PRIVATE_TAG amdpsdo/device-metrics-exporter:$AZ_PUBLIC_TAG
@@ -30,5 +34,6 @@ docker tag registry.test.pensando.io:5000/test-runner/test-runner:$PRIVATE_TAG a
 docker login --username=shreyajmeraamd --password-stdin <<< $DOCKERHUB_TOKEN
 docker push amdpsdo/device-metrics-exporter:$PUBLIC_TAG
 docker push amdpsdo/device-metrics-exporter-sriov:$PUBLIC_TAG
+docker push amdpsdo/device-metrics-exporter-ainic:$PUBLIC_TAG
 #docker push amdpsdo/device-metrics-exporter:$AZ_PUBLIC_TAG
 docker push amdpsdo/test-runner:$PUBLIC_TAG

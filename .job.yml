@@ -53,6 +53,13 @@ builds:
         - /device-metrics-exporter/docker/device-metrics-exporter-latest.tar.gz
         - /device-metrics-exporter/tools/techsupport_dump.sh
 
+  build-device-metrics-exporter-docker-ainic-ubi9.6:
+    commands: ["sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make all && \
+                            HOURLY_TAG_LABEL=$RELEASE EXPORTER_IMAGE_TAG=latest make docker-ainic"]
+    owners: ["email:sgurunat@amd.com"]
+    artifacts:
+        - /device-metrics-exporter/docker/device-metrics-exporter-ainic-latest.tar.gz
+
   e2e-build-mock-exporter:
     commands: ["sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && EXPORTER_IMAGE_TAG=latest make e2e"]
     owners: ["email:prshanmug@amd.com"]
