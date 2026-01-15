@@ -1,6 +1,2 @@
-rocm-7.1.1
-
-patches:
-- Description: slow amdsmi api response on CPX, NPS1 partition case:  https://github.com/ROCm/rocm-systems/pull/2163
-   patch file : patch/amdsmi/slow.patch
+rocm-7.2.0
 
