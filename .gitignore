@@ -20,3 +20,5 @@ BUILD/*
 SOURCES/*
 SPECS/*
 BUILDROOT/*
+.vscode
+.cline_storage
