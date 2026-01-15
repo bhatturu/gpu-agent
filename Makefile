@@ -115,6 +115,7 @@ GPUAGENT_BRANCH ?= main
 GPUAGENT_COMMIT ?= 6e5d3a5
 
 ROCM_VERSION ?= 7.1.1
+AINIC_VERSION ?= 1.117.5-a-56
 
 export ${GOROOT}
 export ${GOPATH}
@@ -131,6 +132,7 @@ export ${GIMSMI_BRANCH}
 export ${GIMSMI_COMMIT}
 export ${GPUAGENT_BRANCH}
 export ${GPUAGENT_COMMIT}
+export AINIC_VERSION
 
 ASSETS_PATH :=${TOP_DIR}/assets
 
