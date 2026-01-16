@@ -296,7 +296,7 @@ GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
 endef
 
 EXCLUDE_PATTERN := "libamdsmi|gpuagent.sw|gpuagent.sw.nic|gpuagent.sw.nic.gpuagent"
-GO_PKG := $(shell go list ./...  2>/dev/null | grep github.com/ROCm/device-metrics-exporter | egrep -v ${EXCLUDE_PATTERN})
+GO_PKG := $(shell go list ./pkg/...  2>/dev/null | grep github.com/ROCm/device-metrics-exporter | egrep -v ${EXCLUDE_PATTERN})
 
 GOFILES_NO_VENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*" -not -path "./libamdsmi/*" -not -path "./gpuagent/*")
 .PHONY: lint
