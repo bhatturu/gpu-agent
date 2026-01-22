@@ -20,6 +20,7 @@ Kubernetes: `>= 1.29.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| affinity | object | `{}` | Add node affinity for the daemonset of metrics exporter |
 | configMap | string | `""` | configMap name for the customizing configs and mount into metrics exporter container |
 | hostNetwork | bool | `false` | Use host network for the metrics exporter pods |
 | image.initContainerImage | string | `"busybox:1.36"` | metrics exporter initContainer image |
