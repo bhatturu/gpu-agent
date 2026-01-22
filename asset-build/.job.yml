@@ -31,3 +31,5 @@ targets:
 image:
   bind_dir: "/go/src/github.com/ROCm/device-metrics-exporter"
   work_dir: "/go/src/github.com/ROCm/device-metrics-exporter"
+
+submodules: {}    
