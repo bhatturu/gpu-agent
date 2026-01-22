@@ -151,16 +151,19 @@ After configuring Prometheus, verify the integration by:
 If Prometheus is not scraping metrics from the Device Metrics Exporter:
 
 1. Verify the ServiceMonitor exists and is correctly configured:
+
    ```bash
    kubectl describe servicemonitor <release-name>-amd-metrics-exporter -n mynamespace
    ```
 
 2. Check if the labels on the ServiceMonitor match the Prometheus Operator's serviceMonitorSelector:
+
    ```bash
    kubectl get prometheus -n monitoring -o yaml
    ```
 
 3. Ensure that the service endpoints are available and ready:
+
    ```bash
    kubectl get endpoints -l app=<release-name>-amdgpu-metrics-exporter -n mynamespace
    ```
