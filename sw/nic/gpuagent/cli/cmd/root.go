@@ -32,8 +32,9 @@ import (
 )
 
 var (
-	svcURL  string
-	svcPort string
+	svcURL        string
+	svcPort       string
+	svcSocketPath string
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -59,6 +60,9 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&svcPort, "node-svc-port",
 		utils.GRPCDefaultPort,
 		"Remote node's service port")
+	RootCmd.PersistentFlags().StringVar(&svcSocketPath, "node-svc-socket",
+		utils.GRPCDefaultSocketPath,
+		"Unix socket path for GPU agent connection")
 }
 
 // NewGpuctlCommand exports the RootCmd for bash-completion
@@ -67,7 +71,21 @@ func NewGpuctlCommand() *cobra.Command {
 }
 
 func initConfig() {
-	// Note: initialize any config variables if required
-	utils.GRPCDefaultBaseURL = svcURL
-	utils.GRPCDefaultPort = svcPort
+	// NOTE:
+	// 1. initialize any config variables if required
+	// 2. priority: --node-svc-socket > TCP/IP
+
+	// check if user explicitly provided a socket path (different from default)
+	if svcSocketPath != utils.GRPCDefaultSocketPath {
+		// explicit socket path specified by user
+		utils.GRPCDefaultSocketPath = svcSocketPath
+	}
+
+	// check if default socket file exists
+	if _, err := os.Stat(utils.GRPCDefaultSocketPath); err != nil {
+		// socket file doesn't exist, use TCP/IP connection
+		utils.GRPCDefaultSocketPath = ""
+		utils.GRPCDefaultBaseURL = svcURL
+		utils.GRPCDefaultPort = svcPort
+	}
 }
