@@ -271,17 +271,15 @@ public:
     /// \return gpu stats
     sdk_ret_t fill_gpu_watch_stats(aga_gpu_watch_attrs_t *stats);
 
-
-    /// \brief        set GPU partition capability
-    /// \param[in]    GPU partition capability state
-    void set_partition_capability(bool partition_capable) {
-        partition_capable_ = partition_capable;
+    /// \brief  return if GPU is partitioned
+    /// \return true if partitioned, false otherwise
+    bool is_partitioned(void) {
+        return is_partitioned_;
     }
 
-    /// \brief return gpu partition capability
-    /// \return true if platform supports gpu partition, false otherwise
-    bool is_partionable(void) {
-        return partition_capable_;
+    /// \brief  set GPU as partitioned
+    void set_is_partitioned() {
+        is_partitioned_ = true;
     }
 
 private:
@@ -311,8 +309,8 @@ private:
     aga_obj_key_t parent_gpu_;
     /// partition id, valid only when parent_gpu_ is valid
     uint32_t partition_id_;
-    /// GPU partition capability;
-    bool partition_capable_;
+    /// is_partitioned flag
+    bool is_partitioned_;
     /// vector containing child GPU uuids; used only for parent GPU
     std::vector<aga_obj_key_t> child_gpus_;
     /// GPU id (aka. index)

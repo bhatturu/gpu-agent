@@ -903,87 +903,71 @@ smi_fill_violation_stats_ (aga_gpu_handle_t gpu_handle,
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
         AGA_TRACE_ERR("Failed to get violation status for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
-        if (!partition_id) {
-            // fill non partition stats from metrics info only
-            // for primary parition
-            stats->current_accumulated_counter =
-                metrics_info->accumulation_counter;
-            stats->processor_hot_residency_accumulated =
-                metrics_info->prochot_residency_acc;
-            stats->ppt_residency_accumulated =
-                metrics_info->ppt_residency_acc;
-            stats->socket_thermal_residency_accumulated =
-                metrics_info->socket_thm_residency_acc;
-            stats->vr_thermal_residency_accumulated =
-                metrics_info->vr_thm_residency_acc;
-            stats->hbm_thermal_residency_accumulated =
-                metrics_info->hbm_thm_residency_acc;
-        }
+        // populate with metrics info as fallback
+        stats->current_accumulated_counter =
+            metrics_info->accumulation_counter;
+        stats->processor_hot_residency_accumulated =
+            metrics_info->prochot_residency_acc;
+        stats->ppt_residency_accumulated =
+            metrics_info->ppt_residency_acc;
+        stats->socket_thermal_residency_accumulated =
+            metrics_info->socket_thm_residency_acc;
+        stats->vr_thermal_residency_accumulated =
+            metrics_info->vr_thm_residency_acc;
+        stats->hbm_thermal_residency_accumulated =
+            metrics_info->hbm_thm_residency_acc;
+
         for (uint16_t i = 0; i < AMDSMI_MAX_NUM_XCC; i++) {
             stats->gfx_clk_below_host_limit_power_accumulated[i] =
-                metrics_info->xcp_stats[
-                    partition_id].gfx_below_host_limit_ppt_acc[i];
+                metrics_info->xcp_stats[0].gfx_below_host_limit_ppt_acc[i];
             stats->gfx_clk_below_host_limit_thermal_accumulated[i] =
-                metrics_info->xcp_stats[
-                    partition_id].gfx_below_host_limit_thm_acc[i];
+                metrics_info->xcp_stats[0].gfx_below_host_limit_thm_acc[i];
             stats->gfx_low_utilization_accumulated[i] =
-                metrics_info->xcp_stats[
-                    partition_id].gfx_low_utilization_acc[i];
+                metrics_info->xcp_stats[0].gfx_low_utilization_acc[i];
             stats->gfx_clk_below_host_limit_total_accumulated[i] =
-                metrics_info->xcp_stats[
-                    partition_id].gfx_below_host_limit_total_acc[i];
+                metrics_info->xcp_stats[0].gfx_below_host_limit_total_acc[i];
         }
     } else {
-        if (!partition_id) {
-            // fill non partition stats from violation status only
-            // for primary parition
-            stats->current_accumulated_counter =
-                violation_status.acc_counter;
-            stats->processor_hot_residency_accumulated =
-                violation_status.acc_prochot_thrm;
-            stats->ppt_residency_accumulated =
-                violation_status.acc_ppt_pwr;
-            stats->socket_thermal_residency_accumulated =
-                violation_status.acc_socket_thrm;
-            stats->vr_thermal_residency_accumulated =
-                violation_status.acc_vr_thrm;
-            stats->hbm_thermal_residency_accumulated =
-                violation_status.acc_hbm_thrm;
-            stats->processor_hot_residency_percentage =
-                violation_status.per_prochot_thrm;
-            stats->ppt_residency_percentage =
-                violation_status.per_ppt_pwr;
-            stats->socket_thermal_residency_percentage =
-                violation_status.per_socket_thrm;
-            stats->vr_thermal_residency_percentage =
-                violation_status.per_vr_thrm;
-            stats->hbm_thermal_residency_percentage =
-                violation_status.per_hbm_thrm;
-        }
+        // fill the violation stats
+        stats->current_accumulated_counter =
+            violation_status.acc_counter;
+        stats->processor_hot_residency_accumulated =
+            violation_status.acc_prochot_thrm;
+        stats->ppt_residency_accumulated =
+            violation_status.acc_ppt_pwr;
+        stats->socket_thermal_residency_accumulated =
+            violation_status.acc_socket_thrm;
+        stats->vr_thermal_residency_accumulated =
+            violation_status.acc_vr_thrm;
+        stats->hbm_thermal_residency_accumulated =
+            violation_status.acc_hbm_thrm;
+        stats->processor_hot_residency_percentage =
+            violation_status.per_prochot_thrm;
+        stats->ppt_residency_percentage =
+            violation_status.per_ppt_pwr;
+        stats->socket_thermal_residency_percentage =
+            violation_status.per_socket_thrm;
+        stats->vr_thermal_residency_percentage =
+            violation_status.per_vr_thrm;
+        stats->hbm_thermal_residency_percentage =
+            violation_status.per_hbm_thrm;
         for (uint16_t i = 0; i < AMDSMI_MAX_NUM_XCC; i++) {
             stats->gfx_clk_below_host_limit_power_accumulated[i] =
-                violation_status.acc_gfx_clk_below_host_limit_pwr[
-                    partition_id][i];
+                violation_status.acc_gfx_clk_below_host_limit_pwr[0][i];
             stats->gfx_clk_below_host_limit_thermal_accumulated[i] =
-                violation_status.acc_gfx_clk_below_host_limit_thm[
-                    partition_id][i];
+                violation_status.acc_gfx_clk_below_host_limit_thm[0][i];
             stats->gfx_low_utilization_accumulated[i] =
                 violation_status.acc_low_utilization[partition_id][i];
             stats->gfx_clk_below_host_limit_total_accumulated[i] =
-                violation_status.acc_gfx_clk_below_host_limit_total[
-                    partition_id][i];
+                violation_status.acc_gfx_clk_below_host_limit_total[0][i];
             stats->gfx_clk_below_host_limit_power_percentage[i] =
-                violation_status.per_gfx_clk_below_host_limit_pwr[
-                    partition_id][i];
+                violation_status.per_gfx_clk_below_host_limit_pwr[0][i];
             stats->gfx_clk_below_host_limit_thermal_percentage[i] =
-                violation_status.per_gfx_clk_below_host_limit_thm[
-                    partition_id][i];
+                violation_status.per_gfx_clk_below_host_limit_thm[0][i];
             stats->gfx_low_utilization_percentage[i] =
-                violation_status.per_low_utilization[
-                    partition_id][i];
+                violation_status.per_low_utilization[0][i];
             stats->gfx_clk_below_host_limit_total_percentage[i] =
-                violation_status.per_gfx_clk_below_host_limit_total[
-                    partition_id][i];
+                violation_status.per_gfx_clk_below_host_limit_total[0][i];
         }
     }
     return SDK_RET_OK;
@@ -1199,7 +1183,7 @@ smi_fill_vram_usage_ (aga_gpu_handle_t gpu_handle,
 
 sdk_ret_t
 smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
-                    bool partition_capable,
+                    bool is_partitioned,
                     uint32_t partition_id,
                     aga_gpu_handle_t first_partition_handle,
                     aga_gpu_stats_t *stats)
@@ -1207,6 +1191,13 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
     amdsmi_status_t amdsmi_ret;
     uint64_t sent, received, max_pkt_size;
     amdsmi_gpu_metrics_t metrics_info = {};
+
+    // reset stats to invalid values
+    memset(&stats->usage, 0xff, sizeof(aga_gpu_usage_t));
+    memset(&stats->pcie_stats, 0xff, sizeof(aga_gpu_pcie_stats_t));
+    memset(&stats->violation_stats, 0xff, sizeof(aga_gpu_violation_stats_t));
+    memset(&stats->xgmi_link_stats, 0xff,
+           sizeof(aga_gpu_xgmi_link_stats_t) * AGA_GPU_MAX_XGMI_LINKS);
 
     // fill VRAM usage
     smi_fill_vram_usage_(gpu_handle, &stats->vram_usage);
@@ -1222,12 +1213,6 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
         stats->voltage.memory_voltage = metrics_info.voltage_mem;
         // fan speed
         stats->fan_speed = metrics_info.current_fan_speed;
-        // activity information
-        stats->usage.gfx_activity = metrics_info.average_gfx_activity;
-        stats->usage.umc_activity = metrics_info.average_umc_activity;
-        stats->usage.mm_activity = metrics_info.average_mm_activity;
-        stats->gfx_activity_accumulated = metrics_info.gfx_activity_acc;
-        stats->mem_activity_accumulated = metrics_info.mem_activity_acc;
         // xgmi link stats
         for (uint32_t i = 0; i < AGA_GPU_MAX_XGMI_LINKS; i++) {
             stats->xgmi_link_stats[i].data_read =
@@ -1235,41 +1220,12 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
             stats->xgmi_link_stats[i].data_write =
                 metrics_info.xgmi_write_data_acc[i];
         }
-        // fill violation statistics
+        // fill violation statistics only for primary partition
         if (!partition_id) {
             smi_fill_ecc_stats_(gpu_handle, stats);
             smi_fill_violation_stats_(gpu_handle, partition_id,
                                       &metrics_info,
                                       &stats->violation_stats);
-        }
-        // get usage information from the metrics info for partition 0
-        for (uint16_t i = 0; i < AMDSMI_MAX_NUM_VCN; i++) {
-            stats->usage.vcn_activity[i] = metrics_info.vcn_activity[i];
-            if (partition_capable) {
-                stats->usage.vcn_busy[i] =
-                    metrics_info.xcp_stats[partition_id].vcn_busy[i];
-            } else {
-                stats->usage.vcn_busy[i] = AMDSMI_INVALID_UINT16;
-            }
-        }
-        for (uint16_t i = 0; i < AMDSMI_MAX_NUM_JPEG; i++) {
-            stats->usage.jpeg_activity[i] = metrics_info.jpeg_activity[i];
-        }
-        for (uint16_t i = 0; i < AMDSMI_MAX_NUM_JPEG_ENG_V1; i++) {
-            if (partition_capable) {
-                stats->usage.jpeg_busy[i] =
-                    metrics_info.xcp_stats[partition_id].jpeg_busy[i];
-            } else {
-                stats->usage.jpeg_busy[i] = AMDSMI_INVALID_UINT16;
-            }
-        }
-        for (uint16_t i = 0; i < AMDSMI_MAX_NUM_XCC; i++) {
-            if (partition_capable) {
-                stats->usage.gfx_busy_inst[i] =
-                    metrics_info.xcp_stats[partition_id].gfx_busy_inst[i];
-            } else {
-                stats->usage.gfx_busy_inst[i] = AMDSMI_INVALID_UINT32;
-            }
         }
         // fill the energy consumed
         stats->energy_consumed = metrics_info.energy_accumulator *
@@ -1297,23 +1253,45 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
             metrics_info.pcie_nak_rcvd_count_acc;
         stats->pcie_stats.bidir_bandwidth =
             metrics_info.pcie_bandwidth_acc;
+        // fill activity and usage information based on partition mode
+        if (!is_partitioned) {
+            // non-partitioned mode: use cached metrics_info
+            stats->usage.gfx_activity = metrics_info.average_gfx_activity;
+            stats->usage.umc_activity = metrics_info.average_umc_activity;
+            stats->usage.mm_activity = metrics_info.average_mm_activity;
+            stats->gfx_activity_accumulated = metrics_info.gfx_activity_acc;
+            stats->mem_activity_accumulated = metrics_info.mem_activity_acc;
 
-        // PCIe throughput initialization to invalid value
-        stats->pcie_stats.tx_bytes = AMDSMI_INVALID_UINT64;
-        stats->pcie_stats.rx_bytes = AMDSMI_INVALID_UINT64;
+            // VCN activity and busy stats
+            for (uint16_t i = 0; i < AMDSMI_MAX_NUM_VCN; i++) {
+                stats->usage.vcn_activity[i] = metrics_info.vcn_activity[i];
+                stats->usage.vcn_busy[i] = metrics_info.xcp_stats[0].vcn_busy[i];
+            }
 
-        amdsmi_ret = amdsmi_get_gpu_pci_throughput(gpu_handle, &sent, &received,
-                                                   &max_pkt_size);
-        if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-            AGA_TRACE_ERR("Failed to get PCIe throughput for GPU {}, err {}",
-                          gpu_handle, amdsmi_ret);
-        } else {
-            stats->pcie_stats.tx_bytes = received;
-            stats->pcie_stats.rx_bytes = sent;
+            // JPEG activity and busy stats
+            for (uint16_t i = 0; i < AMDSMI_MAX_NUM_JPEG; i++) {
+                stats->usage.jpeg_activity[i] = metrics_info.jpeg_activity[i];
+            }
+            for (uint16_t i = 0; i < AMDSMI_MAX_NUM_JPEG_ENG_V1; i++) {
+                stats->usage.jpeg_busy[i] = metrics_info.xcp_stats[0].jpeg_busy[i];
+            }
+
+            // GFX busy instances
+            for (uint16_t i = 0; i < AMDSMI_MAX_NUM_XCC; i++) {
+                stats->usage.gfx_busy_inst[i] =
+                    metrics_info.xcp_stats[0].gfx_busy_inst[i];
+            }
         }
-    } else {
-        AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
+    }
+    // read PCIe throughput
+    amdsmi_ret = amdsmi_get_gpu_pci_throughput(gpu_handle, &sent, &received,
+                                               &max_pkt_size);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get PCIe throughput for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
+    } else {
+        stats->pcie_stats.tx_bytes = received;
+        stats->pcie_stats.rx_bytes = sent;
     }
     // read xgmi stats
     g_smi_state.read_counter(gpu_handle, AMDSMI_EVNT_XGMI_0_NOP_TX,
@@ -1344,32 +1322,42 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
                              &stats->xgmi_neighbor4_tx_throughput);
     g_smi_state.read_counter(gpu_handle, AMDSMI_EVNT_XGMI_DATA_OUT_5,
                              &stats->xgmi_neighbor5_tx_throughput);
-    // for GPU partitions which are not the first partition, we need to get
-    // usage information from the first partition
-    // partition
-    if (partition_id) {
-        // get gfx, vcn and jpeg usage from first gpu partition
-        amdsmi_ret = amdsmi_get_gpu_metrics_info(first_partition_handle,
-                                                 &metrics_info);
+    // fill activity and usage information based on partition mode
+    if (is_partitioned) {
+        // partitioned mode: fetch partition-specific metrics
+        amdsmi_ret = amdsmi_get_gpu_partition_metrics_info(gpu_handle,
+                                                           &metrics_info);
         if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-            AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
-                          first_partition_handle, amdsmi_ret);
-        } else {
-            for (uint16_t i = 0; i < AMDSMI_MAX_NUM_VCN; i++) {
-                stats->usage.vcn_busy[i] =
-                    metrics_info.xcp_stats[partition_id].vcn_busy[i];
-            }
-            for (uint16_t i = 0; i < AMDSMI_MAX_NUM_JPEG_ENG_V1; i++) {
-                stats->usage.jpeg_busy[i] =
-                    metrics_info.xcp_stats[partition_id].jpeg_busy[i];
-            }
-            for (uint16_t i = 0; i < AMDSMI_MAX_NUM_XCC; i++) {
-                stats->usage.gfx_busy_inst[i] =
-                    metrics_info.xcp_stats[partition_id].gfx_busy_inst[i];
-            }
+            AGA_TRACE_ERR("Failed to get GPU partition metrics info for GPU {}, "
+                          "err {}", gpu_handle, amdsmi_ret);
+            return amdsmi_ret_to_sdk_ret(amdsmi_ret);
         }
-        // get violation stats from first gpu partition for XCP level data
-        smi_fill_violation_stats_(first_partition_handle, partition_id,
+
+        // activity information
+        stats->usage.gfx_activity = metrics_info.average_gfx_activity;
+        stats->usage.umc_activity = metrics_info.average_umc_activity;
+        stats->usage.mm_activity = metrics_info.average_mm_activity;
+        stats->gfx_activity_accumulated = metrics_info.gfx_activity_acc;
+        stats->mem_activity_accumulated = metrics_info.mem_activity_acc;
+
+        // VCN busy stats (activity not available in partition mode)
+        for (uint16_t i = 0; i < AMDSMI_MAX_NUM_VCN; i++) {
+            stats->usage.vcn_busy[i] = metrics_info.xcp_stats[0].vcn_busy[i];
+        }
+
+        // JPEG busy stats (activity not available in partition mode)
+        for (uint16_t i = 0; i < AMDSMI_MAX_NUM_JPEG_ENG_V1; i++) {
+            stats->usage.jpeg_busy[i] = metrics_info.xcp_stats[0].jpeg_busy[i];
+        }
+
+        // GFX busy instances
+        for (uint16_t i = 0; i < AMDSMI_MAX_NUM_XCC; i++) {
+            stats->usage.gfx_busy_inst[i] =
+                metrics_info.xcp_stats[0].gfx_busy_inst[i];
+        }
+
+        // fill violation stats for partitioned mode
+        smi_fill_violation_stats_(gpu_handle, partition_id,
                                   &metrics_info,
                                   &stats->violation_stats);
     }
