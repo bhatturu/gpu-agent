@@ -154,7 +154,7 @@ gpu_entry::fill_stats_(aga_gpu_stats_t *stats) {
         return;
     }
     // fetch stats from smi apis
-    smi_gpu_fill_stats(handle_, partition_capable_,
+    smi_gpu_fill_stats(handle_, is_partitioned_,
         (partition_id_ == AGA_GPU_INVALID_PARTITION_ID) ? 0 : partition_id_,
         first_partition_handle_, stats);
 }

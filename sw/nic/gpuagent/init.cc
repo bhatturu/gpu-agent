@@ -156,8 +156,12 @@ create_gpus (void)
         entry->set_id(gpu[i].id);
         // set GPU handle
         entry->set_handle(gpu[i].handle);
-        // set partition capability
-        entry->set_partition_capability(gpu[i].partition_capable);
+        // num_parition is no more working in new library; derive it from
+        // compute partition type
+        if (gpu[i].compute_partition = AGA_GPU_COMPUTE_PARTITION_TYPE_SPX) {
+            // set partition state
+            entry->set_is_partitioned();
+        }
         // set partition id
         entry->set_partition_id(gpu[i].partition_id);
         // initialize immutable attributes in GPU spec and status

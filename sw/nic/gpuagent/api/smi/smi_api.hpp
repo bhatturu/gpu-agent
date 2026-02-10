@@ -71,7 +71,7 @@ sdk_ret_t smi_gpu_fill_status(aga_gpu_handle_t handle, uint32_t id,
 
 /// \brief    fill gpu object statistics
 /// \param[in] handle                   GPU handle
-/// \param[in] partition_capable        platform partition supported bool
+/// \param[in] is_partitioned           GPU is partitioned or not
 /// \param[in] partition_id             partition id (or 0 in case of
 ///                                     non-partitioned GPU)
 /// \param[in] main_partition_handle    in case of GPU partitions, handle of the
@@ -79,7 +79,7 @@ sdk_ret_t smi_gpu_fill_status(aga_gpu_handle_t handle, uint32_t id,
 /// \param[out] stats    gpu object stats to be filled
 /// \return     SDK_RET_OK or error code in case of failure
 sdk_ret_t smi_gpu_fill_stats(aga_gpu_handle_t handle,
-                             bool partition_capable,
+                             bool is_partitioned,
                              uint32_t partition_id,
                              aga_gpu_handle_t first_partition_handle,
                              aga_gpu_stats_t *stats);
