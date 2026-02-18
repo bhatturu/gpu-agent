@@ -157,6 +157,7 @@ Slurm labels are disabled by default. To enable Slurm labels, add the following 
       "SERIAL_NUMBER",
       "GPU_ID",
       "POD",
+      "POD_UUID",
       "NAMESPACE",
       "CONTAINER",
       "JOB_ID",
