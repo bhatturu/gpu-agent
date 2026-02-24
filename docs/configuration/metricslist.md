@@ -97,7 +97,6 @@ The following document contains a full list of GPU Metrics that are available us
 | &cross;    | &check;   | GPU_JPEG_BUSY_INSTANTANEOUS `[MI3xx]`     | JPEG Busy Instantaneous Activity Per Accelerator Compute Processor Per Compute Core       |
 | &check;    | &check;   | GPU_PROCESS_CU_OCCUPANCY `[MI2xx, MI3xx]` | Compute Unit occupancy for a process in percentage (0 - 100)                              |
 
-
 ### Voltage Metrics (Deprecated)
 
 | Hypervisor | Baremetal | Metric                            | Description                                     |
@@ -243,7 +242,7 @@ The following document contains a full list of GPU Metrics that are available us
 
 | Hypervisor | Baremetal | Metric                           | Description                                                                                                                                    |
 |------------|-----------|----------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| &cross;    | &check;   | GPU_AFID_ERRORS `[MI2xx, MI3xx]` | Last Occured RAS Event associated AMD Field Identifier list, More Info in [here](https://docs.amd.com/r/en-US/AMD_Field_ID_70122_v1.0/AFID-Event-List) |
+| &cross;    | &check;   | GPU_AFID_ERRORS `[MI2xx, MI3xx]` | Last Occurred RAS Event associated AMD Field Identifier list, More Info in [here](https://docs.amd.com/r/en-US/AMD_Field_ID_70122_v1.0/AFID-Event-List) |
 
 ---
 
@@ -417,7 +416,7 @@ The Device Metrics Exporter `gpu_afid_errors` metric consists of an array field 
 # TYPE gpu_afid_errors gauge
 gpu_afid_errors{afid_index="0", severity="fatal", gpu_id="0", ...} 30
 gpu_afid_errors{afid_index="1", severity="fatal", gpu_id="0", ...} 25
-
+```
 
 ### Process Level Metrics
 The Device Metrics Exporter `gpu_process_cu_occupancy` metric consists of an array field used for exporting the occupancy metrics for each process running on the GPU. These metric have a `process_id` label added to the metric to differentiate the different processes:
