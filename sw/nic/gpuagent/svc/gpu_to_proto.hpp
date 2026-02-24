@@ -212,6 +212,17 @@ aga_gpu_fw_version_to_proto (GPUStatus *proto_status,
 }
 
 static inline void
+aga_gpu_process_status_to_proto (amdgpu::GPUProcessStatus *proto_status,
+                                 const aga_gpu_status_t *status)
+{
+    for (uint32_t i = 0; i < status->num_kfd_process_id; i++) {
+        auto process_info = proto_status->add_processinfo();
+        process_info->set_pid(status->process_info[i].pid);
+        process_info->set_cuoccupancy(status->process_info[i].cu_occupancy);
+    }
+}
+
+static inline void
 aga_gpu_clock_status_to_proto (GPUStatus *proto_status,
                                const aga_gpu_status_t *status)
 {
@@ -399,7 +410,9 @@ aga_gpu_api_status_to_proto (GPUStatus *proto_status,
             // copy only non-zero process ids only
             proto_status->add_kfdprocessid(status->kfd_process_id[i]);
         }
-    }
+    }    
+    aga_gpu_process_status_to_proto(proto_status->mutable_processstatus(),
+                                    status);
     // TODO: fill RAS status
     aga_gpu_xgmi_status_to_proto(proto_status->mutable_xgmistatus(),
                                  &status->xgmi_status);

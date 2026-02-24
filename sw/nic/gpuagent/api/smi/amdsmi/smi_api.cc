@@ -452,64 +452,43 @@ static sdk_ret_t
 smi_fill_gpu_kfd_pid_status_ (aga_gpu_handle_t gpu_handle,
                               uint32_t gpu_id, aga_gpu_status_t *status)
 {
+    amdsmi_proc_info_t *list;
     amdsmi_status_t amdsmi_ret;
-    uint32_t gpu_list[AGA_MAX_GPU];
-    amdsmi_process_info_t *pid_info;
-    uint32_t value_32, num_pid = 0, num_gpus = AGA_MAX_GPU;
+    uint32_t max_processes = 0;
 
-    // kernel fusion driver pids
-    amdsmi_ret = amdsmi_get_gpu_compute_process_info(NULL, &value_32);
+    amdsmi_ret = amdsmi_get_gpu_process_list(gpu_handle, &max_processes, NULL);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get KFD pid count, err {}", amdsmi_ret);
+        AGA_TRACE_ERR("Failed to get number of processes running on GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
+        return amdsmi_ret_to_sdk_ret(amdsmi_ret);
+    }
+    list = (amdsmi_proc_info_t *)malloc(sizeof(amdsmi_proc_info_t) * max_processes);
+    if (!list) {
+        AGA_TRACE_ERR("Failed to allocate memory for process list for GPU {}",
+                      gpu_handle);
+        return SDK_RET_OOM;
+    }
+    amdsmi_ret = amdsmi_get_gpu_process_list(gpu_handle, &max_processes, list);
+    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to get process list for GPU {}, err {}",
+                      gpu_handle, amdsmi_ret);
+        free(list);
         return amdsmi_ret_to_sdk_ret(amdsmi_ret);
     } else {
-        // if pid count is non zero, get the pid info
-        if (value_32) {
-            pid_info =
-                (amdsmi_process_info_t *)malloc(sizeof(amdsmi_process_info_t) *
-                                                value_32);
-            if (pid_info == NULL) {
-                AGA_TRACE_ERR("Failed to allocate KFD pid buffer, GPU {}");
-                return SDK_RET_OOM;
+        status->num_kfd_process_id = max_processes;
+        for (uint32_t i = 0; i < max_processes; i++) {
+            if (i == AGA_GPU_MAX_PROCESS_PER_DEVICE) {
+                AGA_TRACE_ERR("Number of processes using GPU {} exceeds max "
+                              "supported value of {}, some processes will not "
+                              "be reported", gpu_handle, AGA_GPU_MAX_PROCESS_PER_DEVICE);
+                status->num_kfd_process_id = AGA_GPU_MAX_PROCESS_PER_DEVICE;
+                break;
             }
-            amdsmi_ret = amdsmi_get_gpu_compute_process_info(pid_info,
-                                                             &value_32);
-            if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-                free(pid_info);
-                AGA_TRACE_ERR("Failed to get KFD pid info, err {}", amdsmi_ret);
-                return amdsmi_ret_to_sdk_ret(amdsmi_ret);
-            }
-            // loop thru pids, get the list of GPUs using each pid and
-            // update per GPU kfd process list
-            for (uint32_t i = 0; i < value_32; i++) {
-                num_gpus = AGA_MAX_GPU;
-                amdsmi_ret =
-                    amdsmi_get_gpu_compute_process_gpus(pid_info[i].process_id,
-                                                        gpu_list, &num_gpus);
-                if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-                    AGA_TRACE_ERR("Failed to get GPU list of pid {}, err {}",
-                                  pid_info[i].process_id, amdsmi_ret);
-                    continue;
-                }
-                for (uint32_t j = 0; j < num_gpus; j++) {
-                    if (gpu_list[j] == gpu_id) {
-                        if (num_pid == (AGA_GPU_MAX_KFD_PID - 1)) {
-                            AGA_TRACE_DEBUG("Reached max KFD processes {} "
-                                            "using the GPU {}, pid {} is "
-                                            "ignored", AGA_GPU_MAX_KFD_PID,
-                                            gpu_handle, pid_info[i].process_id);
-                            break;
-                        }
-                        status->kfd_process_id[num_pid++] =
-                            pid_info[i].process_id;
-                        break;
-                    }
-                }
-            }
-            status->num_kfd_process_id = num_pid;
-            // free pid_info memory
-            free(pid_info);
+            status->process_info[i].pid = (uint32_t)list[i].pid;
+            status->process_info[i].cu_occupancy = list[i].cu_occupancy;
+            status->kfd_process_id[i] = (uint32_t)list[i].pid;
         }
+        free(list);
     }
     return SDK_RET_OK;
 }
