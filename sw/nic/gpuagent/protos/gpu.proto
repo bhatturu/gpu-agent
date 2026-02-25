@@ -724,6 +724,8 @@ message GPUStats {
   repeated GPUXGMILinkStats  XGMILinkStats               = 67;
   // GPU violation statistics
   GPUViolationStats          ViolationStats              = 68;
+  // VRAM max bandwidth at max memory clock (GB/s)
+  uint64                     VRAMMaxBandwidth            = 69;
 }
 
 // GPU captures config, operational status and stat of GPU object

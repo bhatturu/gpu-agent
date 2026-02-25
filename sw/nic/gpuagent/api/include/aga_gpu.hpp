@@ -743,6 +743,8 @@ typedef struct aga_gpu_stats_s {
     aga_gpu_xgmi_link_stats_t xgmi_link_stats[AGA_GPU_MAX_XGMI_LINKS];
     /// GPU violation statistics
     aga_gpu_violation_stats_t violation_stats;
+    /// VRAM max bandwidth at max memory clock (GB/s)
+    uint64_t vram_max_bandwidth;
 } aga_gpu_stats_t;
 
 /// GPU info

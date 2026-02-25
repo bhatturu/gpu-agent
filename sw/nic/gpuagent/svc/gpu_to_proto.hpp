@@ -735,6 +735,8 @@ aga_gpu_api_stats_to_proto (GPUStats *proto_stats,
     }
     aga_gpu_violation_stats_to_proto(proto_stats->mutable_violationstats(),
                                      &stats->violation_stats);
+    // Set VRAM max bandwidth from stats
+    proto_stats->set_vrammaxbandwidth(stats->vram_max_bandwidth);
 }
 
 // populate proto buf from gpu info

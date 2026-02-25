@@ -1841,6 +1841,10 @@ func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 			validEntry = false
 		}
 	}
+	if stats.GetVRAMMaxBandwidth() != 0 {
+		fmt.Printf(indent+"%-38s : %d\n", "VRAM max bandwidth (in GB/s)",
+			stats.GetVRAMMaxBandwidth())
+	}
 
 	fmt.Printf("\n%s\n", strings.Repeat("-", 90))
 }

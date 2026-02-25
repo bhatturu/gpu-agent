@@ -1199,11 +1199,13 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
     memset(&stats->xgmi_link_stats, 0xff,
            sizeof(aga_gpu_xgmi_link_stats_t) * AGA_GPU_MAX_XGMI_LINKS);
 
+    stats->vram_max_bandwidth = 0;
     // fill VRAM usage
     smi_fill_vram_usage_(gpu_handle, &stats->vram_usage);
     // fill additional statistics from gpu metrics
     if (g_gpu_metrics.find(gpu_handle) != g_gpu_metrics.end()) {
         metrics_info = g_gpu_metrics[gpu_handle];
+        stats->vram_max_bandwidth = metrics_info.vram_max_bandwidth;
         // power and voltage
         stats->avg_package_power = metrics_info.average_socket_power;
         stats->package_power = metrics_info.current_socket_power;
