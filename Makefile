@@ -8,7 +8,7 @@ DOCKER_REGISTRY ?= docker.io/rocm
 HELM_EXPORTER_IMAGE := $(DOCKER_REGISTRY)/device-metrics-exporter
 
 # Build Container environment
-DOCKER_BUILDER_TAG ?= v1.0
+DOCKER_BUILDER_TAG ?= v1.10
 BUILD_BASE_IMAGE ?= ubuntu:22.04
 BUILD_CONTAINER ?= $(DOCKER_REGISTRY)/device-metrics-exporter-build:$(DOCKER_BUILDER_TAG)
 
@@ -447,6 +447,22 @@ docs: dep-docs
 clean-docs:
 	rm -rf $(BUILD_DIR)
 
+DOCS_MARKDOWNLINTCONFIG ?= docs/.markdownlint.yaml
+DOCS_MD_GLOB ?= "**/*.md"
+DOCS_SPELLCHECK_CONFIG ?= .spellcheck.yaml
+
+.PHONY: docs-lint-markdown
+docs-lint-markdown:
+	markdownlint-cli2 $(DOCS_MD_GLOB) --config $(DOCS_MARKDOWNLINTCONFIG)
+
+.PHONY: docs-lint-spelling
+docs-lint-spelling:
+	pyspelling -c $(DOCS_SPELLCHECK_CONFIG)
+
+.PHONY: docs-lint
+docs-lint: ## Run docs Markdown lint + spelling (full ROCm-style docs lint).
+	${MAKE} docs-lint-markdown
+	${MAKE} docs-lint-spelling
 
 .PHONY: base-image
 base-image:

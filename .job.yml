@@ -140,6 +140,13 @@ targets:
     sub-area:
     feature:
 
+  docs-lint:
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make docs-lint"]
+    owners: ["email:prshanmug@amd.com"]
+    area:
+    sub-area:
+    feature:
+
 image:
   bind_dir: "/device-metrics-exporter"
   work_dir: "/device-metrics-exporter"
