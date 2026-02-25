@@ -909,12 +909,13 @@ func printGPUStatus(gpu *aga.GPU, statusOnly bool) {
 		}
 		idxr++
 	}
-	kfdPids := status.GetKFDProcessId()
-	if len(kfdPids) != 0 {
-		kfdPidStr := fmt.Sprintf("%-38s : ", "KFD process id using GPU")
-		for i := 0; i < len(kfdPids); i++ {
-			fmt.Printf(indent+"%-41s%d\n", kfdPidStr, kfdPids[i])
-			kfdPidStr = ""
+	processStatus := status.GetProcessStatus()
+	if processStatus != nil && len(processStatus.GetProcessInfo()) != 0 {
+		processInfo := processStatus.GetProcessInfo()
+		for _, pInfo := range processInfo {
+			fmt.Printf(indent+"%-38s : %d %%\n",
+				fmt.Sprintf("Process id %d CU occupancy", pInfo.GetPId()),
+				pInfo.GetCUOccupancy())
 		}
 	}
 	// TODO: fill GPU RAS status

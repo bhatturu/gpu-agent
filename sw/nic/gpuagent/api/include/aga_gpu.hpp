@@ -31,6 +31,7 @@ limitations under the License.
 #define AGA_GPU_MAX_HBM                        4
 #define AGA_GPU_MAX_FIRMWARE_VERSION           85
 #define AGA_GPU_MAX_KFD_PID                    8
+#define AGA_GPU_MAX_PROCESS_PER_DEVICE         32
 #define AGA_GPU_MAX_VOLTAGE_CURVE_POINT        4
 #define AGA_GPU_MIN_OVERDRIVE_LEVEL            0
 #define AGA_GPU_MAX_OVERDRIVE_LEVEL            20
@@ -276,6 +277,14 @@ typedef struct aga_gpu_clock_status_s {
     bool deep_sleep;
 } aga_gpu_clock_status_t;
 
+/// \brief GPU process info
+typedef struct aga_gpu_process_info_s {
+    /// process id
+    uint32_t pid;
+    /// compute unit usage in percent
+    uint32_t cu_occupancy;
+} aga_gpu_process_info_t;
+
 /// \brief GPU voltage curve point
 typedef struct aga_gpu_voltage_curve_point_s {
     /// curve point
@@ -464,7 +473,7 @@ typedef struct aga_gpu_status_s {
     /// number of Kenral Fusion Driver process ids using the GPU
     uint32_t num_kfd_process_id;
     /// Kernel Fusion Driver (KFD) process ids using the GPU
-    uint32_t kfd_process_id[AGA_GPU_MAX_KFD_PID];
+    uint32_t kfd_process_id[AGA_GPU_MAX_PROCESS_PER_DEVICE];
     /// GPU RAS status
     aga_gpu_ras_status_t ras_status;
     /// xgmi status
@@ -500,6 +509,8 @@ typedef struct aga_gpu_status_s {
     uint32_t drm_card_id;
     // GPU virtualization mode
     aga_gpu_virtualization_mode_t virtualization_mode;
+    // GPU process status
+    aga_gpu_process_info_t process_info[AGA_GPU_MAX_PROCESS_PER_DEVICE];
 } aga_gpu_status_t;
 
 /// \brief GPU PCIe statistics
