@@ -15,6 +15,8 @@ subtrees:
     entries:
       - file: releasenotes
         title: Release Notes
+      - file: releasenotes-nic
+        title: NIC Exporter Release Notes
   - caption: Known Issues
     entries:
     - file: knownissues
@@ -28,7 +30,6 @@ subtrees:
       - file: configuration/troubleshooting 
       - file: configuration/metricslist
       - file: configuration/network-metricslist
-      - file: configuration/ifoe-metricslist       
   - caption: Integrations
     entries:
     - file: integrations/prometheus-grafana
