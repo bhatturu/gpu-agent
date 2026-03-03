@@ -763,6 +763,7 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
         }
         status->xgmi_status.width = metrics_info.xgmi_link_width;
         status->xgmi_status.speed = metrics_info.xgmi_link_speed;
+        status->vram_status.max_bandwidth = metrics_info.vram_max_bandwidth;
     } else {
         AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);

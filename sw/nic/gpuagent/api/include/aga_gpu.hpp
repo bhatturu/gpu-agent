@@ -404,6 +404,8 @@ typedef struct aga_gpu_vram_status_s {
     char vendor[AGA_MAX_STR_LEN + 1];
     /// VRAM size (in MB)
     uint64_t size;
+    /// VRAM max bandwidth at max memory clock (GB/s)
+    uint64_t max_bandwidth;
 } aga_gpu_vram_status_t;
 
 /// \brief GPU page status

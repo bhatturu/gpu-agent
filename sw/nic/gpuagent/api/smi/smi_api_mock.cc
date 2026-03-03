@@ -245,6 +245,8 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
     status->vram_status.type = AGA_VRAM_TYPE_HBM;
     strcpy(status->vram_status.vendor, "hynix");
     status->vram_status.size = 196592;
+    // fill VRAM max bandwidth mock value
+    status->vram_status.max_bandwidth = 3276800;
     // fill the xgmi error count
     status->xgmi_status.error_status = AGA_GPU_XGMI_STATUS_NO_ERROR;
     // fill total memory

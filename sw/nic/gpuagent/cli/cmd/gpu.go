@@ -1042,6 +1042,11 @@ func printGPUStatus(gpu *aga.GPU, statusOnly bool) {
 			fmt.Printf(indent+"  %-36s : %v\n", "VRAM size (in MB)",
 				vram.GetSize_())
 		}
+		if vram.GetMaxBandwidth() != 0 {
+			printVRAMStatusHdr(indent)
+			fmt.Printf(indent+"  %-36s : %d\n", "VRAM max bandwidth (in GB/s)",
+				vram.GetMaxBandwidth())
+		}
 	}
 	if statusOnly {
 		fmt.Printf("\n%s\n", strings.Repeat("-", 90))
