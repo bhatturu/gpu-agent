@@ -366,6 +366,7 @@ aga_gpu_vram_status_to_proto (GPUVRAMStatus *proto_status,
     proto_status->set_type(aga_gpu_vram_type_to_proto(status->type));
     proto_status->set_vendor(status->vendor);
     proto_status->set_size(status->size);
+    proto_status->set_maxbandwidth(status->max_bandwidth);
 }
 
 static inline amdgpu::GPUPageStatus
