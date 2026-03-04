@@ -1341,9 +1341,10 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
                                   &metrics_info,
                                   &stats->violation_stats);
     }
-    // always fill for primary partition with cached metrics info, 
+    // always fill for primary partition with cached metrics info,
     // as primary partition metrics is not updated in new API
-    if (!partition_id) {
+    if (!partition_id &&
+        (g_gpu_metrics.find(gpu_handle) != g_gpu_metrics.end())) {
         metrics_info = g_gpu_metrics[gpu_handle];
         stats->usage.gfx_activity = metrics_info.average_gfx_activity;
         stats->usage.umc_activity = metrics_info.average_umc_activity;
