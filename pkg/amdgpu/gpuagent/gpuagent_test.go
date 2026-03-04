@@ -177,7 +177,7 @@ func TestGetGPUsPartitionFilter(t *testing.T) {
 		ApiStatus: amdgpu.ApiStatus_API_STATUS_OK,
 		Response: []*amdgpu.GPU{
 			{
-				Spec:   &amdgpu.GPUSpec{Id: []byte(uuid.New().String())},
+				Spec: &amdgpu.GPUSpec{Id: []byte(uuid.New().String())},
 				Status: &amdgpu.GPUStatus{
 					SerialNum:    "gpu-with-partition-field",
 					PCIeStatus:   &amdgpu.GPUPCIeStatus{PCIeBusId: "0000:01:00.0"},
@@ -187,7 +187,7 @@ func TestGetGPUsPartitionFilter(t *testing.T) {
 				Stats: &amdgpu.GPUStats{PackagePower: 100},
 			},
 			{
-				Spec:   &amdgpu.GPUSpec{Id: []byte(uuid.New().String())},
+				Spec: &amdgpu.GPUSpec{Id: []byte(uuid.New().String())},
 				Status: &amdgpu.GPUStatus{
 					SerialNum:  "gpu-without-partition-field",
 					PCIeStatus: &amdgpu.GPUPCIeStatus{PCIeBusId: "0000:01:00.1"},

@@ -196,6 +196,13 @@ update-version:
 	@echo "Replacing versions with $(PACKAGE_VERSION)..."
 	@echo "Helm URL : $(HELM_INSTALL_URL)"
 	sed -i -e 's|version = .*|version = ${PACKAGE_VERSION}|' docs/conf.py
+ifeq ($(NIC_BUILD),1)
+	@NIC_VERSION=$$(echo "$(PROJECT_VERSION)" | sed 's/^nic-v//'); \
+	echo "Updating NIC APT repository version to $$NIC_VERSION..."; \
+	sed -i -E 's|(https://repo\.radeon\.com/device-metrics-exporter/nic/apt/)[0-9]+\.[0-9]+\.[0-9]+|\1'$$NIC_VERSION'|g' docs/installation/nic-debian-package.md; \
+	echo "Updating NIC Docker image tag to $(PROJECT_VERSION)..."; \
+	sed -i 's#rocm/device-metrics-exporter:nic-v[0-9]\+\.[0-9]\+\.[0-9]\+#rocm/device-metrics-exporter:$(PROJECT_VERSION)#g' docs/configuration/network-exporter-docker.md
+else
 	for file in docs/installation/kubernetes-helm.md \
 	    helm-charts/values.yaml; do \
 	    sed -i -e 's|tag:.*|tag: ${REL_IMAGE_TAG}|' $$file; \
@@ -209,7 +216,7 @@ update-version:
 		docs/integrations/prometheus-grafana.md; do \
 		sed -i 's#v[0-9]\+\.[0-9]\+\.[0-9]\+#${REL_IMAGE_TAG}#g' $$file; \
 	done
-
+endif
 
 TO_GEN_TESTRUNNER := pkg/testrunner/proto
 GEN_DIR_TESTRUNNER := $(TOP_DIR)/pkg/testrunner/
