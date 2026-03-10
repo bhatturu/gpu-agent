@@ -6,6 +6,7 @@ DOCKER_REGISTRY ?= docker.io/rocm
 
 # helm environment variables
 HELM_EXPORTER_IMAGE := $(DOCKER_REGISTRY)/device-metrics-exporter
+HELM_EXPORTER_IMAGE_TAG ?= $(PROJECT_VERSION)
 
 # Build Container environment
 DOCKER_BUILDER_TAG ?= v1.10
@@ -543,7 +544,7 @@ helm-build: helm-lint
 	@yq eval -i '.version = "$(HELM_CHARTS_VERSION)"' helm-charts/Chart.yaml
 	# set exporter image repo and tag
 	@yq eval -i '.image.repository = "$(HELM_EXPORTER_IMAGE)"' helm-charts/values.yaml
-	@yq eval -i '.image.tag = "$(PROJECT_VERSION)"' helm-charts/values.yaml
+	@yq eval -i '.image.tag = "$(HELM_EXPORTER_IMAGE_TAG)"' helm-charts/values.yaml
 
 # update monitoring flags in values.yaml based on RELEASE tag
 ifeq ($(NIC_BUILD),1)

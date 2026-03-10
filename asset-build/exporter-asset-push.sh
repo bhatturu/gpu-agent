@@ -61,8 +61,10 @@ copy_artifacts () {
     cp /device-metrics-exporter/bin/amdgpu-exporter-rhel9.x86_64.rpm $BUNDLE_DIR/amdgpu-exporter-$RELEASE.x86_64.rpm
     cp /device-metrics-exporter/bin/amdgpu-exporter-sriov-rhel9.x86_64.rpm $BUNDLE_DIR/amdgpu-exporter-sriov-$RELEASE.x86_64.rpm
     # copy helm charts
-    cp /device-metrics-exporter/helm-charts/device-metrics-exporter-charts.tgz $BUNDLE_DIR/device-metrics-exporter-charts-$RELEASE.tgz
-    cp /device-metrics-exporter/helm-charts/nic-device-metrics-exporter-charts.tgz $BUNDLE_DIR/nic-device-metrics-exporter-charts-$RELEASE.tgz
+    cp /device-metrics-exporter/build/charts/internal-device-metrics-exporter-charts.tgz $BUNDLE_DIR/internal-device-metrics-exporter-charts-$RELEASE.tgz
+    cp /device-metrics-exporter/build/charts/amdpsdo-device-metrics-exporter-charts.tgz $BUNDLE_DIR/amdpsdo-device-metrics-exporter-charts-$RELEASE.tgz
+    cp /device-metrics-exporter/build/charts/internal-nic-device-metrics-exporter-charts.tgz $BUNDLE_DIR/internal-nic-device-metrics-exporter-charts-$RELEASE.tgz
+    cp /device-metrics-exporter/build/charts/amdpsdo-nic-device-metrics-exporter-charts.tgz $BUNDLE_DIR/amdpsdo-nic-device-metrics-exporter-charts-$RELEASE.tgz
     # copy techsupport scripts
     cp /device-metrics-exporter/tools/techsupport_dump.sh $BUNDLE_DIR/
     # list the artifacts copied out
