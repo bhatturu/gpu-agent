@@ -14,7 +14,8 @@ targets:
       - build-device-metrics-exporter-docker-sriov-ubi9.6
       - build-device-metrics-exporter-docker-ainic-ubi9.6
       - build-rpm-package-rhel9
-      - build-helm-artifact
+      - build-helm-gpu-artifact
+      - build-helm-nic-artifact
       - e2e-build-mock-exporter
       - build-nic-debian-package
 
