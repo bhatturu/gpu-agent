@@ -533,15 +533,17 @@ endif
 .PHONY: helm
 helm:
 	@rm -rf helm-charts-k8s
-	@rm -rf helm-charts/nic-device-metrics-exporter*
-	@rm -rf helm-charts/device-metrics-exporter*
-	@echo "\n+++++++++++++++++ Building NIC monitoring helm chart ++++++++++++++++\n"
-	NIC_BUILD=1 ${MAKE} helm-build
-	@echo "\n+++++++++++++++++ Building GPU monitoring helm chart ++++++++++++++++\n"
 	${MAKE} helm-build
 
 .PHONY: helm-build
 helm-build: helm-lint
+	@rm -rf helm-charts/nic-device-metrics-exporter*
+	@rm -rf helm-charts/device-metrics-exporter*
+ifeq ($(NIC_BUILD),1)
+	@echo "\n+++++++++++++++++ Building NIC monitoring helm chart ++++++++++++++++\n"
+else
+	@echo "\n+++++++++++++++++ Building GPU monitoring helm chart ++++++++++++++++\n"
+endif
 	# updating project version in helm Chart.yaml
 	@yq eval -i '.appVersion = "$(HELM_CHARTS_VERSION)"' helm-charts/Chart.yaml
 	@yq eval -i '.version = "$(HELM_CHARTS_VERSION)"' helm-charts/Chart.yaml

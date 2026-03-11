@@ -66,17 +66,15 @@ builds:
     artifacts:
         - /device-metrics-exporter/docker/device-metrics-exporter-mock-latest.tar.gz
 
-  build-helm-artifact:
+  build-helm-gpu-artifact:
     commands: ["sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && \
                  mkdir -p build/charts && \
                  INTERNAL_TAG=${RELEASE:-v1.5.0} && INTERNAL_TAG=${INTERNAL_TAG%-*} && \
                  if [ \"$INTERNAL_TAG\" = 'exporter-0.0.1' ]; then INTERNAL_TAG=latest; fi && \
                  PROJECT_VERSION=${RELEASE:-v1.5.0} DOCKER_REGISTRY=registry.test.pensando.io:5000 HELM_EXPORTER_IMAGE_TAG=$INTERNAL_TAG make helm && \
                  cp helm-charts/device-metrics-exporter-charts.tgz build/charts/internal-device-metrics-exporter-charts.tgz && \
-                 cp helm-charts/nic-device-metrics-exporter-charts.tgz build/charts/internal-nic-device-metrics-exporter-charts.tgz && \
                  PROJECT_VERSION=${RELEASE:-v1.5.0} DOCKER_REGISTRY=docker.io/amdpsdo HELM_EXPORTER_IMAGE_TAG=${RELEASE:-v1.5.0} make helm && \
-                 cp helm-charts/device-metrics-exporter-charts.tgz build/charts/amdpsdo-device-metrics-exporter-charts.tgz && \
-                 cp helm-charts/nic-device-metrics-exporter-charts.tgz build/charts/amdpsdo-nic-device-metrics-exporter-charts.tgz"]
+                 cp helm-charts/device-metrics-exporter-charts.tgz build/charts/amdpsdo-device-metrics-exporter-charts.tgz"]
     owners: ["email:prshanmug@amd.com"]
     area:
     sub-area:
@@ -84,6 +82,21 @@ builds:
     artifacts:
         - /device-metrics-exporter/build/charts/internal-device-metrics-exporter-charts.tgz
         - /device-metrics-exporter/build/charts/amdpsdo-device-metrics-exporter-charts.tgz
+
+  build-helm-nic-artifact:
+    commands: ["sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && \
+                 mkdir -p build/charts && \
+                 INTERNAL_TAG=${RELEASE:-v1.5.0} && INTERNAL_TAG=${INTERNAL_TAG%-*} && \
+                 if [ \"$INTERNAL_TAG\" = 'exporter-0.0.1' ]; then INTERNAL_TAG=latest; fi && \
+                 PROJECT_VERSION=${RELEASE:-v1.5.0} DOCKER_REGISTRY=registry.test.pensando.io:5000 HELM_EXPORTER_IMAGE_TAG=$INTERNAL_TAG NIC_BUILD=1 make helm && \
+                 cp helm-charts/nic-device-metrics-exporter-charts.tgz build/charts/internal-nic-device-metrics-exporter-charts.tgz && \
+                 PROJECT_VERSION=${RELEASE:-v1.5.0} DOCKER_REGISTRY=docker.io/amdpsdo HELM_EXPORTER_IMAGE_TAG=${RELEASE:-v1.5.0} NIC_BUILD=1 make helm && \
+                 cp helm-charts/nic-device-metrics-exporter-charts.tgz build/charts/amdpsdo-nic-device-metrics-exporter-charts.tgz"]
+    owners: ["email:yshankar@amd.com"]
+    area:
+    sub-area:
+    feature:
+    artifacts:
         - /device-metrics-exporter/build/charts/internal-nic-device-metrics-exporter-charts.tgz
         - /device-metrics-exporter/build/charts/amdpsdo-nic-device-metrics-exporter-charts.tgz
 
@@ -110,7 +123,8 @@ targets:
     logfiles:
         - /device-metrics-exporter/exporter.log
     build-dependencies:
-        - build-helm-artifact
+        - build-helm-gpu-artifact
+        - build-helm-nic-artifact
         - build-debian-package-ub22.04
         - build-debian-package-ub24.04
         - build-rpm-package-rhel9
