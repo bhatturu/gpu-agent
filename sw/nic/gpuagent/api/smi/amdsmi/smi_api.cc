@@ -71,32 +71,33 @@ smi_fill_gpu_clock_frequency_spec_ (aga_gpu_handle_t gpu_handle,
 {
     uint32_t clk_cnt = 0;
     amdsmi_status_t amdsmi_ret;
-    amdsmi_frequencies_t freq = {};
     amdsmi_clk_info_t clock_info = {};
     aga_gpu_clock_freq_range_t *clock_spec;
 
     // gfx clock
     clock_spec = &spec->clock_freq[clk_cnt];
     clock_spec->clock_type = smi_to_aga_gpu_clock_type(AMDSMI_CLK_TYPE_GFX);
-    amdsmi_ret = amdsmi_get_clk_freq(gpu_handle, AMDSMI_CLK_TYPE_GFX, &freq);
+    amdsmi_ret = amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_GFX,
+                                       &clock_info);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get system clock frequencies for GPU {}, "
+        AGA_TRACE_ERR("Failed to get system clock information for GPU {}, "
                       "err {}", gpu_handle, amdsmi_ret);
     } else {
-        // min and max frequencies are per clock type
-        find_low_high_frequency(&freq, &clock_spec->lo, &clock_spec->hi);
+        clock_spec->lo = clock_info.min_clk;
+        clock_spec->hi = clock_info.max_clk;
     }
     clk_cnt++;
     // memory clock
     clock_spec = &spec->clock_freq[clk_cnt];
     clock_spec->clock_type = smi_to_aga_gpu_clock_type(AMDSMI_CLK_TYPE_MEM);
-    amdsmi_ret = amdsmi_get_clk_freq(gpu_handle, AMDSMI_CLK_TYPE_MEM, &freq);
+    amdsmi_ret = amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_MEM,
+                                       &clock_info);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get memory clock frequencies for GPU {}, "
+        AGA_TRACE_ERR("Failed to get memory clock information for GPU {}, "
                       "err {}", gpu_handle, amdsmi_ret);
     } else {
-        // min and max frequencies are per clock type
-        find_low_high_frequency(&freq, &clock_spec->lo, &clock_spec->hi);
+        clock_spec->lo = clock_info.min_clk;
+        clock_spec->hi = clock_info.max_clk;
     }
     clk_cnt++;
     // video clock
