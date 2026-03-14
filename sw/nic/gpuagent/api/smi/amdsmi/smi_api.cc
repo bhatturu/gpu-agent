@@ -964,7 +964,7 @@ smi_fill_ecc_stats_ (aga_gpu_handle_t gpu_handle,
     uint64_t total_correctable_count = 0;
     uint64_t total_uncorrectable_count = 0;
     // get correctable and uncorrectable total error count beforehand
-    for (uint32_t b = AMDSMI_GPU_BLOCK_FIRST; b <= AMDSMI_GPU_BLOCK_LAST;
+    for (uint64_t b = AMDSMI_GPU_BLOCK_FIRST; b <= AMDSMI_GPU_BLOCK_LAST;
          b = b * 2) {
         // initialize ec to all 0s
         ec = { 0 };
@@ -1095,6 +1095,7 @@ smi_fill_ecc_stats_ (aga_gpu_handle_t gpu_handle,
     }
     stats->total_correctable_errors = total_correctable_count;
     stats->total_uncorrectable_errors = total_uncorrectable_count;
+    return SDK_RET_OK;
 }
 
 static sdk_ret_t
