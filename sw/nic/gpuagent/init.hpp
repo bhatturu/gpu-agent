@@ -36,10 +36,12 @@ limitations under the License.
 #define AGA_DEFAULT_GRPC_SERVER_PORT          50061
 /// gRPC server:port string length
 #define AGA_GRPC_SERVER_STR_LEN               64
+/// Default Unix socket path
+#define AGA_DEFAULT_UNIX_SOCKET_PATH          "/var/run/gpuagent.sock"
 
 /// \brief initialization parameters
 typedef struct aga_init_params_s {
-    // gRPC server (IP:port)
+    // gRPC server (IP:port or unix socket path)
     char grpc_server[AGA_GRPC_SERVER_STR_LEN];
 } aga_init_params_t;
 

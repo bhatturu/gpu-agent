@@ -30,8 +30,9 @@ import (
 )
 
 var (
-	GRPCDefaultBaseURL = "127.0.0.1"
-	GRPCDefaultPort    = "50061"
+	GRPCDefaultBaseURL    = "127.0.0.1"
+	GRPCDefaultPort       = "50061"
+	GRPCDefaultSocketPath = "/var/run/gpuagent.sock"
 )
 
 const (
@@ -66,16 +67,24 @@ func getClientReqTimeout() (uint, error) {
 	return uint(timeout), nil
 }
 
-// createNewGRPCClient creates a grpc connection to HAL
-// we first check if secure grpc exists and if not fallback
-// to regular grpc
+// createNewGRPCClient creates a grpc connection to GPU agent
+// supports both TCP/IP and Unix socket connections
 func createNewGRPCClient() (*grpc.ClientConn, error) {
-	// unsecure grpc
-	agaPort := os.Getenv("AGA_GRPC_PORT")
-	if agaPort == "" {
-		agaPort = GRPCDefaultPort
+	var srvURL string
+
+	// check if Unix socket path is specified
+	if GRPCDefaultSocketPath != "" {
+		// use Unix socket
+		srvURL = "unix:" + GRPCDefaultSocketPath
+	} else {
+		// use TCP/IP
+		agaPort := os.Getenv("AGA_GRPC_PORT")
+		if agaPort == "" {
+			agaPort = GRPCDefaultPort
+		}
+		srvURL = GRPCDefaultBaseURL + ":" + agaPort
 	}
-	srvURL := GRPCDefaultBaseURL + ":" + agaPort
+
 	timeout, err := getClientPortConnTimeout()
 	if err != nil {
 		return nil, err

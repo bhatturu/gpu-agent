@@ -24,6 +24,12 @@ limitations under the License.
 //----------------------------------------------------------------------------
 
 #include <memory>
+#include <cerrno>
+#include <cstring>
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 #include <grpc++/grpc++.h>
 #include "nic/sdk/include/sdk/base.hpp"
 #include "nic/sdk/lib/logger/logger.h"
@@ -184,7 +190,7 @@ create_gpus (void)
 }
 
 /// \brief    start the gRPC server
-/// \param[in] grpc_server    gRPC server (IP:port) string
+/// \param[in] grpc_server    gRPC server (IP:port or unix:socket_path) string
 static void
 grpc_server_start (const std::string& grpc_server)
 {
@@ -192,6 +198,7 @@ grpc_server_start (const std::string& grpc_server)
     TopoSvcImpl topo_svc;
     DebugSvcImpl debug_svc;
     EventSvcImpl event_svc;
+    std::string socket_path;
     ServerBuilder server_builder;
     DebugGPUSvcImpl debug_gpu_svc;
     GPUWatchSvcImpl gpu_watch_svc;
@@ -231,6 +238,24 @@ grpc_server_start (const std::string& grpc_server)
     AGA_TRACE_DEBUG("gRPC server listening on {} ...",
                     grpc_server.c_str());
     g_grpc_server = server_builder.BuildAndStart();
+    if (g_grpc_server == nullptr) {
+        AGA_TRACE_ERR("Failed to start gRPC server on {}, err - {}",
+                      grpc_server.c_str(), strerror(errno));
+        exit(1);
+    }
+    // determine gRPC server type
+    if (grpc_server.compare(0, 5, "unix:") == 0) {
+        // extract socket path from "unix:path" format
+        socket_path = grpc_server.substr(5); // skip "unix:"
+    }
+    if (!socket_path.empty()) {
+        // set root only permission for socket in case of UDS transport for gRPC
+        if (chmod(socket_path.c_str(), 0600) != 0) {
+            AGA_TRACE_ERR("Failed to set permissions on socket {}, err - {}",
+                          socket_path.c_str(), strerror(errno));
+            exit(1);
+        }
+    }
     g_grpc_server->Wait();
 }
 
