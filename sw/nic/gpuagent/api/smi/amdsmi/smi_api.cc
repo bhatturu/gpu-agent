@@ -1343,36 +1343,36 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
         if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
             AGA_TRACE_ERR("Failed to get GPU partition metrics info for GPU {}, "
                           "err {}", gpu_handle, amdsmi_ret);
-            return amdsmi_ret_to_sdk_ret(amdsmi_ret);
+            // fall through to g_gpu_metrics cache fallback below
+        } else {
+            // activity information
+            stats->usage.gfx_activity = metrics_info.average_gfx_activity;
+            stats->usage.umc_activity = metrics_info.average_umc_activity;
+            stats->usage.mm_activity = metrics_info.average_mm_activity;
+            stats->gfx_activity_accumulated = metrics_info.gfx_activity_acc;
+            stats->mem_activity_accumulated = metrics_info.mem_activity_acc;
+
+            // VCN busy stats (activity not available in partition mode)
+            for (uint16_t i = 0; i < AMDSMI_MAX_NUM_VCN; i++) {
+                stats->usage.vcn_busy[i] = metrics_info.xcp_stats[0].vcn_busy[i];
+            }
+
+            // JPEG busy stats (activity not available in partition mode)
+            for (uint16_t i = 0; i < AMDSMI_MAX_NUM_JPEG_ENG_V1; i++) {
+                stats->usage.jpeg_busy[i] = metrics_info.xcp_stats[0].jpeg_busy[i];
+            }
+
+            // GFX busy instances
+            for (uint16_t i = 0; i < AMDSMI_MAX_NUM_XCC; i++) {
+                stats->usage.gfx_busy_inst[i] =
+                    metrics_info.xcp_stats[0].gfx_busy_inst[i];
+            }
+
+            // fill violation stats for partitioned mode
+            smi_fill_violation_stats_(gpu_handle, partition_id,
+                                      &metrics_info,
+                                      &stats->violation_stats);
         }
-
-        // activity information
-        stats->usage.gfx_activity = metrics_info.average_gfx_activity;
-        stats->usage.umc_activity = metrics_info.average_umc_activity;
-        stats->usage.mm_activity = metrics_info.average_mm_activity;
-        stats->gfx_activity_accumulated = metrics_info.gfx_activity_acc;
-        stats->mem_activity_accumulated = metrics_info.mem_activity_acc;
-
-        // VCN busy stats (activity not available in partition mode)
-        for (uint16_t i = 0; i < AMDSMI_MAX_NUM_VCN; i++) {
-            stats->usage.vcn_busy[i] = metrics_info.xcp_stats[0].vcn_busy[i];
-        }
-
-        // JPEG busy stats (activity not available in partition mode)
-        for (uint16_t i = 0; i < AMDSMI_MAX_NUM_JPEG_ENG_V1; i++) {
-            stats->usage.jpeg_busy[i] = metrics_info.xcp_stats[0].jpeg_busy[i];
-        }
-
-        // GFX busy instances
-        for (uint16_t i = 0; i < AMDSMI_MAX_NUM_XCC; i++) {
-            stats->usage.gfx_busy_inst[i] =
-                metrics_info.xcp_stats[0].gfx_busy_inst[i];
-        }
-
-        // fill violation stats for partitioned mode
-        smi_fill_violation_stats_(gpu_handle, partition_id,
-                                  &metrics_info,
-                                  &stats->violation_stats);
     }
     // always fill for primary partition with cached metrics info,
     // as primary partition metrics is not updated in new API
