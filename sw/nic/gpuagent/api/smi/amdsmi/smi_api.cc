@@ -22,6 +22,7 @@ limitations under the License.
 
 #include <sstream>
 #include <iomanip>
+#include <mutex>
 extern "C" {
 #include "nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h"
 }
@@ -53,6 +54,11 @@ std::unordered_map<aga_gpu_handle_t, amdsmi_gpu_metrics_t> g_gpu_metrics;
 /// counter resolution in uJ; this is a constant value that we get once during
 /// init time and use whenever we want to calculate energy accumalated
 float g_energy_counter_resolution;
+/// serialize concurrent calls to amdsmi_get_gpu_process_list: the amdsmi
+/// implementation shares a per-device GPUComputeProcessList_t member that is
+/// not protected by a lock, so concurrent callers racing on the same device
+/// corrupt the heap.
+static std::mutex g_kfd_process_list_mutex;
 
 /// \brief struct to be used as ctxt when walking GPU db to build topology
 typedef struct gpu_topo_walk_ctxt_s {
@@ -458,19 +464,44 @@ smi_fill_gpu_kfd_pid_status_ (aga_gpu_handle_t gpu_handle,
     amdsmi_status_t amdsmi_ret;
     uint32_t max_processes = 0;
 
-    amdsmi_ret = amdsmi_get_gpu_process_list(gpu_handle, &max_processes, NULL);
+    {
+        std::lock_guard<std::mutex> guard(g_kfd_process_list_mutex);
+        amdsmi_ret = amdsmi_get_gpu_process_list(gpu_handle, &max_processes, NULL);
+    }
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
         AGA_TRACE_ERR("Failed to get number of processes running on GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
         return amdsmi_ret_to_sdk_ret(amdsmi_ret);
     }
-    list = (amdsmi_proc_info_t *)malloc(sizeof(amdsmi_proc_info_t) * max_processes);
+    // Allocate with headroom to absorb new processes that may arrive between
+    // the count call above and the list call below (TOCTOU).  If amdsmi still
+    // returns OUT_OF_RESOURCES it updates max_processes to the actual count;
+    // realloc to that size and retry once.
+    uint32_t alloc_count = max_processes + 16;
+    list = (amdsmi_proc_info_t *)malloc(sizeof(amdsmi_proc_info_t) * alloc_count);
     if (!list) {
         AGA_TRACE_ERR("Failed to allocate memory for process list for GPU {}",
                       gpu_handle);
         return SDK_RET_OOM;
     }
-    amdsmi_ret = amdsmi_get_gpu_process_list(gpu_handle, &max_processes, list);
+    max_processes = alloc_count;
+    {
+        std::lock_guard<std::mutex> guard(g_kfd_process_list_mutex);
+        amdsmi_ret = amdsmi_get_gpu_process_list(gpu_handle, &max_processes, list);
+        if (unlikely(amdsmi_ret == AMDSMI_STATUS_OUT_OF_RESOURCES)) {
+            // max_processes now holds the true count; reallocate and retry once
+            amdsmi_proc_info_t *new_list = (amdsmi_proc_info_t *)realloc(
+                    list, sizeof(amdsmi_proc_info_t) * max_processes);
+            if (!new_list) {
+                AGA_TRACE_ERR("Failed to reallocate process list for GPU {}",
+                              gpu_handle);
+                free(list);
+                return SDK_RET_OOM;
+            }
+            list = new_list;
+            amdsmi_ret = amdsmi_get_gpu_process_list(gpu_handle, &max_processes, list);
+        }
+    }
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
         AGA_TRACE_ERR("Failed to get process list for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
