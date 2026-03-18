@@ -79,10 +79,7 @@ print_usage (char **argv)
 static void
 clean_unix_socket (const std::string& socket_path)
 {
-    if (unlink(socket_path.c_str()) != 0) {
-        fprintf(stderr, "Failed to remove socket file %s on exit, err - %s\n",
-                socket_path.c_str(), strerror(errno));
-    }
+    unlink(socket_path.c_str());
 }
 
 /// \brief    signal handler for cleanup
