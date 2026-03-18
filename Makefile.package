@@ -37,7 +37,7 @@ NIC_PKG_PATH := ${TOP_DIR}/nic-debian/usr/local/bin
 NIC_METRICS_CONF_DIR := ${TOP_DIR}/nic-debian/etc
 NIC_METRICS_CONF_PATH := ${NIC_METRICS_CONF_DIR}/metrics
 
-.PHONY: deppkg debpkg-clean rpmpkg rpmpkg-clean pkg pkg-clean debpkg-sriov-clean debpkg-sriov rpmpkg-sriov nic-debpkg
+.PHONY: debpkg debpkg-ual debpkg-clean rpmpkg rpmpkg-clean pkg pkg-clean debpkg-sriov-clean debpkg-sriov rpmpkg-sriov nic-debpkg
 pkg: debpkg rpmpkg nic-debpkg
 
 pkg-clean: debpkg-clean debpkg-sriov-clean rpmpkg-clean
@@ -159,14 +159,24 @@ debpkg-sriov-clean:
 
 debpkg: debpkg-clean
 	${MAKE} amdexporter
-	@echo "Building debian for $(BUILD_VER_ENV)"
+	@echo "Building debian package for $(BUILD_VER_ENV)"
 	@echo "library assets build path $(PROFILER_DEB_LIBS)"
 	@mkdir -p ${PKG_LIB_PATH}
 	@mkdir -p ${METRICS_CONF_PATH}
 	@mkdir -p ${PKG_PATH}
 	@mkdir -p ${SDK_COUNTER_DEF}
 	@echo "Copying prebuilt gpuagent"
+ifeq ($(filter $(UAL),1 true),)
+	@echo "using standard gpuagent"
 	@tar -xf ${ASSETS_PATH}/gpuagent_static.bin.gz -C ${PKG_PATH}/
+	@cp -vf ${ASSETS_PATH}/gpuctl.gobin ${PKG_PATH}/gpuctl
+	@jq '.CommonConfig.HealthService.Enable = false | del(.GPUConfig.ExtraPodLabels, .NICConfig, .IFOEConfig)' $(CONFIG_DIR)/config.json > ${METRICS_CONF_PATH}/config.json
+else
+	@echo "using UAL-specific gpuagent"
+	@tar -xf ${ASSETS_PATH}/gpuagent_ual.bin.gz -C ${PKG_PATH}/
+	@cp -vf ${ASSETS_PATH}/gpuctl_ual ${PKG_PATH}/gpuctl
+	@jq '.CommonConfig.HealthService.Enable = false | del(.GPUConfig.ExtraPodLabels, .NICConfig)' $(CONFIG_DIR)/config.json > ${METRICS_CONF_PATH}/config.json
+endif
 	@echo "Copy prebuilt libraries"
 	@cp -rvf ${GPUAGENT_LIBS}/ ${PKG_LIB_PATH}
 	@if [ ! -d $(PROFILER_DEB_LIBS) ]; then \
@@ -183,8 +193,6 @@ debpkg: debpkg-clean
 	@cp -vf ${ROCPROFILER_ASSETS}/librocpclient* ${PKG_LIB_PATH}/lib/
 	@cp -vf ${ROCPROFILER_ASSETS}/rocpctl ${PKG_PATH}/rocpctl
 	@cp -vf ${ROCPROFLER_SDK_ASSETS}/* ${SDK_COUNTER_DEF}/
-	#copy default config
-	@jq '.CommonConfig.HealthService.Enable = false | del(.GPUConfig.ExtraPodLabels, .NICConfig, .IFOEConfig)' $(CONFIG_DIR)/config.json > ${METRICS_CONF_PATH}/config.json
 	@cat ${METRICS_CONF_PATH}/config.json
 	# list all the files
 	@ls -lart ${PKG_LIB_PATH}/lib
@@ -200,7 +208,6 @@ debpkg: debpkg-clean
 	@ls -alsh ${PKG_PATH}/rocpctl
 	@cd ${PKG_PATH} && strip ${PKG_PATH}/gpuagent
 	@cp -vf ${LUA_PROTO} ${PKG_LUA_PATH}/plugin.proto
-	@cp -vf ${ASSETS_PATH}/gpuctl.gobin ${PKG_PATH}/gpuctl
 	@cp -vf $(CURDIR)/bin/amd-metrics-exporter ${PKG_PATH}/
 	@strip ${PKG_PATH}/amd-metrics-exporter
 	@cp -vf $(CURDIR)/bin/metricsclient ${PKG_PATH}/
@@ -215,7 +222,20 @@ debpkg: debpkg-clean
 	# revert the dynamic version set file
 	@git checkout $(DEBIAN_CONTROL)
 	# rename for internal build
+ifeq ($(filter $(UAL),1 true),)
 	@mv -vf ${TOP_DIR}/bin/amdgpu-exporter_*~${UBUNTU_VERSION_NUMBER}_amd64.deb ${TOP_DIR}/bin/amdgpu-exporter_${UBUNTU_VERSION_NUMBER}_amd64.deb
+else
+	@mv -vf ${TOP_DIR}/bin/amdgpuifoe-exporter_*~${UBUNTU_VERSION_NUMBER}_amd64.deb ${TOP_DIR}/bin/amdgpuifoe-exporter_${UBUNTU_VERSION_NUMBER}_amd64.deb
+endif
+
+debpkg-ual:
+	@echo "Modifying systemd service file for UAL mode"
+	@sed -i 's|ExecStart=/usr/local/bin/amd-metrics-exporter$$|ExecStart=/usr/local/bin/amd-metrics-exporter -monitor-ifoe=true|' ${TOP_DIR}/debian/usr/lib/systemd/system/amd-metrics-exporter.service
+	@echo "Modifying package name for UAL mode"
+	@sed -i 's|^Package: amdgpu-exporter$$|Package: amdgpuifoe-exporter|' ${TOP_DIR}/debian/DEBIAN/control
+	@$(MAKE) debpkg UAL=true
+	@echo "Reverting systemd service file modifications"
+	@git checkout ${TOP_DIR}/debian/usr/lib/systemd/system/amd-metrics-exporter.service
 
 debpkg-sriov: debpkg-sriov-clean
 	${MAKE} amdexporter

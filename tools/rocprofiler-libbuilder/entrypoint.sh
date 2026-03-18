@@ -11,6 +11,9 @@ ls -al /opt/rocm/lib/libamd_comgr.so*
 ls -al /opt/rocm/lib/libhsa-runtime64.so*
 ls -al /opt/rocm/lib/libhsa-amd-aqlprofile64.so*
 ls -al /usr/lib/x86_64-linux-gnu/libnuma.so*
+ls -al /usr/lib/x86_64-linux-gnu/libmnl.so*
+ls -al /usr/lib/x86_64-linux-gnu/libnl-3.so*
+ls -al /usr/lib/x86_64-linux-gnu/libnl-genl-3.so*
 
 cp -vr /opt/rocm/lib/libamdhip64.so* $outdir/
 cp -vr /opt/rocm/lib/librocprofiler-sdk.so* $outdir/
@@ -19,6 +22,9 @@ cp -vr /opt/rocm/lib/libamd_comgr.so* $outdir/
 cp -vr /opt/rocm/lib/libhsa-runtime64.so* $outdir/
 cp -vr /opt/rocm/lib/libhsa-amd-aqlprofile64.so* $outdir/
 cp -vr /usr/lib/x86_64-linux-gnu/libnuma.so* $outdir/
+cp -vr /usr/lib/x86_64-linux-gnu/libmnl.so* $outdir/
+cp -vr /usr/lib/x86_64-linux-gnu/libnl-3.so* $outdir/
+cp -vr /usr/lib/x86_64-linux-gnu/libnl-genl-3.so* $outdir/
 
 ls -lart $outdir
 

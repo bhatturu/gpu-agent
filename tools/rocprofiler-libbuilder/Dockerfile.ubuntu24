@@ -24,6 +24,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
   build-essential \
   hsa-amd-aqlprofile \
   rocprofiler-sdk \
+  libmnl-dev libnl-3-dev libnl-genl-3-dev \
   hip-runtime-amd && \
   apt-get clean && rm -rf /var/lib/apt/lists/*
 

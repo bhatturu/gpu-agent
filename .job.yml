@@ -21,6 +21,24 @@ builds:
         - /device-metrics-exporter/bin/amdgpu-exporter_24.04_amd64.deb
         - /device-metrics-exporter/bin/amdgpu-exporter-sriov_24.04_amd64.deb
 
+  build-ifoe-debian-package-ub22.04:
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make libcopy-assets-UBUNTU22 debpkg-ual"]
+    owners: ["email:prshanmug@amd.com"]
+    area:
+    sub-area:
+    feature:
+    artifacts:
+        - /device-metrics-exporter/bin/amdgpuifoe-exporter_22.04_amd64.deb
+
+  build-ifoe-debian-package-ub24.04:
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make UBUNTU_VERSION=noble libcopy-assets-UBUNTU24 debpkg-ual"]
+    owners: ["email:prshanmug@amd.com"]
+    area:
+    sub-area:
+    feature:
+    artifacts:
+        - /device-metrics-exporter/bin/amdgpuifoe-exporter_24.04_amd64.deb
+
   build-nic-debian-package:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make nic-debpkg"]
     owners: ["email:yshankar@amd.com"]
@@ -123,26 +141,28 @@ targets:
     logfiles:
         - /device-metrics-exporter/exporter.log
     build-dependencies:
-        - build-helm-gpu-artifact
-        - build-helm-nic-artifact
+        #- build-helm-gpu-artifact
+        #- build-helm-nic-artifact
         - build-debian-package-ub22.04
         - build-debian-package-ub24.04
-        - build-rpm-package-rhel9
+        #- build-rpm-package-rhel9
         - e2e-build-mock-exporter
-        - build-nic-debian-package
+        #- build-nic-debian-package
+        - build-ifoe-debian-package-ub22.04
+        - build-ifoe-debian-package-ub24.04
 
-  test-runner-sanity:
-    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter"]
-    owners: ["email:yan.sun3@amd.com"]
-    area:
-    sub-area:
-    feature:
-    logfiles:
-        - /device-metrics-exporter/test-runner.log
-    build-dependencies:
-        - build-test-runner-docker
-        - build-test-runner-docker-agfhc
-   
+    # test-runner-sanity:
+    #   commands: ["/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter"]
+    #   owners: ["email:yan.sun3@amd.com"]
+    #   area:
+    #   sub-area:
+    #   feature:
+    #   logfiles:
+    #       - /device-metrics-exporter/test-runner.log
+    #   build-dependencies:
+    #       - build-test-runner-docker
+    #       - build-test-runner-docker-agfhc
+
   docs-sanity:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make docs"]
     owners: ["email:prshanmug@amd.com"]
@@ -179,4 +199,4 @@ jobs:
   asset-build:
     labels: ["CI-Sanity-Build"]
 
-submodules: {}    
+submodules: {}

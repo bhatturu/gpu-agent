@@ -152,7 +152,7 @@ UBUNTU_LIBDIR = UBUNTU24
 endif
 
 # set version and run `make update-version` to all docs
-PROJECT_VERSION ?= v1.5.0
+PROJECT_VERSION ?= v2.0.0
 HELM_CHARTS_VERSION ?= $(PROJECT_VERSION)
 NIC_BUILD ?= 0
 ifeq ($(NIC_BUILD),1)
@@ -173,12 +173,15 @@ DEBIAN_VERSION := $(shell echo "$(RELEASE)" | sed 's/^exporter-//')
 else ifneq (,$(findstring nic,$(RELEASE)))
 #parse nic release tag to extract version after "nic-"
 DEBIAN_VERSION := $(shell echo "$(RELEASE)" | sed 's/^nic-v//')
+else ifneq (,$(findstring collab,$(RELEASE)))
+#parse collab release tag to extract version after "collab-"
+DEBIAN_VERSION := $(shell echo "$(RELEASE)" | sed 's/^collab-//')
 else ifneq (,$(findstring v,$(RELEASE)))
 #remove prefix for release tag
 DEBIAN_VERSION := $(shell echo "$(RELEASE)" | sed 's/^.//')
 else
 #apt is only released until this version
-DEBIAN_VERSION := "1.5.0"
+DEBIAN_VERSION := "2.0.0"
 endif
 
 # Remove 'v' from PROJECT_VERSION to get PACKAGE_VERSION
