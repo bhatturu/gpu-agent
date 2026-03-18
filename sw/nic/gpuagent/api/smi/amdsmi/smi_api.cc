@@ -22,7 +22,9 @@ limitations under the License.
 
 #include <sstream>
 #include <iomanip>
+#include <memory>
 #include <mutex>
+#include <unordered_map>
 extern "C" {
 #include "nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h"
 }
@@ -54,11 +56,14 @@ std::unordered_map<aga_gpu_handle_t, amdsmi_gpu_metrics_t> g_gpu_metrics;
 /// counter resolution in uJ; this is a constant value that we get once during
 /// init time and use whenever we want to calculate energy accumalated
 float g_energy_counter_resolution;
-/// serialize concurrent calls to amdsmi_get_gpu_process_list: the amdsmi
-/// implementation shares a per-device GPUComputeProcessList_t member that is
-/// not protected by a lock, so concurrent callers racing on the same device
-/// corrupt the heap.
-static std::mutex g_kfd_process_list_mutex;
+/// Per-GPU mutex map for amdsmi_get_gpu_process_list.
+/// amdsmi's implementation shares a per-device GPUComputeProcessList_t member
+/// with no internal lock; concurrent callers on the SAME device corrupt the
+/// heap.  A per-GPU mutex (vs one global mutex) lets different GPUs proceed
+/// concurrently — important on many-XCP systems like MI350X SPX (55 XCPs).
+/// Populated in smi_discover_gpus() once per GPU handle at init time.
+static std::unordered_map<aga_gpu_handle_t,
+                          std::unique_ptr<std::mutex>> g_kfd_process_list_mutex;
 
 /// \brief struct to be used as ctxt when walking GPU db to build topology
 typedef struct gpu_topo_walk_ctxt_s {
@@ -464,8 +469,16 @@ smi_fill_gpu_kfd_pid_status_ (aga_gpu_handle_t gpu_handle,
     amdsmi_status_t amdsmi_ret;
     uint32_t max_processes = 0;
 
+    // Look up the per-GPU mutex (populated at discovery time in smi_discover_gpus).
+    // A static fallback guards the case where the handle is not in the map
+    // (should not happen, but keeps this function safe regardless).
+    static std::mutex s_fallback_kfd_mutex;
+    auto mit = g_kfd_process_list_mutex.find(gpu_handle);
+    std::mutex &gpu_mutex = (mit != g_kfd_process_list_mutex.end())
+                                ? *mit->second : s_fallback_kfd_mutex;
+
     {
-        std::lock_guard<std::mutex> guard(g_kfd_process_list_mutex);
+        std::lock_guard<std::mutex> guard(gpu_mutex);
         amdsmi_ret = amdsmi_get_gpu_process_list(gpu_handle, &max_processes, NULL);
     }
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
@@ -486,7 +499,7 @@ smi_fill_gpu_kfd_pid_status_ (aga_gpu_handle_t gpu_handle,
     }
     max_processes = alloc_count;
     {
-        std::lock_guard<std::mutex> guard(g_kfd_process_list_mutex);
+        std::lock_guard<std::mutex> guard(gpu_mutex);
         amdsmi_ret = amdsmi_get_gpu_process_list(gpu_handle, &max_processes, list);
         if (unlikely(amdsmi_ret == AMDSMI_STATUS_OUT_OF_RESOURCES)) {
             // max_processes now holds the true count; reallocate and retry once
@@ -1944,6 +1957,9 @@ smi_discover_gpus (uint32_t *num_gpu, aga_gpu_profile_t *gpu)
                                   proc_handles[j]);
                     return ret;
                 }
+                // register a per-GPU mutex for kfd process list serialization
+                g_kfd_process_list_mutex.emplace(
+                    proc_handles[j], std::make_unique<std::mutex>());
                 (*num_gpu)++;
             }
         }
