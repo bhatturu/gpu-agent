@@ -20,8 +20,6 @@ limitations under the License.
 ///
 //----------------------------------------------------------------------------
 
-#include <chrono>
-#include <thread>
 #include <vector>
 extern "C" {
 #include "nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h"
@@ -1535,25 +1533,11 @@ smi_state::init(aga_api_init_params_t *init_params) {
     amdsmi_status_t status;
     aga_gpu_profile_t gpu[AGA_MAX_GPU];
 
-    // initialize smi library — retry on DRIVER_NOT_LOADED (err 34) to handle
-    // deployments where the amdgpu driver loads after the container starts
-    // (e.g. vfio-pci.ids claiming GPUs at boot, late modprobe amdgpu, or
-    // missing --device /dev/kfd on cgroup v1 kernels).
-    static constexpr int kMaxRetries = 30;
-    static constexpr int kRetryIntervalSec = 10;
-    for (int attempt = 0; attempt <= kMaxRetries; attempt++) {
-        status = amdsmi_init(AMDSMI_INIT_AMD_GPUS);
-        if (likely(status == AMDSMI_STATUS_SUCCESS)) {
-            break;
-        }
-        if (status != AMDSMI_STATUS_DRIVER_NOT_LOADED || attempt == kMaxRetries) {
-            AGA_TRACE_ERR("Failed to initialize amd smi library, err {}", status);
-            return amdsmi_ret_to_sdk_ret(status);
-        }
-        AGA_TRACE_ERR("amd smi library init failed (driver not loaded), "
-                      "retrying in {}s (attempt {}/{})",
-                      kRetryIntervalSec, attempt + 1, kMaxRetries);
-        std::this_thread::sleep_for(std::chrono::seconds(kRetryIntervalSec));
+    // initialize smi library
+    status = amdsmi_init(AMDSMI_INIT_AMD_GPUS);
+    if (unlikely(status != AMDSMI_STATUS_SUCCESS)) {
+        AGA_TRACE_ERR("Failed to initialize amd smi library, err {}", status);
+        return amdsmi_ret_to_sdk_ret(status);
     }
     // discover gpus
     ret = aga::smi_discover_gpus(&num_gpu_, gpu);
