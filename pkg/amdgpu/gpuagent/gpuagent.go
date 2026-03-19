@@ -48,6 +48,8 @@ type GPUAgentClient struct {
 	enabledK8sApi        bool
 	enableSlurmScl       bool
 	enableSriov          bool
+	useSocket            bool   // use socket connection instead of IP:port
+	socketPath           string // socket path for connection
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -113,11 +115,20 @@ func WithIFOEMonitoring(enableIFOEMonitoring bool) GPUAgentClientOptions {
 	}
 }
 
+func WithSocketConnection(socketPath string) GPUAgentClientOptions {
+	return func(ga *GPUAgentClient) {
+		logger.Log.Printf("Socket connection enabled with path: %v", socketPath)
+		ga.useSocket = true
+		ga.socketPath = socketPath
+	}
+}
+
 func (ga *GPUAgentClient) GetGRPCConnection() *grpc.ClientConn {
 	return ga.conn
 }
 
 func (ga *GPUAgentClient) initclients() (err error) {
+	// Get agent configuration from metrics handler
 	agentAddr := ga.mh.GetAgentAddr()
 	logger.Log.Printf("Agent connecting to %v", agentAddr)
 	conn, err := grpc.NewClient(agentAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))

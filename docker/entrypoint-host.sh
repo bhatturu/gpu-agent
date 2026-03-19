@@ -18,7 +18,7 @@ set -euo pipefail
 #
 #
 # entry point script run on creating a node management container
-LD_PRELOAD=/home/amd/lib/libgim_amd_smi.so /home/amd/bin/gpuagent &
+LD_PRELOAD=/home/amd/lib/libgim_amd_smi.so /home/amd/bin/gpuagent -s /var/run/gpuagent.sock &
 
 # sleep before starting exporter
 sleep 10
