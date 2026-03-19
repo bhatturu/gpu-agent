@@ -212,9 +212,9 @@ REASON
 		log "   exporter config"
 		${KNS} exec -it ${EXEC_POD} -- sh -c "cat /etc/metrics/config.json" >${TECH_SUPPORT_FILE}/${node}/exporterconfig.json || true
 		log "   exporter pod details"
-		${KNS} exec -it ${EXEC_POD} -- sh -c "metricsclient -pod -json" >${TECH_SUPPORT_FILE}/${node}/exporterpod.json || true
+		${KNS} exec -it ${EXEC_POD} -- sh -c "metricsclient pod-resources --json" >${TECH_SUPPORT_FILE}/${node}/exporterpod.json || true
 		log "   exporter node details"
-		${KNS} exec -it ${EXEC_POD} -- sh -c "metricsclient -npod" >${TECH_SUPPORT_FILE}/${node}/exporternode.txt || true
+		${KNS} exec -it ${EXEC_POD} -- sh -c "metricsclient node-pods" >${TECH_SUPPORT_FILE}/${node}/exporternode.txt || true
 		log "   amd-smi output"
 		${KNS} exec -it ${EXEC_POD} -- sh -c "amd-smi list" >${TECH_SUPPORT_FILE}/${node}/amd-smi-list.txt || true
 		${KNS} exec -it ${EXEC_POD} -- sh -c "amd-smi metric" >${TECH_SUPPORT_FILE}/${node}/amd-smi-metric.txt || true

@@ -61,7 +61,7 @@ type ExporterOption func(e *Exporter)
 
 // Exporter Handler
 type Exporter struct {
-	agentGrpcPort        int
+	agentConfig          config.GPUAgentConfig
 	configFile           string
 	enableNICMonitoring  bool
 	enableGPUMonitoring  bool
@@ -249,9 +249,10 @@ func foreverWatcher(e *Exporter) {
 
 func NewExporter(agentGrpcport int, configFile string, opts ...ExporterOption) *Exporter {
 	ctx, cancel := context.WithCancel(context.Background())
-	logger.Log.Printf("creating exporter with grpc port %d and config file %s", agentGrpcport, configFile)
 	exporter := &Exporter{
-		agentGrpcPort: agentGrpcport,
+		agentConfig: config.GPUAgentConfig{
+			GrpcPort: agentGrpcport,
+		},
 		configFile:    configFile,
 		bindAddr:      defaultBindAddress,
 		ctx:           ctx,
@@ -264,6 +265,9 @@ func NewExporter(agentGrpcport int, configFile string, opts ...ExporterOption) *
 	for _, o := range opts {
 		o(exporter)
 	}
+	logger.Log.Printf("creating exporter with grpc config %+v and config file %s",
+		exporter.agentConfig, configFile)
+
 	if utils.IsKubernetes() && !exporter.disableK8sApi {
 		hostname, _ := utils.GetHostName()
 		k8sApiClient, err := k8sclient.NewClient(ctx, "", hostname)
@@ -378,12 +382,20 @@ func WithSlurmClient(enable bool) ExporterOption {
 	}
 }
 
+func WithSocketConnection(socketPath string) ExporterOption {
+	return func(e *Exporter) {
+		logger.Log.Printf("socket connection enabled with path: %v", socketPath)
+		e.agentConfig.UseSocket = true
+		e.agentConfig.SocketPath = socketPath
+	}
+}
+
 // StartMain - doesn't return it exits only on failure
 func (e *Exporter) StartMain(enableDebugAPI bool) {
 	defer e.Close()
 	logger.Init(utils.IsKubernetes())
 
-	runConf = config.NewConfigHandler(e.configFile, e.agentGrpcPort)
+	runConf = config.NewConfigHandler(e.configFile, e.agentConfig)
 
 	mh, _ = metricsutil.NewMetrics(runConf)
 	mh.InitConfig()
@@ -407,14 +419,18 @@ func (e *Exporter) StartMain(enableDebugAPI bool) {
 	}
 
 	if e.enableGPUMonitoring {
-		gpuclient = gpuagent.NewAgent(mh,
+		opts := []gpuagent.GPUAgentClientOptions{
 			gpuagent.WithK8sClient(e.GetK8sApiClient()),
 			gpuagent.WithSRIOV(e.enableSriov),
 			gpuagent.WithK8sSchedulerClient(e.k8sScl),
 			gpuagent.WithSlurmClient(e.enableSlurmScl),
 			gpuagent.WithGPUMonitoring(true),
 			gpuagent.WithIFOEMonitoring(e.enableIFOEMonitoring),
-		)
+		}
+		if e.agentConfig.UseSocket {
+			opts = append(opts, gpuagent.WithSocketConnection(e.agentConfig.SocketPath))
+		}
+		gpuclient = gpuagent.NewAgent(mh, opts...)
 
 		if err := gpuclient.Init(); err != nil {
 			logger.Log.Printf("gpuclient init err :%+v", err)
@@ -427,13 +443,17 @@ func (e *Exporter) StartMain(enableDebugAPI bool) {
 
 	if !e.enableGPUMonitoring && e.enableIFOEMonitoring {
 		logger.Log.Printf("IFOE monitoring enabled without GPU monitoring, creating minimal GPU agent client")
-		gpuclient = gpuagent.NewAgent(mh,
+		opts := []gpuagent.GPUAgentClientOptions{
 			gpuagent.WithK8sClient(e.GetK8sApiClient()),
 			gpuagent.WithSRIOV(e.enableSriov),
 			gpuagent.WithK8sSchedulerClient(e.k8sScl),
 			gpuagent.WithGPUMonitoring(false),
 			gpuagent.WithIFOEMonitoring(true),
-		)
+		}
+		if e.agentConfig.UseSocket {
+			opts = append(opts, gpuagent.WithSocketConnection(e.agentConfig.SocketPath))
+		}
+		gpuclient = gpuagent.NewAgent(mh, opts...)
 		if err := gpuclient.Init(); err != nil {
 			logger.Log.Printf("gpuclient init err :%+v", err)
 		}

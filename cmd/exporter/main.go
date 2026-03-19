@@ -54,7 +54,8 @@ func main() {
 
 	// Define our supported flags - these return pointers just like flag.String(), flag.Bool(), etc.
 	metricsConfig := fs.String("amd-metrics-config", globals.AMDMetricsFile, "AMD metrics exporter config file")
-	agentGrpcPort := fs.Int("agent-grpc-port", globals.GPUAgentPort, "Agent GRPC port")
+	agentGrpcPort := fs.Int("agent-grpc-port", 0, "Agent GRPC port if socket option is not used")
+	socketPath := fs.String("s", globals.GPUAgentDefaultSocketPath, "Socket path for gpuagent connection")
 	versionOpt := fs.Bool("version", false, "show version")
 	enableNICMonitoring := fs.Bool("monitor-nic", false, "Enable NIC Monitoring")
 	enableGPUMonitoring := fs.Bool("monitor-gpu", true, "Enable GPU Monitoring")
@@ -95,8 +96,9 @@ func main() {
 		os.Exit(0)
 	}
 
-	if (0 >= *agentGrpcPort) || (*agentGrpcPort > 65535) {
-		fmt.Printf("invalid agent-grpc-port exiting")
+	// Validate port if it was set
+	if *agentGrpcPort != 0 && (*agentGrpcPort < 1 || *agentGrpcPort > 65535) {
+		fmt.Printf("invalid agent-grpc-port: must be between 1 and 65535, exiting")
 		os.Exit(1)
 	}
 
@@ -114,8 +116,8 @@ func main() {
 	logger.Log.Printf("GitCommit: %v", GitCommit)
 	logger.Log.Printf("Deployment: %v", deploymentType)
 
-	exporterHandler := exporter.NewExporter(
-		*agentGrpcPort, *metricsConfig,
+	// Build exporter options
+	exporterOpts := []exporter.ExporterOption{
 		exporter.WithNICMonitoring(*enableNICMonitoring),
 		exporter.WithGPUMonitoring(*enableGPUMonitoring),
 		exporter.WithSRIOV(*sriov),
@@ -124,7 +126,24 @@ func main() {
 		exporter.WithenableIFOEMonitoring(*enableIFOEMonitoring),
 		exporter.WithK8sApiClient(*enableK8s),
 		exporter.WithK8sSchedulerClient(*enableK8sScl),
-	)
+	}
+
+	// Determine connection type:
+	// - If agent-grpc-port is not set (0), use socket connection (default)
+	// - If agent-grpc-port is set, use IP:port connection
+	var grpcPort int
+	if *agentGrpcPort == 0 {
+		// No port specified, use socket connection (default)
+		logger.Log.Printf("Using socket connection: %v", *socketPath)
+		exporterOpts = append(exporterOpts, exporter.WithSocketConnection(*socketPath))
+		grpcPort = globals.GPUAgentPort // Use default port for config handler, but won't be used for connection
+	} else {
+		// Port specified, use IP:port connection
+		logger.Log.Printf("Using IP:port connection: localhost:%v", *agentGrpcPort)
+		grpcPort = *agentGrpcPort
+	}
+
+	exporterHandler := exporter.NewExporter(grpcPort, *metricsConfig, exporterOpts...)
 
 	enableDebugAPI := true // default
 	if len(Publish) != 0 {

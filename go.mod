@@ -1,6 +1,6 @@
 module github.com/ROCm/device-metrics-exporter
 
-go 1.25.5
+go 1.25.8
 
 require (
 	github.com/alta/protopatch v0.5.3
