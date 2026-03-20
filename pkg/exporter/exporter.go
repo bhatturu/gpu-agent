@@ -70,6 +70,7 @@ type Exporter struct {
 	disableK8sScl        bool
 	enableSlurmScl       bool
 	enableSriov          bool
+	exitOnAgentDown      bool
 	bindAddr             string
 	k8sApiClient         *k8sclient.K8sClient
 	svcHandler           *metricsserver.SvcHandler
@@ -390,6 +391,13 @@ func WithSocketConnection(socketPath string) ExporterOption {
 	}
 }
 
+func WithExitOnAgentDown(exit bool) ExporterOption {
+	return func(e *Exporter) {
+		logger.Log.Printf("exit-on-agent-down set to %v", exit)
+		e.exitOnAgentDown = exit
+	}
+}
+
 // StartMain - doesn't return it exits only on failure
 func (e *Exporter) StartMain(enableDebugAPI bool) {
 	defer e.Close()
@@ -426,6 +434,7 @@ func (e *Exporter) StartMain(enableDebugAPI bool) {
 			gpuagent.WithSlurmClient(e.enableSlurmScl),
 			gpuagent.WithGPUMonitoring(true),
 			gpuagent.WithIFOEMonitoring(e.enableIFOEMonitoring),
+			gpuagent.WithExitOnAgentDown(e.exitOnAgentDown),
 		}
 		if e.agentConfig.UseSocket {
 			opts = append(opts, gpuagent.WithSocketConnection(e.agentConfig.SocketPath))
@@ -449,6 +458,7 @@ func (e *Exporter) StartMain(enableDebugAPI bool) {
 			gpuagent.WithK8sSchedulerClient(e.k8sScl),
 			gpuagent.WithGPUMonitoring(false),
 			gpuagent.WithIFOEMonitoring(true),
+			gpuagent.WithExitOnAgentDown(e.exitOnAgentDown),
 		}
 		if e.agentConfig.UseSocket {
 			opts = append(opts, gpuagent.WithSocketConnection(e.agentConfig.SocketPath))

@@ -17,6 +17,7 @@
 package gpuagent
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -140,6 +141,12 @@ func (ga *GPUAgentGPUClient) updateNewHealthState(newGPUState map[string]*metric
 	return nil
 }
 
+// ErrAgentUnreachable is returned by processHealthValidation when the gRPC
+// data pull fails, indicating the gpuagent process is unreachable. It is
+// distinct from non-connectivity errors (e.g. compute node unhealthy) so that
+// StartMonitor can count only genuine unreachability towards the exit threshold.
+var ErrAgentUnreachable = errors.New("gpuagent unreachable")
+
 func (ga *GPUAgentGPUClient) processHealthValidation() error {
 	wls, err := ga.gpuHandler.ListWorkloads()
 	if err != nil {
@@ -249,7 +256,7 @@ ret:
 		ga.Close()
 		// set state to unhealthy with updated workload list
 		_ = ga.setUnhealthyGPU(wls)
-		return fmt.Errorf("data pull error occured")
+		return fmt.Errorf("data pull error occured: %w", ErrAgentUnreachable)
 	}
 
 	return ga.updateNewHealthState(newGPUState)

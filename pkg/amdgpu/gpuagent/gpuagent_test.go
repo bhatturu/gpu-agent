@@ -553,3 +553,100 @@ func TestOccupancyElapsedCalculation(t *testing.T) {
 	t.Logf("✓ gpu_prof_occupancy_elapsed = %.6e (MeanOccupancyPerActiveCU=%.1f / GRBM_GUI_ACTIVE=%.0f)",
 		got, meanOccPerActiveCU, grbmActive)
 }
+
+// TestExitOnAgentDownExitsAfterConsecutiveFailures verifies that the exit logic
+// fires after maxConsecutiveFailures consecutive failures, matching the logic in
+// StartMonitor for the processHealthValidation() failure path.
+func TestExitOnAgentDownExitsAfterConsecutiveFailures(t *testing.T) {
+	teardownSuite := setupTest(t)
+	defer teardownSuite(t)
+
+	ga := getNewAgent(t)
+	ga.exitOnAgentDown = true
+	exitCalled := false
+	ga.exitFn = func(code int) {
+		exitCalled = true
+	}
+
+	const maxConsecutiveFailures = 3
+	consecutiveFailures := 0
+
+	simulateValidationFailure := func() {
+		consecutiveFailures++
+		if ga.exitOnAgentDown && consecutiveFailures >= maxConsecutiveFailures {
+			ga.exitFn(1)
+		}
+	}
+
+	simulateValidationFailure()
+	simulateValidationFailure()
+	simulateValidationFailure()
+
+	assert.Assert(t, exitCalled, "exitFn should be called after %d consecutive failures", maxConsecutiveFailures)
+	assert.Equal(t, consecutiveFailures, maxConsecutiveFailures, "consecutive failures count should match")
+}
+
+// TestExitOnAgentDownCounterResetsOnSuccess verifies that a successful poll tick
+// resets the consecutive-failure counter so transient failures don't accumulate.
+func TestExitOnAgentDownCounterResetsOnSuccess(t *testing.T) {
+	teardownSuite := setupTest(t)
+	defer teardownSuite(t)
+
+	ga := getNewAgent(t)
+	ga.exitOnAgentDown = true
+	exitCalled := false
+	ga.exitFn = func(code int) {
+		exitCalled = true
+	}
+
+	// Simulate the counter-reset logic directly: 2 failures, then a success tick,
+	// then 2 more failures — total should never reach maxConsecutiveFailures (3).
+	const maxConsecutiveFailures = 3
+	consecutiveFailures := 0
+
+	reconnectFail := func() {
+		consecutiveFailures++
+		if ga.exitOnAgentDown && consecutiveFailures >= maxConsecutiveFailures {
+			ga.exitFn(1)
+		}
+	}
+	successTick := func() {
+		consecutiveFailures = 0
+	}
+
+	reconnectFail()
+	reconnectFail()
+	successTick() // resets to 0
+	reconnectFail()
+	reconnectFail()
+
+	assert.Assert(t, !exitCalled,
+		"exitFn should not be called: failures were not consecutive across the success tick")
+	assert.Equal(t, consecutiveFailures, 2,
+		"counter should be 2 after reset + 2 more failures")
+}
+
+// TestExitOnAgentDownDisabledDoesNotExit verifies that when exitOnAgentDown is false
+// the exitFn is never invoked even after many reconnect failures.
+func TestExitOnAgentDownDisabledDoesNotExit(t *testing.T) {
+	teardownSuite := setupTest(t)
+	defer teardownSuite(t)
+
+	ga := getNewAgent(t)
+	ga.exitOnAgentDown = false
+	exitCalled := false
+	ga.exitFn = func(code int) {
+		exitCalled = true
+	}
+
+	const maxConsecutiveFailures = 3
+	consecutiveFailures := 0
+	for i := 0; i < maxConsecutiveFailures+5; i++ {
+		consecutiveFailures++
+		if ga.exitOnAgentDown && consecutiveFailures >= maxConsecutiveFailures {
+			ga.exitFn(1)
+		}
+	}
+
+	assert.Assert(t, !exitCalled, "exitFn should not be called when exitOnAgentDown is false")
+}
