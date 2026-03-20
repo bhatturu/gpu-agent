@@ -233,9 +233,13 @@ debpkg-ual:
 	@sed -i 's|ExecStart=/usr/local/bin/amd-metrics-exporter$$|ExecStart=/usr/local/bin/amd-metrics-exporter -monitor-ifoe=true|' ${TOP_DIR}/debian/usr/lib/systemd/system/amd-metrics-exporter.service
 	@echo "Modifying package name for UAL mode"
 	@sed -i 's|^Package: amdgpu-exporter$$|Package: amdgpuifoe-exporter|' ${TOP_DIR}/debian/DEBIAN/control
+	@echo "Setting PLATFORM=helios in gpuagent.conf"
+	@echo "PLATFORM=helios" >> ${LIB_CONF_PATH}
 	@$(MAKE) debpkg UAL=true
 	@echo "Reverting systemd service file modifications"
 	@git checkout ${TOP_DIR}/debian/usr/lib/systemd/system/amd-metrics-exporter.service
+	@echo "Reverting gpuagent.conf modifications"
+	@git checkout ${LIB_CONF_PATH}
 
 debpkg-sriov: debpkg-sriov-clean
 	${MAKE} amdexporter

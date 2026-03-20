@@ -44,6 +44,9 @@ GIMSMI_BUILDER_UB22_IMAGE ?= gimsmi-builder:ub22
 GIMSMI_BUILDER_UB24_IMAGE ?= gimsmi-builder:ub24
 ROCPROFILER_BUILDER_IMAGE ?= rocprofiler-builder:ub22
 
+# Remote server for UAL assets
+UAL_REMOTE_SERVER ?= remote_fqdn
+
 # export environment variables used across project
 export DOCKER_REGISTRY
 export BUILD_CONTAINER
@@ -77,6 +80,9 @@ export AMDSMI_BUILDER_UB24_IMAGE
 export AMDSMI_BUILDER_AZURE_IMAGE
 export GPUAGENT_BASE_IMAGE
 export ROCPROFILER_BUILDER_IMAGE
+
+# UAL remote server
+export UAL_REMOTE_SERVER
 
 TO_GEN := pkg/amdgpu/proto pkg/exporter/proto pkg/amdnic/proto
 TO_MOCK := pkg/amdgpu/mock pkg/exporter/scheduler
@@ -506,6 +512,20 @@ copyrights:
 .PHONY: update-submodules
 update-submodules:
 	git submodule update --remote --recursive
+
+# target to download and update UAL assets (gpuagent_ual, gpuctl_ual)
+# Usage: make update-ual-assets VERSION=1.127.0-63
+# Optional: make update-ual-assets VERSION=1.127.0-63 UAL_REMOTE_SERVER=custom-server.example.com
+.PHONY: update-ual-assets
+update-ual-assets:
+ifndef VERSION
+	@echo "Error: VERSION is not set"
+	@echo "Usage: make update-ual-assets VERSION=1.127.0-63"
+	@echo "Optional: UAL_REMOTE_SERVER=custom-server (default: $(UAL_REMOTE_SERVER))"
+	@exit 1
+endif
+	@echo "Updating UAL assets to version $(VERSION) from server $(UAL_REMOTE_SERVER)"
+	@UAL_REMOTE_SERVER=$(UAL_REMOTE_SERVER) $(CURDIR)/scripts/update_ual_assets.sh $(VERSION)
 
 .PHONY: e2e-test
 e2e-test:
