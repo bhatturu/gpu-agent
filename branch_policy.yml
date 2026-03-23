@@ -1,6 +1,4 @@
 ---
 # Required by Auto Cherry Picker automation
 # Defines the list of branches into which the changes would need cherry-picking
-cherry_pick_branches:
-  - collab-2.0.0
-  - rocm/device-metrics-exporter:main
+cherry_pick_branches: []
