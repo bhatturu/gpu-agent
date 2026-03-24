@@ -5,5 +5,5 @@ cherry_pick_branches:
   - collab-2.0.0
   - collab-7.12
   - rocm/device-metrics-exporter:main
-inherit_pr_description: True
-ai_conflict_resolution: True
+inherit-pr-description: True
+ai-conflict-resolution: True
