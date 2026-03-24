@@ -108,8 +108,10 @@ BUILD_DIR := $(DOCS_DIR)/_build
 HTML_DIR := $(BUILD_DIR)/html
 
 # library branch to build amdsmi libraries for gpuagent
-AMDSMI_BRANCH ?= release/rocm-rel-7.2
-AMDSMI_COMMIT ?= 91c1f54
+AMDSMI_REPO   ?= https://github.com/ROCm/rocm-systems.git
+AMDSMI_BRANCH ?= release/therock-7.12
+AMDSMI_COMMIT ?= 769135f77f91c2848871c496ffa04e6230ea3674
+AMDSMI_SUBDIR ?= projects/amdsmi
 GIMSMI_BRANCH ?= mainline
 GIMSMI_COMMIT ?= mainline/8.3.0.K
 GPUAGENT_BRANCH ?= main
@@ -128,8 +130,10 @@ export ${GOINSECURE}
 export ${KUBECONFIG}
 export ${AZURE_DOCKER_CONTAINER_IMG}
 export ${BUILD_VER_ENV}
+export ${AMDSMI_REPO}
 export ${AMDSMI_BRANCH}
 export ${AMDSMI_COMMIT}
+export ${AMDSMI_SUBDIR}
 export ${GIMSMI_BRANCH}
 export ${GIMSMI_COMMIT}
 export ${GPUAGENT_BRANCH}
