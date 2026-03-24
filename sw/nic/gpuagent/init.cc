@@ -163,8 +163,10 @@ create_gpus (void)
         // set GPU handle
         entry->set_handle(gpu[i].handle);
         // num_parition is no more working in new library; derive it from
-        // compute partition type
-        if (gpu[i].compute_partition != AGA_GPU_COMPUTE_PARTITION_TYPE_SPX) {
+        // compute partition type; GPUs with NONE (no partition support) or
+        // SPX (single partition) are not partitioned
+        if ((gpu[i].compute_partition != AGA_GPU_COMPUTE_PARTITION_TYPE_NONE) &&
+            (gpu[i].compute_partition != AGA_GPU_COMPUTE_PARTITION_TYPE_SPX)) {
             // set partition state
             entry->set_is_partitioned();
         }
