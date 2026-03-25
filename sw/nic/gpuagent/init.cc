@@ -162,11 +162,10 @@ create_gpus (void)
         entry->set_id(gpu[i].id);
         // set GPU handle
         entry->set_handle(gpu[i].handle);
-        // num_parition is no more working in new library; derive it from
-        // compute partition type; GPUs with NONE (no partition support) or
-        // SPX (single partition) are not partitioned
-        if ((gpu[i].compute_partition != AGA_GPU_COMPUTE_PARTITION_TYPE_NONE) &&
-            (gpu[i].compute_partition != AGA_GPU_COMPUTE_PARTITION_TYPE_SPX)) {
+        // a GPU is partitioned only if it is a child of a parent GPU (i.e.
+        // it belongs to a genuinely partitioned device); non-partitioned GPUs
+        // and GPUs in SPX mode have no parent and must not be marked partitioned
+        if (parent_gpu) {
             // set partition state
             entry->set_is_partitioned();
         }
