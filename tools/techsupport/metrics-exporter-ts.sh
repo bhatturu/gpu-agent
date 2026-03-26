@@ -68,7 +68,7 @@ if systemctl list-unit-files | grep -q "$SRIOV_SERVICE_NAME"; then
     LOG_FILES+=("amd-gpu-agent-sriov.log")
 fi
 
-// needed only for v1.4.0
+# needed only for v1.4.0
 if [ "$DEPLOYMENT" == "container" ]; then
     # Check if tar is installed
     if ! command -v tar &> /dev/null; then
@@ -175,15 +175,17 @@ if command -v gpuctl &> /dev/null; then
 fi
 
 # Collect metrics endpoint output
+# Respects METRICS_EXPORTER_PORT env var (defaults to 5000)
 METRICS_LOG="metrics_endpoint.log"
-echo "Collecting metrics from localhost:5000/metrics..."
-curl -s localhost:5000/metrics > "$METRICS_LOG" 2>&1
+METRICS_PORT="${METRICS_EXPORTER_PORT:-5000}"
+echo "Collecting metrics from localhost:${METRICS_PORT}/metrics..."
+curl -fsS "http://localhost:${METRICS_PORT}/metrics" > "$METRICS_LOG" 2>&1
 CURL_EXIT_CODE=$?
 
 if [ $CURL_EXIT_CODE -ne 0 ]; then
     echo "Failed to collect metrics from endpoint (exit code: $CURL_EXIT_CODE)" >> "$METRICS_LOG"
     echo "curl command failed with exit code: $CURL_EXIT_CODE" >> "$METRICS_LOG"
-    echo "Error: Failed to collect metrics from localhost:5000/metrics"
+    echo "Error: Failed to collect metrics from localhost:${METRICS_PORT}/metrics"
 fi
 
 # Add metrics log to archive regardless of success/failure
