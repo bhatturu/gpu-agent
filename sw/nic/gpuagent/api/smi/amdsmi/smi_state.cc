@@ -1131,6 +1131,9 @@ smi_state::event_monitor_init(void) {
     amdsmi_status_t status;
     gpu_event_record_t null_event_record = {};
 
+    if (events_disabled()) {
+        return SDK_RET_OK;
+    }
     // initialize the s/w state
     for (uint32_t d = 0; d < num_gpu_; d++) {
         SDK_SPINLOCK_INIT(&gpu_event_db_[gpu_handles_[d]].slock,
@@ -1158,6 +1161,9 @@ smi_state::event_monitor_init(void) {
 
 sdk_ret_t
 smi_state::event_monitor_cleanup(void) {
+    if (events_disabled()) {
+        return SDK_RET_OK;
+    }
     // stop monitoring
     for (uint32_t d = 0; d < num_gpu_; d++) {
         amdsmi_stop_gpu_event_notification(gpu_handles_[d]);
@@ -1286,6 +1292,9 @@ sdk_ret_t
 smi_state::event_read(aga_event_read_cb_t cb, void *ctxt) {
     aga_event_t event;
 
+    if (events_disabled()) {
+        return SDK_RET_OK;
+    }
     // traverse the event database per device
     for (uint32_t d = 0; d < num_gpu_; d++) {
         auto gpu = gpu_db()->find(gpu_handles_[d]);
@@ -1321,6 +1330,9 @@ event_monitor_timer_cb_ (event::timer_t *timer)
     uint32_t num_elem = AGA_MAX_GPU * AGA_EVENT_ID_MAX;
     amdsmi_evt_notification_data_t event_ntfn_data[num_elem];
 
+    if (events_disabled()) {
+        return;
+    }
     // get event information
     status = amdsmi_get_gpu_event_notification(AGA_SMI_EVENT_MONITOR_INTERVAL,
                                                &num_elem, event_ntfn_data);
@@ -1390,6 +1402,11 @@ event_subscribe_ipc_cb_ (sdk::ipc::ipc_msg_ptr msg, const void *ctxt)
     sdk_ret_t ret;
     aga_event_subscribe_args_t *req;
 
+    if (events_disabled()) {
+        ret = SDK_RET_OK;
+        sdk::ipc::respond(msg, &ret, sizeof(ret));
+        return;
+    }
     req = *(aga_event_subscribe_args_t **)msg->data();
     if (req == NULL) {
         AGA_TRACE_ERR("Ignoring NULL event subscribe request received");
@@ -1475,6 +1492,11 @@ event_gen_ipc_cb_ (sdk::ipc::ipc_msg_ptr msg, const void *ctxt)
     sdk_ret_t ret;
     aga_event_gen_args_t *args;
 
+    if (events_disabled()) {
+        ret = SDK_RET_OK;
+        sdk::ipc::respond(msg, &ret, sizeof(ret));
+        return;
+    }
     args = (aga_event_gen_args_t *)msg->data();
     if (args == NULL) {
         AGA_TRACE_ERR("Ignoring NULL event generate request received");
