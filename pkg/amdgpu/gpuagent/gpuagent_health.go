@@ -226,8 +226,8 @@ func (ga *GPUAgentGPUClient) processHealthValidation() error {
 		gpuUUIDMap[gpuuid] = gpuid
 	}
 
-	// disable events for gpus with sriov or sim enabled
-	if !(ga.gpuHandler.enableSriov || utils.IsSimEnabled()) {
+	// disable events when SR-IOV is enabled or when events are disabled via configuration/env (utils.IsEventsDisabled)
+	if !(ga.gpuHandler.enableSriov || utils.IsEventsDisabled()) {
 		evtData, err = ga.getEvents(amdgpu.EventSeverity_EVENT_SEVERITY_CRITICAL)
 		if err != nil || (evtData != nil && evtData.ApiStatus != 0) {
 			// ignore event errors log only
