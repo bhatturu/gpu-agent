@@ -33,6 +33,8 @@ namespace aga {
 
 /// singleto instance of all agent state
 aga_state g_aga_state;
+/// global flag to indicate if events are disabled
+bool g_events_disabled = false;
 
 aga_state::aga_state() {
     memset(state_, 0, sizeof(state_));
@@ -49,6 +51,15 @@ aga_state::store_init_(void) {
 
 sdk_ret_t
 aga_state::init(void) {
+    const char *env_val;
+
+    // check if events are disabled via environment variable
+    env_val = std::getenv("GPUAGENT_EVENTS_DISABLE");
+    if (env_val && strcmp(env_val, "1") == 0) {
+        g_events_disabled = true;
+        AGA_TRACE_INFO("Event monitoring disabled via GPUAGENT_EVENTS_DISABLE "
+                       "environment variable");
+    }
     // initialize all the internal databases
     store_init_();
     return SDK_RET_OK;

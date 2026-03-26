@@ -118,6 +118,8 @@ private:
 };
 /// \brief    global (singleton) GPU state instance
 extern aga_state g_aga_state;
+/// \brief    global flag to indicate if events are disabled
+extern bool g_events_disabled;
 /// \@}
 
 }    // namespace aga
@@ -138,6 +140,14 @@ static inline gpu_watch_state *
 gpu_watch_db (void)
 {
     return aga::g_aga_state.gpu_watch_db();
+}
+
+/// \brief    check if events are disabled
+/// \return   true if events are disabled, false otherwise
+static inline bool
+events_disabled (void)
+{
+    return aga::g_events_disabled;
 }
 
 #endif    // __AGA_STATE_HPP__
