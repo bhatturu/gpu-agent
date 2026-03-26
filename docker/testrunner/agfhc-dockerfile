@@ -5,7 +5,7 @@ LABEL maintainer="AMD Inc"
 LABEL OS="registry.access.redhat.com/ubi9/ubi:9.6"
 
 ARG AGFHC_VERSION=1.30.0
-ARG ROCM_VERSION=.yum_7.2.1
+ARG ROCM_VERSION=7.2.1
 ARG RADEON_REPO_URL=https://repo.radeon.com
 
 # EPEL repo is required to install yaml-cpp, a dependency of rocm-validation-suite package
