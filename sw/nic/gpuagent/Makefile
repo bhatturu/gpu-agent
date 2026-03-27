@@ -175,6 +175,9 @@ mod:
 	@go mod edit -go=1.25.8
 	#CVE-2024-24790 - gpuctl
 	@go mod edit -replace golang.org/x/net@v0.30.0=golang.org/x/net@v0.38.0
+	#CVE-2026-33186
+	@go mod edit -replace google.golang.org/grpc@v1.72.1=google.golang.org/grpc@v1.79.3
+	@go mod edit -replace google.golang.org/grpc@v1.69.0-dev=google.golang.org/grpc@v1.79.3
 	@go mod vendor
 
 
