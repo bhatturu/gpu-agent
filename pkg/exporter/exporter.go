@@ -541,5 +541,12 @@ func (e *Exporter) Close() error {
 		e.k8sApiClient.Stop()
 		e.k8sApiClient = nil
 	}
+
+	if e.svcHandler != nil {
+		e.svcHandler.Stop()
+		e.svcHandler = nil
+	}
+
+	cleanupResources(e.enableGPUMonitoring, e.enableNICMonitoring)
 	return nil
 }
