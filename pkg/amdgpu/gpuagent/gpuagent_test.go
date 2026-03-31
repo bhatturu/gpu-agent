@@ -17,6 +17,7 @@
 package gpuagent
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -29,6 +30,7 @@ import (
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/globals"
 
 	amdgpu "github.com/ROCm/device-metrics-exporter/pkg/amdgpu/gen/amdgpu"
+	"github.com/ROCm/device-metrics-exporter/pkg/amdgpu/mock_gen"
 	"github.com/ROCm/device-metrics-exporter/pkg/exporter/scheduler"
 )
 
@@ -649,4 +651,71 @@ func TestExitOnAgentDownDisabledDoesNotExit(t *testing.T) {
 	}
 
 	assert.Assert(t, !exitCalled, "exitFn should not be called when exitOnAgentDown is false")
+}
+
+// TestProcessHealthValidationZeroGPUsReturnsErrZeroGPUs verifies that when the
+// gpuagent gRPC call succeeds but returns an empty GPU list (boot race / driver
+// crash scenario), processHealthValidation returns ErrZeroGPUs rather than nil.
+// This ensures StartMonitor counts the event toward the exit threshold.
+func TestProcessHealthValidationZeroGPUsReturnsErrZeroGPUs(t *testing.T) {
+	teardownSuite := setupTest(t)
+	defer teardownSuite(t)
+
+	// Use a fresh controller so the zero-GPU expectation is the only GPUGet
+	// registration, bypassing the AnyTimes() 2-GPU response from setupTest.
+	localCtl := gomock.NewController(t)
+	defer localCtl.Finish()
+	localGPUMock := mock_gen.NewMockGPUSvcClient(localCtl)
+	localEvtMock := mock_gen.NewMockEventSvcClient(localCtl)
+
+	// Return an empty GPU list: gpuagent reachable, amdsmi_get_socket_handles
+	// returned 0 because KFD nodes were not yet registered at gpuagent init.
+	zeroGPUResp := &amdgpu.GPUGetResponse{
+		ApiStatus: amdgpu.ApiStatus_API_STATUS_OK,
+		Response:  []*amdgpu.GPU{},
+	}
+	localGPUMock.EXPECT().GPUGet(gomock.Any(), gomock.Any()).Return(zeroGPUResp, nil).AnyTimes()
+	localEvtMock.EXPECT().EventGet(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+
+	ga := getNewAgent(t)
+	defer ga.Close()
+
+	// Inject the local mocks into the GPU client.
+	var gpuclient *GPUAgentGPUClient
+	for _, client := range ga.clients {
+		if c, ok := client.(*GPUAgentGPUClient); ok {
+			gpuclient = c
+			break
+		}
+	}
+	gpuclient.gpuclient = localGPUMock
+	gpuclient.evtclient = localEvtMock
+
+	err := gpuclient.processHealthValidation()
+	assert.Assert(t, err != nil, "processHealthValidation should return an error when GPUGet returns 0 GPUs")
+	assert.Assert(t, errors.Is(err, ErrZeroGPUs),
+		"processHealthValidation should return ErrZeroGPUs when GPUGet returns 0 GPUs, got: %v", err)
+}
+
+// TestIsRestartableFailure verifies that isRestartableFailure — the production
+// helper used by StartMonitor to decide which errors count toward the exit
+// threshold — returns true for ErrAgentUnreachable and ErrZeroGPUs (both
+// wrapped and direct) and false for all other errors.
+func TestIsRestartableFailure(t *testing.T) {
+	teardownSuite := setupTest(t)
+	defer teardownSuite(t)
+
+	assert.Assert(t, isRestartableFailure(ErrAgentUnreachable),
+		"ErrAgentUnreachable must be a restartable failure")
+	assert.Assert(t, isRestartableFailure(ErrZeroGPUs),
+		"ErrZeroGPUs must be a restartable failure")
+	assert.Assert(t, isRestartableFailure(fmt.Errorf("wrapped: %w", ErrZeroGPUs)),
+		"wrapped ErrZeroGPUs must be a restartable failure")
+	assert.Assert(t, isRestartableFailure(fmt.Errorf("wrapped: %w", ErrAgentUnreachable)),
+		"wrapped ErrAgentUnreachable must be a restartable failure")
+
+	assert.Assert(t, !isRestartableFailure(errors.New("compute node unhealthy")),
+		"unrelated errors must not be restartable failures")
+	assert.Assert(t, !isRestartableFailure(nil),
+		"nil must not be a restartable failure")
 }
