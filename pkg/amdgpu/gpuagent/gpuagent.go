@@ -348,14 +348,24 @@ func (ga *GPUAgentClient) StartMonitor() {
 
 			if ga.enableGPUMonitoring {
 				if err := ga.processHealthValidation(); err != nil {
-					if errors.Is(err, ErrAgentUnreachable) {
+					if isRestartableFailure(err) {
 						consecutiveFailures++
 						logger.Log.Printf("gpuagent health validation failed %v (consecutive failures: %d)",
 							err, consecutiveFailures)
 						if ga.exitOnAgentDown && consecutiveFailures >= maxConsecutiveFailures {
-							logger.Log.Printf("gpuagent unreachable after %d consecutive failures, exiting",
+							logger.Log.Printf("gpuagent unreachable/zero-GPUs after %d consecutive failures, exiting",
 								consecutiveFailures)
 							ga.exitFn(1)
+						}
+						// For ErrZeroGPUs the health state was already updated (GPUs
+						// marked unhealthy) before the error was returned, so propagate
+						// the updated state via a node-label push. Skip for
+						// ErrAgentUnreachable since the connection is closed and the RPC
+						// would fail anyway.
+						if errors.Is(err, ErrZeroGPUs) {
+							if lerr := ga.sendNodeLabelUpdate(); lerr != nil {
+								logger.Log.Printf("gpuagent failed to send node label update %v", lerr)
+							}
 						}
 						continue
 					}
