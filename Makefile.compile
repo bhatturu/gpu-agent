@@ -145,8 +145,9 @@ endif
 	@docker image rm $(BUILDER_IMAGE) || true
 	@docker build --build-arg BUILD_BASE_IMAGE=${BASE_IMAGE} \
 		--build-arg ROCM_VERSION=${REPOPKGVERSION} \
+		$(if $(ROCM_TARBALL_URL),--build-arg ROCM_TARBALL_URL=$(ROCM_TARBALL_URL)) \
 		-t $(BUILDER_IMAGE) . -f $(DOCKERFILE)
-	@docker run --rm -it --privileged \
+	@docker run --rm --privileged \
 		-e "USER_NAME=$(shell whoami)" \
 		-e "USER_UID=$(shell id -u)" \
 		-e "USER_GID=$(shell id -g)" \
