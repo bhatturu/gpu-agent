@@ -100,3 +100,12 @@ const (
 	NICDevice  DeviceType = "NIC"
 	IFOEDevice DeviceType = "IFOE"
 )
+
+type DebugMode string
+
+const (
+	DebugModeNone DebugMode = ""
+	DebugModeQP   DebugMode = "qp"  // Export Per-QP debug metrics
+	DebugModeLIF  DebugMode = "lif" // Placeholder for exporting LIF debug metrics
+	DebugModeAll  DebugMode = "all" // Placeholder for exporting ALL debug metrics
+)
