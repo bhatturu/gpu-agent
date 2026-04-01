@@ -28,6 +28,10 @@ import (
 	"unicode"
 
 	"gopkg.in/yaml.v3"
+
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8syaml "sigs.k8s.io/yaml"
 )
 
 /*---SAG JSON related definitions---*/
@@ -286,9 +290,9 @@ func getBaseNPDConfig() *CustomPluginConfig {
 	return op
 }
 
-func getNPDCondition(id string, afid AFID) Condition {
+func getNPDCondition(afid AFID) Condition {
 	return Condition{
-		Type:       fmt.Sprintf("%s_%s", sanitizeNodeCondition(afid.ErrorType), id),
+		Type:       sanitizeNodeCondition(afid.ErrorType),
 		Reason:     "AMDGPUIsUp",
 		Message:    "AMDGPU is up",
 		Transition: time.Time{},
@@ -298,7 +302,7 @@ func getNPDCondition(id string, afid AFID) Condition {
 func getNPDCustomRule(id string, afid AFID) *CustomRule {
 	return &CustomRule{
 		Type:      Perm,
-		Condition: fmt.Sprintf("%s_%s", sanitizeNodeCondition(afid.ErrorType), id),
+		Condition: sanitizeNodeCondition(afid.ErrorType),
 		Reason:    "AMDGPUUnhealthy",
 		Path:      "/var/lib/amd-metrics-exporter/amdgpuhealth",
 		Args: []string{
@@ -311,6 +315,53 @@ func getNPDCustomRule(id string, afid AFID) *CustomRule {
 		},
 		TimeoutString: &defaultGlobalTimeoutString,
 	}
+}
+
+func writeToFile(filename string, data []byte) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("could not create %s: %w", filename, err)
+	}
+	defer f.Close()
+	_, err = f.Write(append(data, '\n'))
+	if err != nil {
+		return fmt.Errorf("error writing to %s: %w", filename, err)
+	}
+	return nil
+}
+
+func generateNPDConfig(npdCustomPluginConfig *CustomPluginConfig) error {
+	jsonBytes, err := json.MarshalIndent(npdCustomPluginConfig, "", "  ")
+	if err != nil {
+		return fmt.Errorf("unable to marshal npd config: %w", err)
+	}
+	return writeToFile("npd-config.json", jsonBytes)
+}
+
+func generateConfigMap(conditionWorkflowMappings []ConditionWorkflowMapping, revision string) error {
+	yamlbytes, err := yaml.Marshal(conditionWorkflowMappings)
+	if err != nil {
+		return fmt.Errorf("unable to marshal workflow mappings: %w", err)
+	}
+	defaultCfgMap := &v1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ConfigMap",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "$CM_NAME$",
+			Namespace: "$CM_NAMESPACE$",
+		},
+		Data: map[string]string{
+			"Version":  revision,
+			"workflow": string(yamlbytes),
+		},
+	}
+	cfgMapBytes, err := k8syaml.Marshal(defaultCfgMap)
+	if err != nil {
+		return fmt.Errorf("unable to marshal configmap: %w", err)
+	}
+	return writeToFile("configmap.yaml", cfgMapBytes)
 }
 
 func main() {
@@ -361,43 +412,19 @@ func main() {
 			cwmapping.NotifyRemediationMessage = ""
 		}
 		conditionWorkflowMappings = append(conditionWorkflowMappings, cwmapping)
-		npdCustomPluginConfig.DefaultConditions = append(npdCustomPluginConfig.DefaultConditions, getNPDCondition(id, afid))
+		npdCustomPluginConfig.DefaultConditions = append(npdCustomPluginConfig.DefaultConditions, getNPDCondition(afid))
 		npdCustomPluginConfig.Rules = append(npdCustomPluginConfig.Rules, getNPDCustomRule(id, afid))
 	}
 	if *genConfigmap {
-		yamlbytes, err := yaml.Marshal(conditionWorkflowMappings)
-		if err != nil {
-			fmt.Printf("unable to marshal configmap. Error:%v\n", err)
-			return
-		}
-		f, err := os.Create("configmap.yaml")
-		if err != nil {
-			fmt.Printf("could not create configmap.yaml. Error: %v\n", err)
-			return
-		}
-		defer f.Close()
-		_, err = f.WriteString(string(yamlbytes))
-		if err != nil {
-			fmt.Printf("error writing to file. Error:%v\n", err)
+		if err := generateConfigMap(conditionWorkflowMappings, afidField.Revision); err != nil {
+			fmt.Printf("unable to generate configmap. Error: %v\n", err)
 			return
 		}
 		fmt.Println("configmap.yaml is created")
 	}
 	if *genNpdConfig {
-		jsonBytes, err := json.MarshalIndent(npdCustomPluginConfig, "", "  ")
-		if err != nil {
+		if err := generateNPDConfig(npdCustomPluginConfig); err != nil {
 			fmt.Printf("unable to generate npd config. Error: %v\n", err)
-			return
-		}
-		f1, err := os.Create("npd-config.json")
-		if err != nil {
-			fmt.Printf("could not create npd-config.json. Error: %v\n", err)
-			return
-		}
-		defer f1.Close()
-		_, err = f1.WriteString(string(jsonBytes))
-		if err != nil {
-			fmt.Printf("error writing to file. Error:%v\n", err)
 			return
 		}
 		fmt.Println("npd-config.json is created")
