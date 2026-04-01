@@ -115,6 +115,10 @@ sdk_ret_to_error_code (sdk_ret_t ret)
     case ERR_CODE_GPU_CLOCK_TYPE_FREQ_RANGE_UPDATE_NOT_SUPPORTED:
         return types::ErrorCode::
             ERR_CODE_GPU_CLOCK_TYPE_FREQ_RANGE_UPDATE_NOT_SUPPORTED;
+    case ERR_CODE_GPU_NUM_POWER_CAP_EXCEEDED:
+        return types::ErrorCode::ERR_CODE_GPU_NUM_POWER_CAP_EXCEEDED;
+    case ERR_CODE_GPU_POWER_CAP_OUT_OF_RANGE:
+        return types::ErrorCode::ERR_CODE_GPU_POWER_CAP_OUT_OF_RANGE;
 
     // smi layer object specific error codes
     case ERR_CODE_SMI_GPU_POWER_CAP_OUT_OF_RANGE:

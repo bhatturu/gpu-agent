@@ -449,6 +449,24 @@ aga_to_smi_gpu_memory_partition_type (
     return AMDSMI_MEMORY_PARTITION_UNKNOWN;
 }
 
+/// \brief convert amdsmi power cap type to aga power cap type
+/// \param[in] power_cap_type    amdsmi power cap type
+/// \return    aga power cap type
+static inline aga_gpu_power_cap_type_t
+smi_to_aga_power_cap_type (amdsmi_power_cap_type_t power_cap_type)
+{
+    switch (power_cap_type) {
+    case AMDSMI_POWER_CAP_TYPE_PPT0:
+        return AGA_GPU_POWER_CAP_TYPE_PPT0;
+    case AMDSMI_POWER_CAP_TYPE_PPT1:
+        return AGA_GPU_POWER_CAP_TYPE_PPT1;
+    default:
+        break;
+    }
+
+    return AGA_GPU_POWER_CAP_TYPE_NONE;
+}
+
 /// \brief convert amdsmi CPER severity to aga CPER severity
 /// \param[in] amdsmi CPER severity
 /// \return    aga CPER severity

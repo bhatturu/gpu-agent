@@ -50,6 +50,7 @@ limitations under the License.
 #define AGA_GPU_MAX_PARTITION                  8
 #define AGA_GPU_MAX_CPER_ENTRY                 128
 #define AGA_GPU_MAX_AF_ID_PER_CPER             12
+#define AGA_GPU_MAX_POWER_CAP_SENSOR           2
 
 /// number of clocks that can not be configured - AGA_GPU_CLOCK_TYPE_FABRIC,
 /// AGA_GPU_CLOCK_TYPE_SOC (4), AGA_GPU_CLOCK_TYPE_DCE, AGA_GPU_CLOCK_TYPE_PCIE
@@ -171,6 +172,24 @@ typedef enum aga_gpu_memory_partition_type_e {
     AGA_GPU_MEMORY_PARTITION_TYPE_NPS8 = 4,
 } aga_gpu_memory_partition_type_t;
 
+/// \brief GPU power cap type
+typedef enum aga_gpu_power_cap_type_e {
+    /// unknown/invalid power cap type
+    AGA_GPU_POWER_CAP_TYPE_NONE = 0,
+    /// PPT0 power cap; lower limit, filtered input
+    AGA_GPU_POWER_CAP_TYPE_PPT0 = 1,
+    /// PPT1 power cap; higher limit, raw input
+    AGA_GPU_POWER_CAP_TYPE_PPT1 = 2,
+} aga_gpu_power_cap_type_t;
+
+/// \brief GPU power cap
+typedef struct aga_gpu_power_cap_s {
+    /// power cap type
+    aga_gpu_power_cap_type_t type;
+    /// power cap value (in watts)
+    uint64_t power_cap;
+} aga_gpu_power_cap_t;
+
 /// \brief GPU specification
 typedef struct aga_gpu_spec_s {
     /// uuid of gpu
@@ -189,8 +208,10 @@ typedef struct aga_gpu_spec_s {
     aga_gpu_admin_state_t admin_state;
     /// GPU clock overdrive level (as percentage)
     uint32_t overdrive_level;
-    /// max GPU power in power overdrive (in Watts)
-    uint64_t gpu_power_cap;
+    /// number of GPU power cap sensors
+    uint32_t num_gpu_power_cap;
+    /// GPU power cap
+    aga_gpu_power_cap_t gpu_power_cap[AGA_GPU_MAX_POWER_CAP_SENSOR];
     /// GPU performance level
     aga_gpu_perf_level_t perf_level;
     /// number of clock frequencies

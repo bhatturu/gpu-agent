@@ -175,6 +175,19 @@ aga_gpu_memory_partition_type_to_proto (aga_gpu_memory_partition_type_t type)
     }
 }
 
+static inline amdgpu::GPUPowerCapType
+aga_gpu_power_cap_type_to_proto (aga_gpu_power_cap_type_t type)
+{
+    switch (type) {
+    case AGA_GPU_POWER_CAP_TYPE_PPT0:
+        return amdgpu::GPU_POWER_CAP_TYPE_PPT0;
+    case AGA_GPU_POWER_CAP_TYPE_PPT1:
+        return amdgpu::GPU_POWER_CAP_TYPE_PPT1;
+    default:
+        return amdgpu::GPU_POWER_CAP_TYPE_NONE;
+    }
+}
+
 // populate proto buf spec from gpu API spec
 static inline void
 aga_gpu_api_spec_to_proto (GPUSpec *proto_spec,
@@ -183,7 +196,12 @@ aga_gpu_api_spec_to_proto (GPUSpec *proto_spec,
     proto_spec->set_id(spec->key.id, OBJ_MAX_KEY_LEN);
     proto_spec->set_adminstate(aga_gpu_admin_state_to_proto(spec->admin_state));
     proto_spec->set_overdrivelevel(spec->overdrive_level);
-    proto_spec->set_gpupowercap(spec->gpu_power_cap);
+    for (uint32_t i = 0; i < spec->num_gpu_power_cap; i++) {
+        auto power_cap = proto_spec->add_gpupowercap();
+        power_cap->set_type(aga_gpu_power_cap_type_to_proto(
+                                spec->gpu_power_cap[i].type));
+        power_cap->set_powercap(spec->gpu_power_cap[i].power_cap);
+    }
     proto_spec->set_performancelevel(aga_gpu_perf_level_to_proto(
                                          spec->perf_level));
     for (uint32_t i = 0; i < spec->num_clock_freqs; i++) {

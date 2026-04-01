@@ -138,7 +138,9 @@ smi_gpu_fill_spec (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec)
         AGA_TRACE_ERR("Failed to get power cap information for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
     } else {
-        spec->gpu_power_cap = power_cap_info.power_cap/1000000;
+        spec->num_gpu_power_cap = 1;
+        spec->gpu_power_cap[0].type = AGA_GPU_POWER_CAP_TYPE_PPT0;
+        spec->gpu_power_cap[0].power_cap = power_cap_info.power_cap/1000000;
     }
     // TODO: get admin_state
     // TODO: get RAS spec
@@ -951,10 +953,10 @@ smi_gpu_power_cap_update_ (aga_gpu_handle_t gpu_handle,
     // step2: validate power cap
     power_cap_info.min_power_cap /= 1000000;
     power_cap_info.max_power_cap /= 1000000;
-    if ((spec->gpu_power_cap < power_cap_info.min_power_cap) ||
-        (spec->gpu_power_cap > power_cap_info.max_power_cap)) {
+    if ((spec->gpu_power_cap[0].power_cap < power_cap_info.min_power_cap) ||
+        (spec->gpu_power_cap[0].power_cap > power_cap_info.max_power_cap)) {
         AGA_TRACE_ERR("Power cap {} is out of supported range, GPU {}, "
-                      "allowed range {}-{}", spec->gpu_power_cap,
+                      "allowed range {}-{}", spec->gpu_power_cap[0].power_cap,
                       gpu_handle, power_cap_info.min_power_cap,
                       power_cap_info.max_power_cap);
         return sdk_ret_t(SDK_RET_INVALID_ARG,
@@ -962,7 +964,7 @@ smi_gpu_power_cap_update_ (aga_gpu_handle_t gpu_handle,
     }
     // step3: set power cap
     amdsmi_ret = amdsmi_set_power_cap(gpu_handle, 0,
-                                      (spec->gpu_power_cap * 1000000));
+                     (spec->gpu_power_cap[0].power_cap * 1000000));
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
         AGA_TRACE_ERR("Failed to set power cap, GPU {}, err {}",
                       gpu_handle, amdsmi_ret);

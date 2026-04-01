@@ -43,7 +43,8 @@ var (
 	gpuID               string
 	gpuAdminState       string
 	overDriveLevel      uint32
-	powerCap            uint64
+	powerCap            string
+	powerCapVals        []*aga.GPUPowerCap
 	perfLevel           string
 	gpuClkFreq          string
 	memClkFreq          string
@@ -169,8 +170,9 @@ func init() {
 		"Specify admin state (up/down)")
 	gpuUpdateCmd.Flags().Uint32VarP(&overDriveLevel, "overdrive-level", "o", 0,
 		"Specify GPU clock overdrive level in percentage")
-	gpuUpdateCmd.Flags().Uint64VarP(&powerCap, "power-cap", "p", 0,
-		"Specify max package power GPU can consume (in Watts)")
+	gpuUpdateCmd.Flags().StringVarP(&powerCap, "power-cap", "p", "",
+		"Specify max package power GPU can consume (in Watts) as comma-separated "+
+			"list (e.g., \"200,250\" for PPT0=200W, PPT1=250W)")
 	gpuUpdateCmd.Flags().StringVarP(&perfLevel, "perf-level", "l", "",
 		"Specify GPU performance level (none/auto/low/high/deterministic/"+
 			"memclock/sysclock/manual)")
@@ -749,9 +751,12 @@ func printGPUSpec(gpu *aga.GPU, specOnly bool) {
 		fmt.Printf("%-40s : %v\n", "Clock overdrive level",
 			spec.GetOverDriveLevel())
 	}
-	if spec.GetGPUPowerCap() != 0 {
-		fmt.Printf("%-40s : %d\n", "Power overdrive (in watts)",
-			spec.GetGPUPowerCap())
+	for _, gpuPowerCap := range spec.GetGPUPowerCap() {
+		if gpuPowerCap.GetPowerCap() != 0 {
+			pptStr := strings.Replace(gpuPowerCap.GetType().String(), "GPU_POWER_CAP_TYPE_", "", -1)
+			str := fmt.Sprintf("GPU power cap %s (in watts)", pptStr)
+			fmt.Printf("%-40s : %d\n", str, gpuPowerCap.GetPowerCap())
+		}
 	}
 	if spec.GetPerformanceLevel() !=
 		aga.GPUPerformanceLevel_GPU_PERF_LEVEL_NONE {
@@ -827,31 +832,31 @@ func printGPUStatus(gpu *aga.GPU, statusOnly bool) {
 		strings.ToLower(strings.Replace(status.GetVirtualizationMode().String(),
 			"GPU_VIRTUALIZATION_MODE_", "", -1)))
 	fmt.Printf(indent+"%-38s : 0x%x\n", "GPU handle", status.GetGPUHandle())
-	if status.GetSerialNum() != "" {
+	if strings.TrimSpace(status.GetSerialNum()) != "" {
 		fmt.Printf(indent+"%-38s : %s\n", "Serial number",
 			status.GetSerialNum())
 	}
-	if status.GetCardSeries() != "" {
+	if strings.TrimSpace(status.GetCardSeries()) != "" {
 		fmt.Printf(indent+"%-38s : %s\n", "Card series", status.GetCardSeries())
 	}
-	if status.GetCardModel() != "" {
+	if strings.TrimSpace(status.GetCardModel()) != "" {
 		fmt.Printf(indent+"%-38s : %s\n", "Card model", status.GetCardModel())
 	}
-	if status.GetCardVendor() != "" {
+	if strings.TrimSpace(status.GetCardVendor()) != "" {
 		fmt.Printf(indent+"%-38s : %s\n", "Card vendor", status.GetCardVendor())
 	}
-	if status.GetCardSKU() != "" {
+	if strings.TrimSpace(status.GetCardSKU()) != "" {
 		fmt.Printf(indent+"%-38s : %s\n", "Card SKU", status.GetCardSKU())
 	}
-	if status.GetDriverVersion() != "" {
+	if strings.TrimSpace(status.GetDriverVersion()) != "" {
 		fmt.Printf(indent+"%-38s : %s\n", "Driver version",
 			status.GetDriverVersion())
 	}
-	if status.GetVBIOSPartNumber() != "" {
+	if strings.TrimSpace(status.GetVBIOSPartNumber()) != "" {
 		fmt.Printf(indent+"%-38s : %s\n", "VBIOS part number",
 			status.GetVBIOSPartNumber())
 	}
-	if status.GetVBIOSVersion() != "" {
+	if strings.TrimSpace(status.GetVBIOSVersion()) != "" {
 		fmt.Printf(indent+"%-38s : %s\n", "VBIOS version",
 			status.GetVBIOSVersion())
 	}
@@ -994,22 +999,26 @@ func printGPUStatus(gpu *aga.GPU, statusOnly bool) {
 			printPCIeStatusHdr(indent)
 			fmt.Printf(indent+"  %-36s : %s\n", "Bus id", pcie.GetPCIeBusId())
 		}
-		if pcie.GetWidth() != 0 {
+		if pcie.GetWidth() != 0 &&
+			pcie.GetWidth() != UINT16_MAX_VAL_UINT32 {
 			printPCIeStatusHdr(indent)
 			fmt.Printf(indent+"  %-36s : %d\n", "Current number of lanes",
 				pcie.GetWidth())
 		}
-		if pcie.GetMaxWidth() != 0 {
+		if pcie.GetMaxWidth() != 0 &&
+			pcie.GetMaxWidth() != UINT16_MAX_VAL_UINT32 {
 			printPCIeStatusHdr(indent)
 			fmt.Printf(indent+"  %-36s : %d\n", "Maximum number of lanes",
 				pcie.GetMaxWidth())
 		}
-		if pcie.GetSpeed() != 0 {
+		if pcie.GetSpeed() != 0 &&
+			pcie.GetSpeed() != UINT32_MAX_VAL_UINT32 {
 			printPCIeStatusHdr(indent)
 			fmt.Printf(indent+"  %-36s : %d\n", "Current speed (in GT/s)",
 				pcie.GetSpeed())
 		}
-		if pcie.GetMaxSpeed() != 0 {
+		if pcie.GetMaxSpeed() != 0 &&
+			pcie.GetMaxSpeed() != UINT32_MAX_VAL_UINT32 {
 			printPCIeStatusHdr(indent)
 			fmt.Printf(indent+"  %-36s : %d\n", "Maximum speed (in GT/s)",
 				pcie.GetMaxSpeed())
@@ -1334,7 +1343,9 @@ func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 			fmt.Printf(indent+"  %-36s : %d\n", "Total transmitted bytes",
 				p.GetTxBytes())
 		}
-		if p.GetBiDirBandwidth() != UINT16_MAX_VAL_UINT64 {
+		if p.GetBiDirBandwidth() != 0 &&
+			p.GetBiDirBandwidth() != UINT16_MAX_VAL_UINT64 &&
+			p.GetBiDirBandwidth() != UINT64_MAX_VAL {
 			printPCIeHdr(indent)
 			fmt.Printf(indent+"  %-36s : %d\n",
 				"Bidirectional bandwidth (in GB/s)",
@@ -1629,12 +1640,14 @@ func printGPUStats(gpu *aga.GPU, statsOnly bool) {
 			"Fan speed (in RPMs)", stats.GetFanSpeed())
 	}
 	if (stats.GetGFXActivityAccumulated() != 0) &&
+		(stats.GetGFXActivityAccumulated() != UINT32_MAX_VAL_UINT64) &&
 		(stats.GetGFXActivityAccumulated() != UINT64_MAX_VAL) {
 		fmt.Printf(indent+"%-38s : %d\n",
 			"GFX activity accumulated",
 			stats.GetGFXActivityAccumulated())
 	}
 	if (stats.GetMemoryActivityAccumulated() != 0) &&
+		(stats.GetMemoryActivityAccumulated() != UINT32_MAX_VAL_UINT64) &&
 		(stats.GetMemoryActivityAccumulated() != UINT64_MAX_VAL) {
 		fmt.Printf(indent+"%-38s : %d\n",
 			"Memory activity accumulated",
@@ -1988,6 +2001,33 @@ func gpuUpdateCmdPreRunE(cmd *cobra.Command, args []string) error {
 				"refer help")
 		}
 	}
+	if cmd.Flags().Changed("power-cap") {
+		powerCapStrs := strings.Split(powerCap, ",")
+		if len(powerCapStrs) > 2 {
+			return fmt.Errorf("Maximum of 2 power cap values allowed, got %d",
+				len(powerCapStrs))
+		}
+		powerCapVals = nil
+		for i, powerCapStr := range powerCapStrs {
+			powerCapStr = strings.TrimSpace(powerCapStr)
+			powerCapVal, err := strconv.ParseUint(powerCapStr, 10, 64)
+			if err != nil {
+				return fmt.Errorf("Invalid power cap value '%s' specified",
+					powerCapStr)
+			}
+			var powerCapType aga.GPUPowerCapType
+			if i == 0 {
+				powerCapType = aga.GPUPowerCapType_GPU_POWER_CAP_TYPE_PPT0
+			} else {
+				powerCapType = aga.GPUPowerCapType_GPU_POWER_CAP_TYPE_PPT1
+			}
+			powerCapVals = append(powerCapVals,
+				&aga.GPUPowerCap{
+					Type:     powerCapType,
+					PowerCap: powerCapVal,
+				})
+		}
+	}
 	return nil
 }
 
@@ -2040,7 +2080,7 @@ func gpuUpdateCmdHandler(cmd *cobra.Command, args []string) error {
 		updateSpec.OverDriveLevel = overDriveLevel
 	}
 	if cmd.Flags().Changed("power-cap") {
-		updateSpec.GPUPowerCap = powerCap
+		updateSpec.GPUPowerCap = powerCapVals
 	}
 	if cmd.Flags().Changed("perf-level") {
 		updateSpec.PerformanceLevel = PerformanceLevelVal

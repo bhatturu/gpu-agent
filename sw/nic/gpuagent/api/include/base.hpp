@@ -70,6 +70,8 @@ typedef enum err_code_e {
     ERR_CODE_GPU_NUM_CLOCK_FREQ_RANGE_EXCEEDED                    = 4098,
     ERR_CODE_GPU_DUPLICATE_CLOCK_FREQ_RANGE                       = 4099,
     ERR_CODE_GPU_CLOCK_TYPE_FREQ_RANGE_UPDATE_NOT_SUPPORTED       = 4100,
+    ERR_CODE_GPU_NUM_POWER_CAP_EXCEEDED                           = 4101,
+    ERR_CODE_GPU_POWER_CAP_OUT_OF_RANGE                           = 4102,
     ERR_CODE_GPU_MAX                                              = 4223,
 
     // impl layer generic error codes

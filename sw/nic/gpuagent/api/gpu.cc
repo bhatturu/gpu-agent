@@ -122,7 +122,9 @@ gpu_entry::update_handler(api_params_base *api_params) {
     if (spec_.overdrive_level != spec->overdrive_level) {
         upd_mask |= AGA_GPU_UPD_OVERDRIVE_LEVEL;
     }
-    if (spec_.gpu_power_cap != spec->gpu_power_cap) {
+    if ((spec_.num_gpu_power_cap != spec->num_gpu_power_cap) ||
+        (memcmp(spec_.gpu_power_cap, spec->gpu_power_cap,
+                sizeof(aga_gpu_power_cap_t) * spec->num_gpu_power_cap))) {
         upd_mask |= AGA_GPU_UPD_POWER_CAP;
     }
     if (spec_.perf_level != spec->perf_level) {

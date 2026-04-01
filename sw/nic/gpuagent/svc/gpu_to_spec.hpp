@@ -102,6 +102,19 @@ aga_gpu_memory_partition_type_to_spec (amdgpu::GPUMemoryPartitionType type)
     }
 }
 
+static inline aga_gpu_power_cap_type_t
+aga_gpu_power_cap_type_to_spec (amdgpu::GPUPowerCapType type)
+{
+    switch (type) {
+    case amdgpu::GPU_POWER_CAP_TYPE_PPT0:
+        return AGA_GPU_POWER_CAP_TYPE_PPT0;
+    case amdgpu::GPU_POWER_CAP_TYPE_PPT1:
+        return AGA_GPU_POWER_CAP_TYPE_PPT1;
+    default:
+        return AGA_GPU_POWER_CAP_TYPE_NONE;
+    }
+}
+
 static inline aga_gpu_clock_type_t
 aga_gpu_clock_type_to_spec (amdgpu::GPUClockType clock_type)
 {
@@ -253,7 +266,23 @@ aga_gpu_proto_to_api_spec (aga_gpu_spec_t *api_spec, const GPUSpec& proto_spec)
         return sdk_ret_t(SDK_RET_INVALID_ARG,
                          ERR_CODE_GPU_OVERDRIVE_OUT_OF_RANGE);
     }
-    api_spec->gpu_power_cap = proto_spec.gpupowercap();
+    // get number of power cap sensors
+    api_spec->num_gpu_power_cap = proto_spec.gpupowercap_size();
+    if (api_spec->num_gpu_power_cap > AGA_GPU_MAX_POWER_CAP_SENSOR) {
+        AGA_TRACE_ERR("GPU {} number of power cap sensors specified, {}, is "
+                      "more than {} supported", api_spec->key.str(),
+                      api_spec->num_gpu_power_cap,
+                      AGA_GPU_MAX_POWER_CAP_SENSOR);
+        return sdk_ret_t(SDK_RET_INVALID_ARG,
+                         ERR_CODE_GPU_NUM_POWER_CAP_EXCEEDED);
+    }
+    for (uint32_t i = 0; i < api_spec->num_gpu_power_cap; i++) {
+        auto proto_power_cap = proto_spec.gpupowercap(i);
+
+        api_spec->gpu_power_cap[i].type =
+            aga_gpu_power_cap_type_to_spec(proto_power_cap.type());
+        api_spec->gpu_power_cap[i].power_cap = proto_power_cap.powercap();
+    }
     api_spec->fan_speed = proto_spec.fanspeed();
     api_spec->perf_level =
         aga_gpu_power_overdrive_to_spec(proto_spec.performancelevel());

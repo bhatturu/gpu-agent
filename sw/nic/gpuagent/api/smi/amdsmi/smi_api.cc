@@ -139,6 +139,8 @@ smi_gpu_fill_spec (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec)
     amdsmi_dev_perf_level_t perf_level = {};
     amdsmi_gpu_metrics_t metrics_info = { 0 };
     amdsmi_power_cap_info_t power_cap_info = {};
+    uint32_t sensor_idx[AGA_GPU_MAX_POWER_CAP_SENSOR];
+    amdsmi_power_cap_type_t sensor_types[AGA_GPU_MAX_POWER_CAP_SENSOR];
 
     // clear cached responses
     g_gpu_metrics.clear();
@@ -168,12 +170,34 @@ smi_gpu_fill_spec (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec)
         spec->perf_level = smi_to_aga_gpu_perf_level(perf_level);
     }
     // fill the power cap
-    amdsmi_ret = amdsmi_get_power_cap_info(gpu_handle, 0, &power_cap_info);
+    amdsmi_ret = amdsmi_get_supported_power_cap(gpu_handle, &value_32,
+                                                sensor_idx, sensor_types);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get power cap information for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
+        AGA_TRACE_ERR("Failed to get supported power cap information for GPU "
+                      "{}, err {}", gpu_handle, amdsmi_ret);
     } else {
-        spec->gpu_power_cap = power_cap_info.power_cap/1000000;
+        if (value_32 > AGA_GPU_MAX_POWER_CAP_SENSOR) {
+            AGA_TRACE_ERR("Number of power cap sensors {} for GPU {} is more "
+                          "than max supported {}", value_32, gpu_handle,
+                          AGA_GPU_MAX_POWER_CAP_SENSOR);
+            value_32 = AGA_GPU_MAX_POWER_CAP_SENSOR;
+        }
+        for (uint32_t i = 0; i < value_32; i++) {
+            amdsmi_ret = amdsmi_get_power_cap_info(gpu_handle,
+                                                   sensor_idx[i],
+                                                   &power_cap_info);
+            if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+                AGA_TRACE_ERR("Failed to get power cap information for "
+                              "GPU {}, sensor idx {}, err {}", gpu_handle,
+                              sensor_idx[i], amdsmi_ret);
+            } else {
+                spec->gpu_power_cap[i].type =
+                    smi_to_aga_power_cap_type(sensor_types[i]);
+                spec->gpu_power_cap[i].power_cap =
+                    power_cap_info.power_cap/1000000;
+            }
+        }
+        spec->num_gpu_power_cap = value_32;
     }
     // TODO: get admin_state
     // TODO: get RAS spec
@@ -694,10 +718,18 @@ smi_fill_pcie_status_ (aga_gpu_handle_t gpu_handle,
         pcie_status->slot_type =
             smi_to_aga_pcie_slot_type(info.pcie_static.slot_type);
         pcie_status->max_width = info.pcie_static.max_pcie_width;
-        pcie_status->max_speed = info.pcie_static.max_pcie_speed/1000;
+        if (info.pcie_static.max_pcie_speed != AMDSMI_INVALID_UINT32) {
+            pcie_status->max_speed = info.pcie_static.max_pcie_speed/1000;
+        } else {
+            pcie_status->max_speed = 0;
+        }
         pcie_status->version = info.pcie_static.pcie_interface_version;
         pcie_status->width = info.pcie_metric.pcie_width;
-        pcie_status->speed = info.pcie_metric.pcie_speed/1000;
+        if (info.pcie_metric.pcie_speed != AMDSMI_INVALID_UINT32) {
+            pcie_status->speed = info.pcie_metric.pcie_speed/1000;
+        } else {
+            pcie_status->speed = 0;
+        }
         pcie_status->bandwidth = info.pcie_metric.pcie_bandwidth;
     }
     return SDK_RET_OK;
@@ -1364,8 +1396,11 @@ sdk_ret_t
 smi_gpu_reset (aga_gpu_handle_t gpu_handle,
                aga_gpu_reset_type_t reset_type)
 {
+    uint32_t num_sensors;
     amdsmi_status_t amdsmi_ret;
     amdsmi_power_cap_info_t power_cap_info;
+    uint32_t sensor_idx[AGA_GPU_MAX_POWER_CAP_SENSOR];
+    amdsmi_power_cap_type_t sensor_types[AGA_GPU_MAX_POWER_CAP_SENSOR];
 
     switch(reset_type) {
     case AGA_GPU_RESET_TYPE_NONE:
@@ -1417,19 +1452,39 @@ smi_gpu_reset (aga_gpu_handle_t gpu_handle,
         }
         break;
     case AGA_GPU_RESET_TYPE_POWER_OVERDRIVE:
-        // get default power overdrive
-        amdsmi_ret = amdsmi_get_power_cap_info(gpu_handle, 0,
-                                               &power_cap_info);
+        // get supported power cap sensors
+        amdsmi_ret = amdsmi_get_supported_power_cap(gpu_handle, &num_sensors,
+                                                    sensor_idx, sensor_types);
         if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-            AGA_TRACE_ERR("Failed to get default power cap,  GPU {}, err {}",
-                          gpu_handle, amdsmi_ret);
+            AGA_TRACE_ERR("Failed to get supported power cap information for "
+                          "GPU {}, err {}", gpu_handle, amdsmi_ret);
+            break;
         }
-        // set power overdrive to default
-        amdsmi_ret = amdsmi_set_power_cap(gpu_handle, 0,
-                                          power_cap_info.default_power_cap);
-        if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-            AGA_TRACE_ERR("Failed to set power cap to default, GPU {}, err {}",
-                          gpu_handle, amdsmi_ret);
+        if (num_sensors > AGA_GPU_MAX_POWER_CAP_SENSOR) {
+            AGA_TRACE_ERR("Number of power cap sensors {} for GPU {} is more "
+                          "than max supported {}", num_sensors, gpu_handle,
+                          AGA_GPU_MAX_POWER_CAP_SENSOR);
+            num_sensors = AGA_GPU_MAX_POWER_CAP_SENSOR;
+        }
+        // reset power cap for each sensor
+        for (uint32_t i = 0; i < num_sensors; i++) {
+            // get default power cap
+            amdsmi_ret = amdsmi_get_power_cap_info(gpu_handle, sensor_idx[i],
+                                                   &power_cap_info);
+            if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+                AGA_TRACE_ERR("Failed to get default power cap for GPU {}, "
+                              "sensor idx {}, err {}", gpu_handle,
+                              sensor_idx[i], amdsmi_ret);
+                continue;
+            }
+            // set power cap to default
+            amdsmi_ret = amdsmi_set_power_cap(gpu_handle, sensor_idx[i],
+                                              power_cap_info.default_power_cap);
+            if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+                AGA_TRACE_ERR("Failed to set power cap to default for GPU {}, "
+                              "sensor idx {}, err {}", gpu_handle,
+                              sensor_idx[i], amdsmi_ret);
+            }
         }
         break;
     case AGA_GPU_RESET_TYPE_XGMI_ERROR:
@@ -1469,40 +1524,86 @@ static sdk_ret_t
 smi_gpu_power_cap_update_ (aga_gpu_handle_t gpu_handle,
                            aga_gpu_spec_t *spec)
 {
+    uint32_t i, j;
+    uint32_t num_sensors;
+    uint64_t min_power_cap;
+    uint64_t max_power_cap;
     amdsmi_status_t amdsmi_ret;
     amdsmi_power_cap_info_t power_cap_info;
+    uint32_t sensor_idx[AGA_GPU_MAX_POWER_CAP_SENSOR];
+    amdsmi_power_cap_type_t sensor_types[AGA_GPU_MAX_POWER_CAP_SENSOR];
 
     // 1. get power cap range
     // 2. validate the power cap is within the range
     // 3. set power cap
-    // NOTE: power cap 0 indicates reset to default
 
-    // step1: get power cap range
-    amdsmi_ret = amdsmi_get_power_cap_info(gpu_handle, 0, &power_cap_info);
+    // get supported power cap sensors
+    amdsmi_ret = amdsmi_get_supported_power_cap(gpu_handle, &num_sensors,
+                                                sensor_idx, sensor_types);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get power cap, GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
+        AGA_TRACE_ERR("Failed to get supported power cap information for "
+                      "GPU {}, err {}", gpu_handle, amdsmi_ret);
         return (amdsmi_ret_to_sdk_ret(amdsmi_ret));
     }
-    // step2: validate power cap
-    power_cap_info.min_power_cap /= 1000000;
-    power_cap_info.max_power_cap /= 1000000;
-    if ((spec->gpu_power_cap < power_cap_info.min_power_cap) ||
-        (spec->gpu_power_cap > power_cap_info.max_power_cap)) {
-        AGA_TRACE_ERR("Power cap {} is out of supported range, GPU {}, "
-                      "allowed range {}-{}", spec->gpu_power_cap,
-                      gpu_handle, power_cap_info.min_power_cap,
-                      power_cap_info.max_power_cap);
-        return sdk_ret_t(SDK_RET_INVALID_ARG,
-                         ERR_CODE_SMI_GPU_POWER_CAP_OUT_OF_RANGE);
+    if (num_sensors > AGA_GPU_MAX_POWER_CAP_SENSOR) {
+        AGA_TRACE_ERR("Number of power cap sensors {} for GPU {} is more "
+                      "than max supported {}", num_sensors, gpu_handle,
+                      AGA_GPU_MAX_POWER_CAP_SENSOR);
+        num_sensors = AGA_GPU_MAX_POWER_CAP_SENSOR;
     }
-    // step3: set power cap
-    amdsmi_ret = amdsmi_set_power_cap(gpu_handle, 0,
-                                      (spec->gpu_power_cap * 1000000));
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to set power cap, GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-        return (amdsmi_ret_to_sdk_ret(amdsmi_ret));
+    // validate number of power caps in spec matches number of sensors
+    if (spec->num_gpu_power_cap > num_sensors) {
+        AGA_TRACE_ERR("Number of power caps in spec {} cannot be more than "
+                      "number of sensors {} for GPU {}",
+                      spec->num_gpu_power_cap, num_sensors, gpu_handle);
+        return SDK_RET_INVALID_ARG;
+    }
+    // update power cap by finding the appropriate sensor for each power cap
+    // type in spec
+    for (i = 0; i < spec->num_gpu_power_cap; i++) {
+        for (j = 0; j < num_sensors; j++) {
+            if (spec->gpu_power_cap[i].type ==
+                    smi_to_aga_power_cap_type(sensor_types[j])) {
+                // found the matching sensor for the power cap type in spec
+                break;
+            }
+        }
+        if (j == num_sensors) {
+            AGA_TRACE_ERR("Cannot find matching sensor for power cap type {} "
+                          "in spec for GPU {}", spec->gpu_power_cap[i].type,
+                          gpu_handle);
+            return SDK_RET_INVALID_ARG;
+        }
+        // step1: get power cap range
+        amdsmi_ret = amdsmi_get_power_cap_info(gpu_handle, sensor_idx[j],
+                                               &power_cap_info);
+        if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+            AGA_TRACE_ERR("Failed to get power cap for GPU {}, sensor idx "
+                          "{}, err {}", gpu_handle, sensor_idx[j],
+                          amdsmi_ret);
+            return (amdsmi_ret_to_sdk_ret(amdsmi_ret));
+        }
+        // step2: validate power cap
+        min_power_cap = power_cap_info.min_power_cap/1000000;
+        max_power_cap = power_cap_info.max_power_cap/1000000;
+        if ((spec->gpu_power_cap[i].power_cap < min_power_cap) ||
+            (spec->gpu_power_cap[i].power_cap > max_power_cap)) {
+            AGA_TRACE_ERR("Power cap {} is out of supported range, GPU {}, "
+                          "sensor idx {}, allowed range {}-{}",
+                          spec->gpu_power_cap[i].power_cap, gpu_handle,
+                          sensor_idx[j], min_power_cap, max_power_cap);
+            return sdk_ret_t(SDK_RET_INVALID_ARG,
+                             ERR_CODE_GPU_POWER_CAP_OUT_OF_RANGE);
+        }
+        // step3: set power cap
+        amdsmi_ret = amdsmi_set_power_cap(gpu_handle, sensor_idx[j],
+                         (spec->gpu_power_cap[i].power_cap * 1000000));
+        if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+            AGA_TRACE_ERR("Failed to set power cap for GPU {}, sensor idx "
+                          "{}, err {}", gpu_handle, sensor_idx[j],
+                          amdsmi_ret);
+            return (amdsmi_ret_to_sdk_ret(amdsmi_ret));
+        }
     }
     return SDK_RET_OK;
 }

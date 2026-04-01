@@ -167,6 +167,24 @@ enum GPUVirtualizationMode {
   GPU_VIRTUALIZATION_MODE_PASSTHROUGH = 4;
 }
 
+// GPU power cap type
+enum GPUPowerCapType {
+  // unknown/invalid power cap type
+  GPU_POWER_CAP_TYPE_NONE = 0;
+  // PPT0 power cap; lower limit, filtered input
+  GPU_POWER_CAP_TYPE_PPT0 = 1;
+  // PPT1 power cap; higher limit, raw input
+  GPU_POWER_CAP_TYPE_PPT1 = 2;
+}
+
+// GPU power cap
+message GPUPowerCap {
+  // GPU power cap type
+  GPUPowerCapType Type     = 1;
+  // max package power (in Watts) GPU can consume
+  uint64          PowerCap = 2;
+}
+
 // config specification of physical GPU
 message GPUSpec {
   // uuid identifying the GPU
@@ -176,8 +194,8 @@ message GPUSpec {
   GPUAdminState                   AdminState           = 2;
   // GPU clock overdrive level (as percentage)
   uint32                          OverDriveLevel       = 3;
-  // max package power (in Watts) GPU can consume (i.e power cap)
-  uint64                          GPUPowerCap          = 4;
+  // max package power (in Watts) GPU can consume per sensor (i.e power cap)
+  repeated GPUPowerCap            GPUPowerCap          = 4;
   // GPU performance level
   GPUPerformanceLevel             PerformanceLevel     = 5;
   // GPU clock speed/frequency setting
