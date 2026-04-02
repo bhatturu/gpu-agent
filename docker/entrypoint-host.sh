@@ -23,4 +23,4 @@ LD_PRELOAD=/home/amd/lib/libgim_amd_smi.so /home/amd/bin/gpuagent -s /var/run/gp
 # sleep before starting exporter
 sleep 10
 # start exporter
-/home/amd/bin/server -sriov-enable
+exec /home/amd/bin/server -sriov-enable
