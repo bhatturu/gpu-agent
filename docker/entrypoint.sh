@@ -39,4 +39,4 @@ fi
 
 # start exporter
 # Run the underlying binary with all arguments passed to the script
-/home/amd/bin/server "$@"
+exec /home/amd/bin/server "$@"
