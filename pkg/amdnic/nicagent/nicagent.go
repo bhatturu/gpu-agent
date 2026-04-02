@@ -447,7 +447,7 @@ func (na *NICAgentClient) initLocalCacheIfRequired() {
 	}
 }
 
-func (na *NICAgentClient) getMetricsAll() error {
+func (na *NICAgentClient) getMetricsAll(ctx context.Context) error {
 	var wg sync.WaitGroup
 	na.initLocalCacheIfRequired()
 
@@ -477,7 +477,7 @@ func (na *NICAgentClient) getMetricsAll() error {
 			startTime := time.Now()
 			defer wg.Done()
 			if utils.IsSimEnabled() || client.IsActive() {
-				if err := client.UpdateNICStats(workloads); err != nil {
+				if err := client.UpdateNICStats(ctx, workloads); err != nil {
 					logger.Log.Printf("failed to update NIC stats, err: %v", err)
 				}
 			}
