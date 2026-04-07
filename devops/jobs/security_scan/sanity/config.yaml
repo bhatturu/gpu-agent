@@ -1,0 +1,10 @@
+# Security scan configuration
+tool: trivy
+scan_type: artifact
+artifacts:
+  - device-metrics-exporter-sriov-latest-<RELEASE_TAG>.tar.gz
+  - device-metrics-exporter-latest-<RELEASE_TAG>.tar.gz
+  - device-metrics-exporter-ainic-latest-<RELEASE_TAG>.tar.gz
+  - test-runner-latest-<RELEASE_TAG>.tar.gz
+  - test-runner-latest-agfhc-<RELEASE_TAG>.tar.gz
+skip_jira_integration: false

@@ -1,0 +1,39 @@
+---
+version: 2.0
+image:
+  bind_dir: "/device-metrics-exporter"
+  work_dir: "/device-metrics-exporter/devops/jobs/security_scan/private"
+targets:
+  security_scan_private:
+    commands: ["sh", "../trigger.sh", "device-metrics-exporter", "exporter-0.0.1-296", "main"]
+    owners: ["email:karan.nath@amd.com"]
+    area:
+    sub-area:
+    feature:
+    build-dependencies:
+      - build-debian-package-ub22.04
+      - build-debian-package-ub24.04
+      - build-device-metrics-exporter-docker-ubi9.6
+      - build-device-metrics-exporter-docker-sriov-ubi9.6
+      - build-device-metrics-exporter-docker-ainic-ubi9.6
+      - build-rpm-package-rhel9
+      - build-helm-gpu-artifact
+      - build-helm-nic-artifact
+      - e2e-build-mock-exporter
+      - build-nic-debian-package   
+    asset-dependencies:
+      tags: []
+  
+  security_scan_private_dummy:
+    commands: ["echo", "Dummy_target"]
+    owners: ["email:karan.nath@amd.com"]
+    area:
+    sub-area:
+    feature:
+    build-dependencies:
+      - build-test-runner-docker
+      - build-test-runner-docker-agfhc    
+    asset-dependencies:
+      tags: []
+logfiles:
+submodules: {}

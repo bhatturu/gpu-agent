@@ -1,0 +1,26 @@
+---
+version: 2.0
+image:
+  bind_dir: "/device-metrics-exporter"
+  work_dir: "/device-metrics-exporter/devops/jobs/security_scan/sanity"
+targets:
+  security_scan_sanity:
+    commands: ["sh", "../trigger.sh", "device-metrics-exporter"]
+    owners: ["email:karan.nath@amd.com"]
+    area:
+    sub-area:
+    build-dependencies:
+      - build-device-metrics-exporter-docker-sriov-ubi9.6
+      - build-device-metrics-exporter-docker-ubi9.6
+      - build-device-metrics-exporter-docker-ainic-ubi9.6
+      - build-test-runner-docker
+      - build-test-runner-docker-agfhc
+      - build-debian-package-ub22.04
+      - build-debian-package-ub24.04
+      - build-nic-debian-package
+      - build-rpm-package-rhel9
+    feature:
+    asset-dependencies:
+      tags: []
+logfiles:
+submodules: {}
