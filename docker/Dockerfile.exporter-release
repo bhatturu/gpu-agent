@@ -25,7 +25,7 @@ RUN chmod +x /usr/local/bin/install-rocm-tarball.sh
 RUN microdnf clean all && \
    if [ -n "${ROCM_TARBALL_URL}" ]; then \
       microdnf install -y wget tar gzip sudo findutils procps elfutils-libelf cmake kmod file \
-         libcap-devel vim numactl numactl-libs jq libatomic && \
+         libcap-devel vim numactl numactl-libs jq libatomic python3 && \
       /usr/local/bin/install-rocm-tarball.sh "${ROCM_VERSION}" "${ROCM_TARBALL_URL}" /usr/lib64; \
    else \
       echo "[amdgpu]" > /etc/yum.repos.d/amdgpu.repo && \
