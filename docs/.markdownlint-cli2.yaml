@@ -1,2 +1,9 @@
 ignores:
-  - CHANGELOG.md
+  - "**/CHANGELOG.md"
+  - "**/CLAUDE.md"
+  - "**/.claude/**"
+  - "**/libamdsmi/**"
+  - "**/libgimsmi/**"
+  - "**/gpuagent/**"
+  - "**/tools/**"
+  - "**/README.md"
