@@ -209,8 +209,15 @@ This project uses custom skills for specialized workflows:
   - **Use this for:** Complete PRD implementation with testing, building, verification, and documentation
   - **Use `/prd-metric-implementation` for:** Quick GPU metric implementation without full workflow
 
+- **`/rocm-update`** - ROCm/therock version update workflow for DME + gpu-agent
+  - Location: [.claude/skills/rocm-update/](.claude/skills/rocm-update/)
+  - Triggers: "update to ROCm 7.x", "new therock version", "update amdsmi"
+  - Orchestrates full update across both repos: amdsmi extraction → gpuagent rebuild → DME branch → docker image
+  - Reuses `/builder` for gpuagent/exporter/docker build steps
+  - Key rules: rebuild gpuagent when amdsmi content changes, DCM changes are separate
+
 **Adding Skills:** Place new skills in `.claude/skills/` for auto-discovery
 
 ---
 
-**Last Updated:** 2026-04-08
+**Last Updated:** 2026-04-10
