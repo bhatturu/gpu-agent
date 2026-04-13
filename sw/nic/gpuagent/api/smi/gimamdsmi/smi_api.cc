@@ -847,7 +847,7 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
     amdsmi_engine_usage_t usage_info = {};
 
     // fill the power and voltage info
-    amdsmi_ret = amdsmi_get_power_info(gpu_handle, 0, &power_info);
+    amdsmi_ret = amdsmi_get_power_info(gpu_handle, &power_info);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
         AGA_TRACE_ERR("Failed to get power information for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);

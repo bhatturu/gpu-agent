@@ -99,87 +99,37 @@ smi_to_aga_virtualization_mode (amdsmi_virtualization_mode_t virt_mode)
     return AGA_VIRTUALIZATION_MODE_UNKNOWN;
 }
 
-/// \brief convert amdsmi VRAM vendor to aga VRAM vendor
-/// \param[in] vendor    amdsmi vendor
+/// \brief convert amdsmi VRAM vendor string to aga VRAM vendor
+/// \param[in] vendor_src    amdsmi vendor string (GIM 8.7: char[] in vram_info)
 /// \return    aga vendor
 static inline aga_vram_vendor_t
-smi_to_aga_vram_vendor (amdsmi_vram_vendor_t vendor)
+smi_to_aga_vram_vendor (const char *vendor_src)
 {
-    switch (vendor) {
-    case AMDSMI_VRAM_VENDOR_SAMSUNG:
-        return AGA_VRAM_VENDOR_SAMSUNG;
-    case AMDSMI_VRAM_VENDOR_INFINEON:
-        return AGA_VRAM_VENDOR_INFINEON;
-    case AMDSMI_VRAM_VENDOR_ELPIDA:
-        return AGA_VRAM_VENDOR_ELPIDA;
-    case AMDSMI_VRAM_VENDOR_ETRON:
-        return AGA_VRAM_VENDOR_ETRON;
-    case AMDSMI_VRAM_VENDOR_NANYA:
-        return AGA_VRAM_VENDOR_NANYA;
-    case AMDSMI_VRAM_VENDOR_HYNIX:
-        return AGA_VRAM_VENDOR_HYNIX;
-    case AMDSMI_VRAM_VENDOR_MOSEL:
-        return AGA_VRAM_VENDOR_MOSEL;
-    case AMDSMI_VRAM_VENDOR_WINBOND:
-        return AGA_VRAM_VENDOR_WINBOND;
-    case AMDSMI_VRAM_VENDOR_ESMT:
-        return AGA_VRAM_VENDOR_ESMT;
-    case AMDSMI_VRAM_VENDOR_MICRON:
-        return AGA_VRAM_VENDOR_MICRON;
-    case AMDSMI_VRAM_VENDOR_UNKNOWN:
-        return AGA_VRAM_VENDOR_UNKNOWN;
-    default:
-        break;
-    }
+    if (!vendor_src) return AGA_VRAM_VENDOR_NONE;
+    if (strcasecmp(vendor_src, "samsung") == 0)  return AGA_VRAM_VENDOR_SAMSUNG;
+    if (strcasecmp(vendor_src, "infineon") == 0) return AGA_VRAM_VENDOR_INFINEON;
+    if (strcasecmp(vendor_src, "elpida") == 0)   return AGA_VRAM_VENDOR_ELPIDA;
+    if (strcasecmp(vendor_src, "etron") == 0)    return AGA_VRAM_VENDOR_ETRON;
+    if (strcasecmp(vendor_src, "nanya") == 0)    return AGA_VRAM_VENDOR_NANYA;
+    if (strcasecmp(vendor_src, "hynix") == 0)    return AGA_VRAM_VENDOR_HYNIX;
+    if (strcasecmp(vendor_src, "mosel") == 0)    return AGA_VRAM_VENDOR_MOSEL;
+    if (strcasecmp(vendor_src, "winbond") == 0)  return AGA_VRAM_VENDOR_WINBOND;
+    if (strcasecmp(vendor_src, "esmt") == 0)     return AGA_VRAM_VENDOR_ESMT;
+    if (strcasecmp(vendor_src, "micron") == 0)   return AGA_VRAM_VENDOR_MICRON;
+    if (strcasecmp(vendor_src, "unknown") == 0)  return AGA_VRAM_VENDOR_UNKNOWN;
     return AGA_VRAM_VENDOR_NONE;
 }
 
-/// \brief convert amdsmi VRAM vendor to string
-/// \param[in]  vendor      amdsmi vendor
-/// \param[out] vendor_str  amdsmi vendor string
-/// \param[in]  str_size    amdsmi vendor string maximum size
+/// \brief copy amdsmi VRAM vendor string (GIM 8.7: char[] in vram_info)
+/// \param[in]  vendor_src  amdsmi vendor string
+/// \param[out] vendor_str  output vendor string
+/// \param[in]  str_size    output buffer size
 static inline void
-smi_vram_vendor_to_string (amdsmi_vram_vendor_t vendor, char *vendor_str,
+smi_vram_vendor_to_string (const char *vendor_src, char *vendor_str,
                            uint32_t str_size)
 {
-    switch (vendor) {
-    case AMDSMI_VRAM_VENDOR_SAMSUNG:
-        strncpy(vendor_str, "samsung", str_size);
-        break;
-    case AMDSMI_VRAM_VENDOR_INFINEON:
-        strncpy(vendor_str, "infineon", str_size);
-        break;
-    case AMDSMI_VRAM_VENDOR_ELPIDA:
-        strncpy(vendor_str, "elpida", str_size);
-        break;
-    case AMDSMI_VRAM_VENDOR_ETRON:
-        strncpy(vendor_str, "etron", str_size);
-        break;
-    case AMDSMI_VRAM_VENDOR_NANYA:
-        strncpy(vendor_str, "nanya", str_size);
-        break;
-    case AMDSMI_VRAM_VENDOR_HYNIX:
-        strncpy(vendor_str, "hynix", str_size);
-        break;
-    case AMDSMI_VRAM_VENDOR_MOSEL:
-        strncpy(vendor_str, "mosel", str_size);
-        break;
-    case AMDSMI_VRAM_VENDOR_WINBOND:
-        strncpy(vendor_str, "winbond", str_size);
-        break;
-    case AMDSMI_VRAM_VENDOR_ESMT:
-        strncpy(vendor_str, "esmt", str_size);
-        break;
-    case AMDSMI_VRAM_VENDOR_MICRON:
-        strncpy(vendor_str, "micron", str_size);
-        break;
-    case AMDSMI_VRAM_VENDOR_UNKNOWN:
-        strncpy(vendor_str, "unknown", str_size);
-        break;
-    default:
-        strncpy(vendor_str, "-", str_size);
-        break;
-    }
+    strncpy(vendor_str, vendor_src ? vendor_src : "-", str_size);
+    vendor_str[str_size - 1] = '\0';
 }
 
 /// \brief convert amdsmi clock type to aga clock type
