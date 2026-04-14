@@ -89,11 +89,12 @@ type ConditionWorkflowMapping struct {
 	NodeCondition            string                 `json:"nodeCondition" yaml:"nodeCondition"`
 	WorkflowTemplate         string                 `json:"workflowTemplate" yaml:"workflowTemplate"`
 	ValidationTests          ValidationTestsProfile `json:"validationTestsProfile" yaml:"validationTestsProfile"`
-	PhysicalActionNeeded     string                 `json:"physicalActionNeeded" yaml:"physicalActionNeeded"`
+	PhysicalActionNeeded     bool                   `json:"physicalActionNeeded" yaml:"physicalActionNeeded"`
 	NotifyRemediationMessage string                 `json:"notifyRemediationMessage" yaml:"notifyRemediationMessage"`
 	NotifyTestFailureMessage string                 `json:"notifyTestFailureMessage" yaml:"notifyTestFailureMessage"`
 	RecoveryPolicy           RecoveryPolicyConfig   `json:"recoveryPolicy" yaml:"recoveryPolicy"`
 	Threshold                int                    `json:"threshold" yaml:"threshold"`
+	SkipRebootStep           bool                   `json:"skipRebootStep" yaml:"skipRebootStep"`
 }
 
 /*---NPD custom plugin monitor config related definitions---*/
@@ -398,7 +399,7 @@ func main() {
 			NodeCondition:            sanitizeNodeCondition(afid.ErrorType),
 			WorkflowTemplate:         "default-template",
 			ValidationTests:          afidField.getValidationTestsProfile(id),
-			PhysicalActionNeeded:     "true",
+			PhysicalActionNeeded:     true,
 			NotifyRemediationMessage: afidField.getNotifyRemediationMessage(id, ""),
 			NotifyTestFailureMessage: afidField.getNotifyTestFailureMessage(id),
 			RecoveryPolicy: RecoveryPolicyConfig{
@@ -408,7 +409,7 @@ func main() {
 			Threshold: afid.Threshold,
 		}
 		if cwmapping.NotifyRemediationMessage == "" || cwmapping.NotifyRemediationMessage == "Rerun the known failing workload." {
-			cwmapping.PhysicalActionNeeded = "false"
+			cwmapping.PhysicalActionNeeded = false
 			cwmapping.NotifyRemediationMessage = ""
 		}
 		conditionWorkflowMappings = append(conditionWorkflowMappings, cwmapping)
