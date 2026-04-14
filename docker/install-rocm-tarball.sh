@@ -32,64 +32,55 @@ echo "    libdrm symlink dir: ${LIBDRM_SYMLINK_DIR}"
 mkdir -p "/opt/rocm-${ROCM_VERSION}"
 wget -qO- "${ROCM_TARBALL_URL}" | tar -xzf - -C "/opt/rocm-${ROCM_VERSION}"
 
-# Prune unneeded content to reduce image size.
-# Static libs, headers, cmake/pkgconfig, docs, tests, benchmarks and sample
-# data are not required at container runtime. Removing them in the same RUN
-# layer as the extract keeps the final Docker layer as small as possible.
 ROCM_DIR="/opt/rocm-${ROCM_VERSION}"
-echo "=== Pruning build-time-only files from ${ROCM_DIR} ==="
 
-# Static archives — biggest win (LLVM/clang *.a can be several GB)
-find "${ROCM_DIR}" -name "*.a" -delete 2>/dev/null || true
-
-# Headers
-find "${ROCM_DIR}" -name "*.h" -delete 2>/dev/null || true
-find "${ROCM_DIR}" -name "*.hpp" -delete 2>/dev/null || true
-
-# Whole include/ trees, cmake, pkgconfig, docs, man, html
-find "${ROCM_DIR}" -type d \( \
-    -name "include" \
-    -o -name "cmake" \
-    -o -name "pkgconfig" \
-    -o -name "doc" -o -name "docs" \
-    -o -name "man" \
-    -o -name "html" \
-\) -prune -exec rm -rf {} \; 2>/dev/null || true
-
-# Test/benchmark directories
-find "${ROCM_DIR}" -type d \( \
-    -name "test" -o -name "tests" \
-    -o -name "sample" -o -name "samples" \
-    -o -name "clients" \
-\) -prune -exec rm -rf {} \; 2>/dev/null || true
-
-# Large test data files (.data files used by rocblas/hipblas gtests)
-find "${ROCM_DIR}/bin" -name "*.data" -delete 2>/dev/null || true
-
-# Test and benchmark binaries in bin/ — two naming conventions used by therock:
-#   suffix: *-test, *-bench, *-validate, *gtest*, *_test, *_bench
-#   prefix: test_* (hipcub, cub, device-level tests etc.)
-# Also remove developer/debug tools not needed at runtime:
-#   rocgdb* (ROCm debugger, multiple python variants)
-#   hipify-clang (HIP code translation tool)
-#   rocblas-gemm-tune, rocroller* (tuning/codegen tools)
-#   *.hip (HIP kernel source/test files)
-#   rocprof-sys-* (profiling system CLI tools, not the SDK runtime)
-find "${ROCM_DIR}/bin" -type f \( \
-    -name "*-test" \
-    -o -name "*-bench" \
-    -o -name "*-validate" \
-    -o -name "*gtest*" \
-    -o -name "*_test" \
-    -o -name "*_bench" \
-    -o -name "test_*" \
-    -o -name "rocgdb*" \
-    -o -name "hipify-*" \
-    -o -name "rocblas-gemm-tune" \
-    -o -name "rocroller*" \
-    -o -name "*.hip" \
-    -o -name "rocprof-sys-*" \
-\) -delete 2>/dev/null || true
+echo "=== Pruning unreferenced libs from ${ROCM_DIR} ==="
+KEEP_DIR=$(mktemp -d)
+mkdir -p "${KEEP_DIR}/lib" "${KEEP_DIR}/bin" "${KEEP_DIR}/libexec" "${KEEP_DIR}/share"
+for pat in \
+    "libamdhip64.*" "librocprofiler-sdk.*" "librocprofiler-sdk-roctx.*" \
+    "librocprofiler-register.*" "libamd_comgr.*" "libamd_comgr_loader.*" \
+    "libhsa-runtime64.*" "libhsa-amd-aqlprofile64.*"; do
+    for f in "${ROCM_DIR}/lib"/${pat}; do
+        if [ -e "$f" ] || [ -L "$f" ]; then
+            cp -a "$f" "${KEEP_DIR}/lib/" 2>/dev/null || true
+        fi
+    done
+done
+[ -d "${ROCM_DIR}/lib/rocm_sysdeps" ] && \
+    cp -a "${ROCM_DIR}/lib/rocm_sysdeps" "${KEEP_DIR}/lib/rocm_sysdeps" || true
+# libclang-cpp and libLLVM are required by libamd_comgr; copy .so only (llvm/lib/ has 2GB+ of .a files)
+if [ -d "${ROCM_DIR}/lib/llvm/lib" ]; then
+    mkdir -p "${KEEP_DIR}/lib/llvm/lib"
+    for pat in "libclang-cpp.so*" "libLLVM.so*" "libLLVM-*.so*"; do
+        for f in "${ROCM_DIR}/lib/llvm/lib"/${pat}; do
+            [ -e "$f" ] || [ -L "$f" ] && cp -a "$f" "${KEEP_DIR}/lib/llvm/lib/" 2>/dev/null || true
+        done
+    done
+fi
+[ -f "${ROCM_DIR}/bin/amd-smi" ] && cp -a "${ROCM_DIR}/bin/amd-smi" "${KEEP_DIR}/bin/" || true
+[ -f "${ROCM_DIR}/bin/rocprofv3" ] && cp -a "${ROCM_DIR}/bin/rocprofv3" "${KEEP_DIR}/bin/" || true
+[ -d "${ROCM_DIR}/libexec/amdsmi_cli" ] && \
+    cp -a "${ROCM_DIR}/libexec/amdsmi_cli" "${KEEP_DIR}/libexec/" || true
+[ -d "${ROCM_DIR}/share/amd_smi" ] && cp -a "${ROCM_DIR}/share/amd_smi" "${KEEP_DIR}/share/" || true
+[ -d "${ROCM_DIR}/share/rocprofiler-sdk" ] && \
+    cp -a "${ROCM_DIR}/share/rocprofiler-sdk" "${KEEP_DIR}/share/" || true
+# Wipe entire ROCM_DIR and rebuild minimal structure
+if [ -z "${ROCM_DIR}" ]; then
+    echo "Refusing to delete empty ROCM_DIR" >&2
+    exit 1
+fi
+case "${ROCM_DIR}" in
+    /opt/rocm-*) ;;
+    *)
+        echo "Refusing to delete unexpected ROCM_DIR: ${ROCM_DIR}" >&2
+        exit 1
+        ;;
+esac
+rm -rf "${ROCM_DIR}"
+mkdir -p "${ROCM_DIR}"
+cp -a "${KEEP_DIR}/." "${ROCM_DIR}/"
+rm -rf "${KEEP_DIR}"
 
 echo "=== Pruning done ==="
 
