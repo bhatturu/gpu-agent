@@ -38,7 +38,7 @@ echo "=== Pruning unreferenced libs from ${ROCM_DIR} ==="
 KEEP_DIR=$(mktemp -d)
 mkdir -p "${KEEP_DIR}/lib" "${KEEP_DIR}/bin" "${KEEP_DIR}/libexec" "${KEEP_DIR}/share"
 for pat in \
-    "libamdhip64.*" "librocprofiler-sdk.*" "librocprofiler-sdk-roctx.*" \
+    "libamdhip64.*" "librocm_kpack.*" "librocprofiler-sdk.*" "librocprofiler-sdk-roctx.*" \
     "librocprofiler-register.*" "libamd_comgr.*" "libamd_comgr_loader.*" \
     "libhsa-runtime64.*" "libhsa-amd-aqlprofile64.*"; do
     for f in "${ROCM_DIR}/lib"/${pat}; do

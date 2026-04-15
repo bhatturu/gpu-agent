@@ -12,6 +12,7 @@ ls -al /opt/rocm/lib/libhsa-runtime64.so*
 ls -al /opt/rocm/lib/libhsa-amd-aqlprofile64.so*
 
 cp -vr /opt/rocm/lib/libamdhip64.so* $outdir/
+cp -vr /opt/rocm/lib/librocm_kpack.so* $outdir/ 2>/dev/null || true
 cp -vr /opt/rocm/lib/librocprofiler-sdk.so* $outdir/
 cp -vr /opt/rocm/lib/librocprofiler-register.so* $outdir/
 cp -vr /opt/rocm/lib/libamd_comgr.so* $outdir/
