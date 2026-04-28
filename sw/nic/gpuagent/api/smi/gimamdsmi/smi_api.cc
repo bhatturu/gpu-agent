@@ -1299,12 +1299,12 @@ sdk_ret_t
 smi_gpu_init_immutable_attrs (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec,
                               aga_gpu_status_t *status)
 {
-    amdsmi_fw_info_t fw_info;
     amdsmi_status_t amdsmi_ret;
-    amdsmi_vbios_info_t vbios_info;
     amdsmi_board_info_t board_info = {};
-    amdsmi_driver_info_t driver_info = {};
     amdsmi_virtualization_mode_t mode;
+    amdsmi_driver_info_t driver_info = {};
+    amdsmi_vbios_info_t vbios_info;
+    amdsmi_fw_info_t fw_info;
 
     // fill immutable attributes in spec
     // fill gpu and memory clock frequencies
