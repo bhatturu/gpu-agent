@@ -3,8 +3,8 @@ ARG BASE_IMAGE=ubuntu:22.04
 FROM ${BASE_IMAGE}
 
 LABEL maintainer="AMD Inc"
-# ROCm 7.12 (therock) is not on repo.radeon.com.
-# Use ROCM_TARBALL_URL to install from an S3 therock tarball (preferred for 7.12).
+# ROCm 7.12+ (therock) is not on repo.radeon.com.
+# Use ROCM_TARBALL_URL to install from an S3 therock tarball (preferred for 7.12/7.13).
 # Falls back to repo.radeon.com public path (7.2.1 is the latest public release).
 ARG ROCM_VERSION=7.2.1
 ARG AMDGPU_VERSION=7.2
@@ -22,12 +22,17 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
   libcap-dev libdw-dev && \
   apt-get clean && rm -rf /var/lib/apt/lists/*
 
-ADD docker/install-rocm-tarball.sh /usr/local/bin/install-rocm-tarball.sh
-RUN chmod +x /usr/local/bin/install-rocm-tarball.sh
-
 RUN if [ -n "${ROCM_TARBALL_URL}" ]; then \
-      /usr/local/bin/install-rocm-tarball.sh "${ROCM_VERSION}" "${ROCM_TARBALL_URL}" /opt/rocm/lib && \
-      ln -sf /opt/rocm/lib/libdrm_amdgpu.so.1 /usr/lib/x86_64-linux-gnu/libdrm_amdgpu.so.1; \
+      echo "=== ROCm install: S3 tarball (full - compiler needed for build) ===" && \
+      mkdir -p "/opt/rocm-${ROCM_VERSION}" && \
+      wget --fail -qO- "${ROCM_TARBALL_URL}" | tar -xzf - -C "/opt/rocm-${ROCM_VERSION}" && \
+      mkdir -p /etc/alternatives && \
+      ln -sf "/opt/rocm-${ROCM_VERSION}" /etc/alternatives/rocm && \
+      ln -sf /etc/alternatives/rocm /opt/rocm && \
+      SYSDEPS="/opt/rocm-${ROCM_VERSION}/lib/rocm_sysdeps/lib" && \
+      if [ -f "${SYSDEPS}/libdrm_amdgpu.so" ]; then \
+        ln -sf "${SYSDEPS}/libdrm_amdgpu.so" /usr/lib/x86_64-linux-gnu/libdrm_amdgpu.so.1; \
+      fi; \
    else \
       echo "=== ROCm install: public repo.radeon.com ===" && \
       mkdir --parents --mode=0755 /etc/apt/keyrings /etc/apt/preferences.d && \
