@@ -154,7 +154,7 @@ func setupTest(t *testing.T) func(t *testing.T) {
 					Name:           "ual-port-1",
 					LogicalIndex:   32,
 					LocalPortIndex: 1,
-					OperState:      amdgpu.UALPortState_UAL_PORT_STATE_ENABLED,
+					LinkState:      amdgpu.UALLinkState_UAL_LINK_STATE_UP,
 				},
 				Stats: &amdgpu.UALNetworkPortStats{
 					NumFailedoverStreams: 5,

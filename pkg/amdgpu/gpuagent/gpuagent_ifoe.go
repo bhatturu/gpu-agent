@@ -219,7 +219,7 @@ func (ga *GPUAgentIFOEClient) updateMetrics() error {
 		// nolint
 		_ = ga.InitClients()
 	}
-	labels := ga.populateLabelsFromObject(nil, nil, nil)
+	labels := ga.populateLabelsFromObject(nil, nil, nil, "")
 
 	resp, err := ga.listNetworkPort()
 	if err != nil {
@@ -256,12 +256,24 @@ func (ga *GPUAgentIFOEClient) updateMetrics() error {
 		ualStationMap[uuid] = ualStation
 	}
 
+	devToGPU := make(map[string]string)
+	for _, ualDevice := range dresp.Response {
+		if ualDevice.Spec == nil {
+			continue
+		}
+		devUuid := utils.UUIDToString(ualDevice.Spec.Id)
+		gpuUuid := ""
+		if ualDevice.Status != nil {
+			gpuUuid = utils.UUIDToString(ualDevice.Status.GPU)
+		}
+		devToGPU[devUuid] = gpuUuid
+	}
+
 	ga.metrics.totalNetworkPorts.With(labels).Set(float64(len(resp.Response)))
 	ga.metrics.totalDevices.With(labels).Set(float64(len(dresp.Response)))
 	ga.metrics.totalStations.With(labels).Set(float64(len(sresp.Response)))
 
 	for _, ualPort := range resp.Response {
-		ifoeLabels := ga.populateLabelsFromObject(nil, nil, ualPort)
 		portUuid := utils.UUIDToString(ualPort.Spec.Id)
 		portName := ""
 		if ualPort.Status != nil {
@@ -273,12 +285,25 @@ func (ga *GPUAgentIFOEClient) updateMetrics() error {
 			continue
 		}
 		devUuid := utils.UUIDToString(station.Spec.UALDevice)
+		gpuUuid := devToGPU[devUuid]
+		ifoeLabels := ga.populateLabelsFromObject(nil, nil, ualPort, gpuUuid)
 		// TBD : remove after testing
 		logger.Log.Printf("Processing UALPort: %v, Station: %v Device: %v PortName: %s", portUuid, stationUuid, devUuid, portName)
 
 		ifoeLabels["station_uuid"] = stationUuid
 		ifoeLabels["port_name"] = portName
 		ifoeLabels["device_uuid"] = devUuid
+
+		if ualPort.Status != nil {
+			status := ualPort.Status
+			ga.metrics.portLinkState.With(ifoeLabels).Set(float64(int32(status.LinkState)))
+			ga.metrics.portSpeed.With(ifoeLabels).Set(float64(int32(status.Speed)))
+			ga.metrics.portLinkUpCount.With(ifoeLabels).Set(float64(status.LinkUpCount))
+			ga.metrics.portLinkUpDurationMsec.With(ifoeLabels).Set(float64(status.LinkUpDuration))
+			ga.metrics.portLinkDownDurationMsec.With(ifoeLabels).Set(float64(status.LinkDownDuration))
+			ga.metrics.portLinkTrainingDurationLatestMsec.With(ifoeLabels).Set(float64(status.LinkTrainingDurationLatest))
+			ga.metrics.portLinkTrainingDurationAvgMsec.With(ifoeLabels).Set(float64(status.LinkTrainingDurationAvg))
+		}
 
 		stats := ualPort.Stats
 		if stats != nil {
@@ -301,7 +326,62 @@ func (ga *GPUAgentIFOEClient) updateMetrics() error {
 			ga.metrics.fecCodeWordSymbolErrors13.With(ifoeLabels).Set(float64(stats.FECCodeWordSymbolErrors13))
 			ga.metrics.fecCodeWordSymbolErrors14.With(ifoeLabels).Set(float64(stats.FECCodeWordSymbolErrors14))
 			ga.metrics.fecCodeWordSymbolErrors15.With(ifoeLabels).Set(float64(stats.FECCodeWordSymbolErrors15))
+			ga.metrics.fecCodeWordSymbolErrorsUncorrectable.With(ifoeLabels).Set(float64(stats.FECCodeWordSymbolErrorsUncorrectable))
+			ga.metrics.txTotalBytes.With(ifoeLabels).Set(float64(stats.TxTotalBytes))
+			ga.metrics.txTotalGoodBytes.With(ifoeLabels).Set(float64(stats.TxTotalGoodBytes))
+			ga.metrics.txTotalErrBytes.With(ifoeLabels).Set(float64(stats.TxTotalErrBytes))
+			ga.metrics.txTotalPackets.With(ifoeLabels).Set(float64(stats.TxTotalPackets))
+			ga.metrics.txTotalGoodPackets.With(ifoeLabels).Set(float64(stats.TxTotalGoodPackets))
+			ga.metrics.txFrameError.With(ifoeLabels).Set(float64(stats.TxFrameError))
+			ga.metrics.txBadFCS.With(ifoeLabels).Set(float64(stats.TxBadFCS))
+			ga.metrics.rxTotalBytes.With(ifoeLabels).Set(float64(stats.RxTotalBytes))
+			ga.metrics.rxTotalGoodBytes.With(ifoeLabels).Set(float64(stats.RxTotalGoodBytes))
+			ga.metrics.rxTotalErrBytes.With(ifoeLabels).Set(float64(stats.RxTotalErrBytes))
+			ga.metrics.rxTotalPackets.With(ifoeLabels).Set(float64(stats.RxTotalPackets))
+			ga.metrics.rxTotalGoodPackets.With(ifoeLabels).Set(float64(stats.RxTotalGoodPackets))
+			ga.metrics.rxPacketDropped.With(ifoeLabels).Set(float64(stats.RxPacketDropped))
+			ga.metrics.rxBadFCS.With(ifoeLabels).Set(float64(stats.RxBadFCS))
+			ga.metrics.rxFECCorrectedCodewords.With(ifoeLabels).Set(float64(stats.RxFECCorrectedCodewords))
+			ga.metrics.rxFECUncorrectedCodewords.With(ifoeLabels).Set(float64(stats.RxFECUncorrectedCodewords))
+			ga.metrics.txPause.With(ifoeLabels).Set(float64(stats.TxPause))
+			ga.metrics.rxPause.With(ifoeLabels).Set(float64(stats.RxPause))
+			ga.metrics.txUserPause.With(ifoeLabels).Set(float64(stats.TxUserPause))
+			ga.metrics.rxUserPause.With(ifoeLabels).Set(float64(stats.RxUserPause))
+			ga.metrics.rxJabber.With(ifoeLabels).Set(float64(stats.RxJabber))
+			ga.metrics.rxOversize.With(ifoeLabels).Set(float64(stats.RxOversize))
+			ga.metrics.rxTooLong.With(ifoeLabels).Set(float64(stats.RxTooLong))
+			ga.metrics.rxTruncated.With(ifoeLabels).Set(float64(stats.RxTruncated))
+			ga.metrics.txLLROkPackets.With(ifoeLabels).Set(float64(stats.TxLLROkPackets))
+			ga.metrics.rxLLROkPackets.With(ifoeLabels).Set(float64(stats.RxLLROkPackets))
+			ga.metrics.txLLRReplayCount.With(ifoeLabels).Set(float64(stats.TxLLRReplayCt))
+			ga.metrics.txLLRReplaysCompleted.With(ifoeLabels).Set(float64(stats.TxLLRReplaysCompleted))
+			ga.metrics.rxLLRBadPackets.With(ifoeLabels).Set(float64(stats.RxLLRBadPackets))
+			ga.metrics.rxLLRDuplSeqPackets.With(ifoeLabels).Set(float64(stats.RxLLRDuplSeqPackets))
 		}
+	}
+
+	for _, ualStation := range sresp.Response {
+		if ualStation.Spec == nil || ualStation.Stats == nil {
+			continue
+		}
+		stationUuid := utils.UUIDToString(ualStation.Spec.Id)
+		devUuid := utils.UUIDToString(ualStation.Spec.UALDevice)
+		stationLabels := ga.populateLabelsFromObject(nil, nil, nil, "")
+		stationLabels["station_uuid"] = stationUuid
+		stationLabels["device_uuid"] = devUuid
+		stationLabels[strings.ToLower(exportermetrics.GPUMetricLabel_GPU_UUID.String())] = devToGPU[devUuid]
+
+		stats := ualStation.Stats
+		ga.metrics.stationTxRequestPackets.With(stationLabels).Set(float64(stats.TxRequestPacketCount))
+		ga.metrics.stationTxResponsePackets.With(stationLabels).Set(float64(stats.TxResponsePacketCount))
+		ga.metrics.stationRxRequestPackets.With(stationLabels).Set(float64(stats.RxRequestPacketCount))
+		ga.metrics.stationRxResponsePackets.With(stationLabels).Set(float64(stats.RxResponsePacketCount))
+		ga.metrics.stationStreamRemapsTotal.With(stationLabels).Set(float64(stats.StreamRemapsTotal))
+		ga.metrics.stationPausedStreamsCount.With(stationLabels).Set(float64(stats.PausedStreamsCount))
+		ga.metrics.stationStreamRemapsNetworkPort0.With(stationLabels).Set(float64(stats.StreamRemapsNetworkPort0))
+		ga.metrics.stationStreamRemapsNetworkPort1.With(stationLabels).Set(float64(stats.StreamRemapsNetworkPort1))
+		ga.metrics.stationStreamRemapsNetworkPort2.With(stationLabels).Set(float64(stats.StreamRemapsNetworkPort2))
+		ga.metrics.stationStreamRemapsNetworkPort3.With(stationLabels).Set(float64(stats.StreamRemapsNetworkPort3))
 	}
 	return nil
 }

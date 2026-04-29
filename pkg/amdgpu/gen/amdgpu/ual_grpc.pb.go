@@ -40,13 +40,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UALSvc_UALNetworkPortUpdate_FullMethodName   = "/amdgpu.UALSvc/UALNetworkPortUpdate"
-	UALSvc_UALNetworkPortGet_FullMethodName      = "/amdgpu.UALSvc/UALNetworkPortGet"
-	UALSvc_UALStationUpdate_FullMethodName       = "/amdgpu.UALSvc/UALStationUpdate"
-	UALSvc_UALStationGet_FullMethodName          = "/amdgpu.UALSvc/UALStationGet"
-	UALSvc_UALDeviceGet_FullMethodName           = "/amdgpu.UALSvc/UALDeviceGet"
-	UALSvc_UALDeviceUpdate_FullMethodName        = "/amdgpu.UALSvc/UALDeviceUpdate"
-	UALSvc_UALDeviceDatapathReset_FullMethodName = "/amdgpu.UALSvc/UALDeviceDatapathReset"
+	UALSvc_UALNetworkPortUpdate_FullMethodName          = "/amdgpu.UALSvc/UALNetworkPortUpdate"
+	UALSvc_UALNetworkPortGet_FullMethodName             = "/amdgpu.UALSvc/UALNetworkPortGet"
+	UALSvc_UALStationUpdate_FullMethodName              = "/amdgpu.UALSvc/UALStationUpdate"
+	UALSvc_UALStationGet_FullMethodName                 = "/amdgpu.UALSvc/UALStationGet"
+	UALSvc_UALDeviceGet_FullMethodName                  = "/amdgpu.UALSvc/UALDeviceGet"
+	UALSvc_UALDeviceUpdate_FullMethodName               = "/amdgpu.UALSvc/UALDeviceUpdate"
+	UALSvc_UALDeviceReset_FullMethodName                = "/amdgpu.UALSvc/UALDeviceReset"
+	UALSvc_UALPathToNetworkPortMapUpdate_FullMethodName = "/amdgpu.UALSvc/UALPathToNetworkPortMapUpdate"
 )
 
 // UALSvcClient is the client API for UALSvc service.
@@ -67,8 +68,10 @@ type UALSvcClient interface {
 	UALDeviceGet(ctx context.Context, in *UALDeviceGetRequest, opts ...grpc.CallOption) (*UALDeviceGetResponse, error)
 	// UAL device update API
 	UALDeviceUpdate(ctx context.Context, in *UALDeviceUpdateRequest, opts ...grpc.CallOption) (*UALDeviceUpdateResponse, error)
-	// UAL device datapath reset
-	UALDeviceDatapathReset(ctx context.Context, in *UALDeviceDatapathResetRequest, opts ...grpc.CallOption) (*UALDeviceDatapathResetResponse, error)
+	// UAL device reset
+	UALDeviceReset(ctx context.Context, in *UALDeviceResetRequest, opts ...grpc.CallOption) (*UALDeviceResetResponse, error)
+	// UAL path to network port map update API
+	UALPathToNetworkPortMapUpdate(ctx context.Context, in *UALPathToNetworkPortMapUpdateRequest, opts ...grpc.CallOption) (*UALPathToNetworkPortMapUpdateResponse, error)
 }
 
 type uALSvcClient struct {
@@ -139,10 +142,20 @@ func (c *uALSvcClient) UALDeviceUpdate(ctx context.Context, in *UALDeviceUpdateR
 	return out, nil
 }
 
-func (c *uALSvcClient) UALDeviceDatapathReset(ctx context.Context, in *UALDeviceDatapathResetRequest, opts ...grpc.CallOption) (*UALDeviceDatapathResetResponse, error) {
+func (c *uALSvcClient) UALDeviceReset(ctx context.Context, in *UALDeviceResetRequest, opts ...grpc.CallOption) (*UALDeviceResetResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UALDeviceDatapathResetResponse)
-	err := c.cc.Invoke(ctx, UALSvc_UALDeviceDatapathReset_FullMethodName, in, out, cOpts...)
+	out := new(UALDeviceResetResponse)
+	err := c.cc.Invoke(ctx, UALSvc_UALDeviceReset_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *uALSvcClient) UALPathToNetworkPortMapUpdate(ctx context.Context, in *UALPathToNetworkPortMapUpdateRequest, opts ...grpc.CallOption) (*UALPathToNetworkPortMapUpdateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UALPathToNetworkPortMapUpdateResponse)
+	err := c.cc.Invoke(ctx, UALSvc_UALPathToNetworkPortMapUpdate_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -167,8 +180,10 @@ type UALSvcServer interface {
 	UALDeviceGet(context.Context, *UALDeviceGetRequest) (*UALDeviceGetResponse, error)
 	// UAL device update API
 	UALDeviceUpdate(context.Context, *UALDeviceUpdateRequest) (*UALDeviceUpdateResponse, error)
-	// UAL device datapath reset
-	UALDeviceDatapathReset(context.Context, *UALDeviceDatapathResetRequest) (*UALDeviceDatapathResetResponse, error)
+	// UAL device reset
+	UALDeviceReset(context.Context, *UALDeviceResetRequest) (*UALDeviceResetResponse, error)
+	// UAL path to network port map update API
+	UALPathToNetworkPortMapUpdate(context.Context, *UALPathToNetworkPortMapUpdateRequest) (*UALPathToNetworkPortMapUpdateResponse, error)
 	mustEmbedUnimplementedUALSvcServer()
 }
 
@@ -197,8 +212,11 @@ func (UnimplementedUALSvcServer) UALDeviceGet(context.Context, *UALDeviceGetRequ
 func (UnimplementedUALSvcServer) UALDeviceUpdate(context.Context, *UALDeviceUpdateRequest) (*UALDeviceUpdateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UALDeviceUpdate not implemented")
 }
-func (UnimplementedUALSvcServer) UALDeviceDatapathReset(context.Context, *UALDeviceDatapathResetRequest) (*UALDeviceDatapathResetResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UALDeviceDatapathReset not implemented")
+func (UnimplementedUALSvcServer) UALDeviceReset(context.Context, *UALDeviceResetRequest) (*UALDeviceResetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UALDeviceReset not implemented")
+}
+func (UnimplementedUALSvcServer) UALPathToNetworkPortMapUpdate(context.Context, *UALPathToNetworkPortMapUpdateRequest) (*UALPathToNetworkPortMapUpdateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UALPathToNetworkPortMapUpdate not implemented")
 }
 func (UnimplementedUALSvcServer) mustEmbedUnimplementedUALSvcServer() {}
 func (UnimplementedUALSvcServer) testEmbeddedByValue()                {}
@@ -329,20 +347,38 @@ func _UALSvc_UALDeviceUpdate_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UALSvc_UALDeviceDatapathReset_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UALDeviceDatapathResetRequest)
+func _UALSvc_UALDeviceReset_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UALDeviceResetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UALSvcServer).UALDeviceDatapathReset(ctx, in)
+		return srv.(UALSvcServer).UALDeviceReset(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UALSvc_UALDeviceDatapathReset_FullMethodName,
+		FullMethod: UALSvc_UALDeviceReset_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UALSvcServer).UALDeviceDatapathReset(ctx, req.(*UALDeviceDatapathResetRequest))
+		return srv.(UALSvcServer).UALDeviceReset(ctx, req.(*UALDeviceResetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UALSvc_UALPathToNetworkPortMapUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UALPathToNetworkPortMapUpdateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UALSvcServer).UALPathToNetworkPortMapUpdate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UALSvc_UALPathToNetworkPortMapUpdate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UALSvcServer).UALPathToNetworkPortMapUpdate(ctx, req.(*UALPathToNetworkPortMapUpdateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -379,8 +415,12 @@ var UALSvc_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UALSvc_UALDeviceUpdate_Handler,
 		},
 		{
-			MethodName: "UALDeviceDatapathReset",
-			Handler:    _UALSvc_UALDeviceDatapathReset_Handler,
+			MethodName: "UALDeviceReset",
+			Handler:    _UALSvc_UALDeviceReset_Handler,
+		},
+		{
+			MethodName: "UALPathToNetworkPortMapUpdate",
+			Handler:    _UALSvc_UALPathToNetworkPortMapUpdate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

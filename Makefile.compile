@@ -145,6 +145,7 @@ endif
 		--build-arg ROCM_VERSION=${REPOPKGVERSION} \
 		-t $(BUILDER_IMAGE) . -f $(DOCKERFILE)
 	@docker run --rm -it --privileged \
+		--user $(shell id -u):$(shell id -g) \
 		-e "USER_NAME=$(shell whoami)" \
 		-e "USER_UID=$(shell id -u)" \
 		-e "USER_GID=$(shell id -g)" \

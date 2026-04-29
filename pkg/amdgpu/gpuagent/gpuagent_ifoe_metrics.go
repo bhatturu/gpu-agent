@@ -44,32 +44,84 @@ var (
 // Device->Station->NetworkPort
 type IFOEMetrics struct {
 	// IFOE network port stats
-	totalNetworkPorts         prometheus.GaugeVec
-	numFailedoverStreams      prometheus.GaugeVec
-	numPausedStreams          prometheus.GaugeVec
-	bitErrorRate              prometheus.GaugeVec
-	fecCodeWordSymbolErrors0  prometheus.GaugeVec
-	fecCodeWordSymbolErrors1  prometheus.GaugeVec
-	fecCodeWordSymbolErrors2  prometheus.GaugeVec
-	fecCodeWordSymbolErrors3  prometheus.GaugeVec
-	fecCodeWordSymbolErrors4  prometheus.GaugeVec
-	fecCodeWordSymbolErrors5  prometheus.GaugeVec
-	fecCodeWordSymbolErrors6  prometheus.GaugeVec
-	fecCodeWordSymbolErrors7  prometheus.GaugeVec
-	fecCodeWordSymbolErrors8  prometheus.GaugeVec
-	fecCodeWordSymbolErrors9  prometheus.GaugeVec
-	fecCodeWordSymbolErrors10 prometheus.GaugeVec
-	fecCodeWordSymbolErrors11 prometheus.GaugeVec
-	fecCodeWordSymbolErrors12 prometheus.GaugeVec
-	fecCodeWordSymbolErrors13 prometheus.GaugeVec
-	fecCodeWordSymbolErrors14 prometheus.GaugeVec
-	fecCodeWordSymbolErrors15 prometheus.GaugeVec
+	totalNetworkPorts                    prometheus.GaugeVec
+	numFailedoverStreams                 prometheus.GaugeVec
+	numPausedStreams                     prometheus.GaugeVec
+	bitErrorRate                         prometheus.GaugeVec
+	fecCodeWordSymbolErrors0             prometheus.GaugeVec
+	fecCodeWordSymbolErrors1             prometheus.GaugeVec
+	fecCodeWordSymbolErrors2             prometheus.GaugeVec
+	fecCodeWordSymbolErrors3             prometheus.GaugeVec
+	fecCodeWordSymbolErrors4             prometheus.GaugeVec
+	fecCodeWordSymbolErrors5             prometheus.GaugeVec
+	fecCodeWordSymbolErrors6             prometheus.GaugeVec
+	fecCodeWordSymbolErrors7             prometheus.GaugeVec
+	fecCodeWordSymbolErrors8             prometheus.GaugeVec
+	fecCodeWordSymbolErrors9             prometheus.GaugeVec
+	fecCodeWordSymbolErrors10            prometheus.GaugeVec
+	fecCodeWordSymbolErrors11            prometheus.GaugeVec
+	fecCodeWordSymbolErrors12            prometheus.GaugeVec
+	fecCodeWordSymbolErrors13            prometheus.GaugeVec
+	fecCodeWordSymbolErrors14            prometheus.GaugeVec
+	fecCodeWordSymbolErrors15            prometheus.GaugeVec
+	fecCodeWordSymbolErrorsUncorrectable prometheus.GaugeVec
+
+	// IFOE network port status
+	portLinkState                      prometheus.GaugeVec
+	portSpeed                          prometheus.GaugeVec
+	portLinkUpCount                    prometheus.GaugeVec
+	portLinkUpDurationMsec             prometheus.GaugeVec
+	portLinkDownDurationMsec           prometheus.GaugeVec
+	portLinkTrainingDurationLatestMsec prometheus.GaugeVec
+	portLinkTrainingDurationAvgMsec    prometheus.GaugeVec
+
+	// IFOE network port TX/RX core stats
+	txTotalBytes              prometheus.GaugeVec
+	txTotalGoodBytes          prometheus.GaugeVec
+	txTotalErrBytes           prometheus.GaugeVec
+	txTotalPackets            prometheus.GaugeVec
+	txTotalGoodPackets        prometheus.GaugeVec
+	txFrameError              prometheus.GaugeVec
+	txBadFCS                  prometheus.GaugeVec
+	rxTotalBytes              prometheus.GaugeVec
+	rxTotalGoodBytes          prometheus.GaugeVec
+	rxTotalErrBytes           prometheus.GaugeVec
+	rxTotalPackets            prometheus.GaugeVec
+	rxTotalGoodPackets        prometheus.GaugeVec
+	rxPacketDropped           prometheus.GaugeVec
+	rxBadFCS                  prometheus.GaugeVec
+	rxFECCorrectedCodewords   prometheus.GaugeVec
+	rxFECUncorrectedCodewords prometheus.GaugeVec
+	txPause                   prometheus.GaugeVec
+	rxPause                   prometheus.GaugeVec
+	txUserPause               prometheus.GaugeVec
+	rxUserPause               prometheus.GaugeVec
+	rxJabber                  prometheus.GaugeVec
+	rxOversize                prometheus.GaugeVec
+	rxTooLong                 prometheus.GaugeVec
+	rxTruncated               prometheus.GaugeVec
+	txLLROkPackets            prometheus.GaugeVec
+	rxLLROkPackets            prometheus.GaugeVec
+	txLLRReplayCount          prometheus.GaugeVec
+	txLLRReplaysCompleted     prometheus.GaugeVec
+	rxLLRBadPackets           prometheus.GaugeVec
+	rxLLRDuplSeqPackets       prometheus.GaugeVec
 
 	// IFOE device stats
 	totalDevices prometheus.GaugeVec
 
 	// IFOE station stats
-	totalStations prometheus.GaugeVec
+	totalStations                   prometheus.GaugeVec
+	stationTxRequestPackets         prometheus.GaugeVec
+	stationTxResponsePackets        prometheus.GaugeVec
+	stationRxRequestPackets         prometheus.GaugeVec
+	stationRxResponsePackets        prometheus.GaugeVec
+	stationStreamRemapsTotal        prometheus.GaugeVec
+	stationPausedStreamsCount       prometheus.GaugeVec
+	stationStreamRemapsNetworkPort0 prometheus.GaugeVec
+	stationStreamRemapsNetworkPort1 prometheus.GaugeVec
+	stationStreamRemapsNetworkPort2 prometheus.GaugeVec
+	stationStreamRemapsNetworkPort3 prometheus.GaugeVec
 }
 
 func GetIFOEMandatoryLabels() []string {
@@ -320,6 +372,294 @@ func (ga *GPUAgentIFOEClient) initPrometheusMetrics() {
 				Help: "Total number of FEC codewords with 15 symbol errors",
 			},
 			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		fecCodeWordSymbolErrorsUncorrectable: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_fec_codeword_symbol_errors_uncorrectable",
+				Help: "Total number of FEC codewords that are uncorrectable",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		portLinkState: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_port_link_state",
+				Help: "UAL network port link state (0=NONE, 1=UP, 2=DOWN)",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		portSpeed: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_port_speed",
+				Help: "UAL network port speed (0=NONE, 1=400G, 2=800G)",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		portLinkUpCount: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_port_link_up_count",
+				Help: "Number of times the UAL network link has come up",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		portLinkUpDurationMsec: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_port_link_up_duration_msec",
+				Help: "Total time the UAL network link has been up (msec)",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		portLinkDownDurationMsec: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_port_link_down_duration_msec",
+				Help: "Total time the UAL network link has been down (msec)",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		txTotalBytes: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_tx_total_bytes",
+				Help: "Total number of bytes transmitted on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		txTotalGoodBytes: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_tx_total_good_bytes",
+				Help: "Total number of good bytes transmitted on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		txTotalErrBytes: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_tx_total_err_bytes",
+				Help: "Total number of bad bytes transmitted on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		txTotalPackets: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_tx_total_packets",
+				Help: "Total number of packets transmitted on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		txTotalGoodPackets: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_tx_total_good_packets",
+				Help: "Total number of good packets transmitted on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		txFrameError: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_tx_frame_error",
+				Help: "Total number of packets with frame error transmitted on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		txBadFCS: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_tx_bad_fcs",
+				Help: "Total number of packets with bad FCS transmitted on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxTotalBytes: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_total_bytes",
+				Help: "Total number of bytes received on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxTotalGoodBytes: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_total_good_bytes",
+				Help: "Total number of good bytes received on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxTotalErrBytes: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_total_err_bytes",
+				Help: "Total number of bad bytes received on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxTotalPackets: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_total_packets",
+				Help: "Total number of packets received on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxTotalGoodPackets: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_total_good_packets",
+				Help: "Total number of good packets received on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxPacketDropped: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_packet_dropped",
+				Help: "Total number of dropped packets on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxBadFCS: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_bad_fcs",
+				Help: "Total number of packets with bad FCS received on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		stationTxRequestPackets: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_station_tx_request_packets",
+				Help: "Count of IFoE request packets transmitted on the UAL station",
+			},
+			append([]string{"station_uuid", "device_uuid"}, labels...)),
+		stationTxResponsePackets: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_station_tx_response_packets",
+				Help: "Count of IFoE response packets transmitted on the UAL station",
+			},
+			append([]string{"station_uuid", "device_uuid"}, labels...)),
+		stationRxRequestPackets: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_station_rx_request_packets",
+				Help: "Count of IFoE request packets received on the UAL station",
+			},
+			append([]string{"station_uuid", "device_uuid"}, labels...)),
+		stationRxResponsePackets: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_station_rx_response_packets",
+				Help: "Count of IFoE response packets received on the UAL station",
+			},
+			append([]string{"station_uuid", "device_uuid"}, labels...)),
+		stationStreamRemapsTotal: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_station_stream_remaps_total",
+				Help: "Total count of streams remapped due to retransmission timeout on the UAL station",
+			},
+			append([]string{"station_uuid", "device_uuid"}, labels...)),
+		stationPausedStreamsCount: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_station_paused_streams_count",
+				Help: "Live number of IFoE streams paused due to retransmission timeouts on the UAL station",
+			},
+			append([]string{"station_uuid", "device_uuid"}, labels...)),
+		portLinkTrainingDurationLatestMsec: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_port_link_training_duration_latest_msec",
+				Help: "Time taken to complete link training for most recent link up (msec)",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		portLinkTrainingDurationAvgMsec: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_port_link_training_duration_avg_msec",
+				Help: "Average time taken to complete link training (msec)",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxFECCorrectedCodewords: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_fec_corrected_codewords",
+				Help: "Count of FEC corrected codewords on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxFECUncorrectedCodewords: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_fec_uncorrected_codewords",
+				Help: "Count of FEC uncorrected codewords on the UAL network port",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		txPause: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_tx_pause",
+				Help: "Total number of 802.3x MAC pause packets transmitted",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxPause: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_pause",
+				Help: "Total number of 802.3x MAC pause packets received",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		txUserPause: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_tx_user_pause",
+				Help: "Total number of priority based pause packets transmitted",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxUserPause: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_user_pause",
+				Help: "Total number of priority based pause packets received",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxJabber: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_jabber",
+				Help: "Total number of packets longer than max length with bad FCS received",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxOversize: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_oversize",
+				Help: "Total number of packets longer than max length with good FCS received",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxTooLong: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_too_long",
+				Help: "Total number of packets longer than max length received",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxTruncated: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_truncated",
+				Help: "Total number of truncated packets received",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		txLLROkPackets: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_tx_llr_ok_packets",
+				Help: "Count of successfully transmitted LLR packets",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxLLROkPackets: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_llr_ok_packets",
+				Help: "Count of successfully received LLR packets",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		txLLRReplayCount: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_tx_llr_replay_count",
+				Help: "Count of LLR replay events on transmit",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		txLLRReplaysCompleted: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_tx_llr_replays_completed",
+				Help: "Count of completed LLR replays on transmit",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxLLRBadPackets: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_llr_bad_packets",
+				Help: "Count of bad LLR packets received",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		rxLLRDuplSeqPackets: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_rx_llr_dupl_seq_packets",
+				Help: "Count of duplicate sequence number LLR packets received",
+			},
+			append([]string{"station_uuid", "port_name", "device_uuid"}, labels...)),
+		stationStreamRemapsNetworkPort0: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_station_stream_remaps_network_port0",
+				Help: "Count of streams remapped on network port 0 of the UAL station",
+			},
+			append([]string{"station_uuid", "device_uuid"}, labels...)),
+		stationStreamRemapsNetworkPort1: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_station_stream_remaps_network_port1",
+				Help: "Count of streams remapped on network port 1 of the UAL station",
+			},
+			append([]string{"station_uuid", "device_uuid"}, labels...)),
+		stationStreamRemapsNetworkPort2: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_station_stream_remaps_network_port2",
+				Help: "Count of streams remapped on network port 2 of the UAL station",
+			},
+			append([]string{"station_uuid", "device_uuid"}, labels...)),
+		stationStreamRemapsNetworkPort3: *prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "ifoe_station_stream_remaps_network_port3",
+				Help: "Count of streams remapped on network port 3 of the UAL station",
+			},
+			append([]string{"station_uuid", "device_uuid"}, labels...)),
 	}
 	ga.initFieldMetricsMap()
 }
@@ -327,28 +667,76 @@ func (ga *GPUAgentIFOEClient) initPrometheusMetrics() {
 func (ga *GPUAgentIFOEClient) initFieldMetricsMap() {
 	// nolint
 	ga.fieldMetricsMap = map[string]FieldMeta{
-		exportermetrics.IFOEMetricField_IFOE_TOTAL_DEVICES.String():                FieldMeta{Metric: ga.metrics.totalDevices},
-		exportermetrics.IFOEMetricField_IFOE_TOTAL_STATIONS.String():               FieldMeta{Metric: ga.metrics.totalStations},
-		exportermetrics.IFOEMetricField_IFOE_TOTAL_PORTS.String():                  FieldMeta{Metric: ga.metrics.totalNetworkPorts},
-		exportermetrics.IFOEMetricField_IFOE_NUMBER_FAILEDOVER_STREAMS.String():    FieldMeta{Metric: ga.metrics.numFailedoverStreams},
-		exportermetrics.IFOEMetricField_IFOE_NUMBER_PAUSED_STREAMS.String():        FieldMeta{Metric: ga.metrics.numPausedStreams},
-		exportermetrics.IFOEMetricField_IFOE_BIT_ERROR_RATE.String():               FieldMeta{Metric: ga.metrics.bitErrorRate},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS0.String():  FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors0},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS1.String():  FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors1},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS2.String():  FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors2},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS3.String():  FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors3},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS4.String():  FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors4},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS5.String():  FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors5},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS6.String():  FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors6},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS7.String():  FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors7},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS8.String():  FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors8},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS9.String():  FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors9},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS10.String(): FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors10},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS11.String(): FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors11},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS12.String(): FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors12},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS13.String(): FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors13},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS14.String(): FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors14},
-		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS15.String(): FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors15},
+		exportermetrics.IFOEMetricField_IFOE_TOTAL_DEVICES.String():                            FieldMeta{Metric: ga.metrics.totalDevices},
+		exportermetrics.IFOEMetricField_IFOE_TOTAL_STATIONS.String():                           FieldMeta{Metric: ga.metrics.totalStations},
+		exportermetrics.IFOEMetricField_IFOE_TOTAL_PORTS.String():                              FieldMeta{Metric: ga.metrics.totalNetworkPorts},
+		exportermetrics.IFOEMetricField_IFOE_NUMBER_FAILEDOVER_STREAMS.String():                FieldMeta{Metric: ga.metrics.numFailedoverStreams},
+		exportermetrics.IFOEMetricField_IFOE_NUMBER_PAUSED_STREAMS.String():                    FieldMeta{Metric: ga.metrics.numPausedStreams},
+		exportermetrics.IFOEMetricField_IFOE_BIT_ERROR_RATE.String():                           FieldMeta{Metric: ga.metrics.bitErrorRate},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS0.String():              FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors0},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS1.String():              FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors1},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS2.String():              FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors2},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS3.String():              FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors3},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS4.String():              FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors4},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS5.String():              FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors5},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS6.String():              FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors6},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS7.String():              FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors7},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS8.String():              FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors8},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS9.String():              FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors9},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS10.String():             FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors10},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS11.String():             FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors11},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS12.String():             FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors12},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS13.String():             FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors13},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS14.String():             FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors14},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS15.String():             FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrors15},
+		exportermetrics.IFOEMetricField_IFOE_FEC_CODEWORD_SYMBOL_ERRORS_UNCORRECTABLE.String(): FieldMeta{Metric: ga.metrics.fecCodeWordSymbolErrorsUncorrectable},
+		exportermetrics.IFOEMetricField_IFOE_PORT_LINK_STATE.String():                          FieldMeta{Metric: ga.metrics.portLinkState},
+		exportermetrics.IFOEMetricField_IFOE_PORT_SPEED.String():                               FieldMeta{Metric: ga.metrics.portSpeed},
+		exportermetrics.IFOEMetricField_IFOE_PORT_LINK_UP_COUNT.String():                       FieldMeta{Metric: ga.metrics.portLinkUpCount},
+		exportermetrics.IFOEMetricField_IFOE_PORT_LINK_UP_DURATION_MSEC.String():               FieldMeta{Metric: ga.metrics.portLinkUpDurationMsec},
+		exportermetrics.IFOEMetricField_IFOE_PORT_LINK_DOWN_DURATION_MSEC.String():             FieldMeta{Metric: ga.metrics.portLinkDownDurationMsec},
+		exportermetrics.IFOEMetricField_IFOE_TX_TOTAL_BYTES.String():                           FieldMeta{Metric: ga.metrics.txTotalBytes},
+		exportermetrics.IFOEMetricField_IFOE_TX_TOTAL_GOOD_BYTES.String():                      FieldMeta{Metric: ga.metrics.txTotalGoodBytes},
+		exportermetrics.IFOEMetricField_IFOE_TX_TOTAL_ERR_BYTES.String():                       FieldMeta{Metric: ga.metrics.txTotalErrBytes},
+		exportermetrics.IFOEMetricField_IFOE_TX_TOTAL_PACKETS.String():                         FieldMeta{Metric: ga.metrics.txTotalPackets},
+		exportermetrics.IFOEMetricField_IFOE_TX_TOTAL_GOOD_PACKETS.String():                    FieldMeta{Metric: ga.metrics.txTotalGoodPackets},
+		exportermetrics.IFOEMetricField_IFOE_TX_FRAME_ERROR.String():                           FieldMeta{Metric: ga.metrics.txFrameError},
+		exportermetrics.IFOEMetricField_IFOE_TX_BAD_FCS.String():                               FieldMeta{Metric: ga.metrics.txBadFCS},
+		exportermetrics.IFOEMetricField_IFOE_RX_TOTAL_BYTES.String():                           FieldMeta{Metric: ga.metrics.rxTotalBytes},
+		exportermetrics.IFOEMetricField_IFOE_RX_TOTAL_GOOD_BYTES.String():                      FieldMeta{Metric: ga.metrics.rxTotalGoodBytes},
+		exportermetrics.IFOEMetricField_IFOE_RX_TOTAL_ERR_BYTES.String():                       FieldMeta{Metric: ga.metrics.rxTotalErrBytes},
+		exportermetrics.IFOEMetricField_IFOE_RX_TOTAL_PACKETS.String():                         FieldMeta{Metric: ga.metrics.rxTotalPackets},
+		exportermetrics.IFOEMetricField_IFOE_RX_TOTAL_GOOD_PACKETS.String():                    FieldMeta{Metric: ga.metrics.rxTotalGoodPackets},
+		exportermetrics.IFOEMetricField_IFOE_RX_PACKET_DROPPED.String():                        FieldMeta{Metric: ga.metrics.rxPacketDropped},
+		exportermetrics.IFOEMetricField_IFOE_RX_BAD_FCS.String():                               FieldMeta{Metric: ga.metrics.rxBadFCS},
+		exportermetrics.IFOEMetricField_IFOE_STATION_TX_REQUEST_PACKETS.String():               FieldMeta{Metric: ga.metrics.stationTxRequestPackets},
+		exportermetrics.IFOEMetricField_IFOE_STATION_TX_RESPONSE_PACKETS.String():              FieldMeta{Metric: ga.metrics.stationTxResponsePackets},
+		exportermetrics.IFOEMetricField_IFOE_STATION_RX_REQUEST_PACKETS.String():               FieldMeta{Metric: ga.metrics.stationRxRequestPackets},
+		exportermetrics.IFOEMetricField_IFOE_STATION_RX_RESPONSE_PACKETS.String():              FieldMeta{Metric: ga.metrics.stationRxResponsePackets},
+		exportermetrics.IFOEMetricField_IFOE_STATION_STREAM_REMAPS_TOTAL.String():              FieldMeta{Metric: ga.metrics.stationStreamRemapsTotal},
+		exportermetrics.IFOEMetricField_IFOE_STATION_PAUSED_STREAMS_COUNT.String():             FieldMeta{Metric: ga.metrics.stationPausedStreamsCount},
+		exportermetrics.IFOEMetricField_IFOE_PORT_LINK_TRAINING_DURATION_LATEST_MSEC.String():  FieldMeta{Metric: ga.metrics.portLinkTrainingDurationLatestMsec},
+		exportermetrics.IFOEMetricField_IFOE_PORT_LINK_TRAINING_DURATION_AVG_MSEC.String():     FieldMeta{Metric: ga.metrics.portLinkTrainingDurationAvgMsec},
+		exportermetrics.IFOEMetricField_IFOE_RX_FEC_CORRECTED_CODEWORDS.String():               FieldMeta{Metric: ga.metrics.rxFECCorrectedCodewords},
+		exportermetrics.IFOEMetricField_IFOE_RX_FEC_UNCORRECTED_CODEWORDS.String():             FieldMeta{Metric: ga.metrics.rxFECUncorrectedCodewords},
+		exportermetrics.IFOEMetricField_IFOE_TX_PAUSE.String():                                 FieldMeta{Metric: ga.metrics.txPause},
+		exportermetrics.IFOEMetricField_IFOE_RX_PAUSE.String():                                 FieldMeta{Metric: ga.metrics.rxPause},
+		exportermetrics.IFOEMetricField_IFOE_TX_USER_PAUSE.String():                            FieldMeta{Metric: ga.metrics.txUserPause},
+		exportermetrics.IFOEMetricField_IFOE_RX_USER_PAUSE.String():                            FieldMeta{Metric: ga.metrics.rxUserPause},
+		exportermetrics.IFOEMetricField_IFOE_RX_JABBER.String():                                FieldMeta{Metric: ga.metrics.rxJabber},
+		exportermetrics.IFOEMetricField_IFOE_RX_OVERSIZE.String():                              FieldMeta{Metric: ga.metrics.rxOversize},
+		exportermetrics.IFOEMetricField_IFOE_RX_TOO_LONG.String():                              FieldMeta{Metric: ga.metrics.rxTooLong},
+		exportermetrics.IFOEMetricField_IFOE_RX_TRUNCATED.String():                             FieldMeta{Metric: ga.metrics.rxTruncated},
+		exportermetrics.IFOEMetricField_IFOE_TX_LLR_OK_PACKETS.String():                        FieldMeta{Metric: ga.metrics.txLLROkPackets},
+		exportermetrics.IFOEMetricField_IFOE_RX_LLR_OK_PACKETS.String():                        FieldMeta{Metric: ga.metrics.rxLLROkPackets},
+		exportermetrics.IFOEMetricField_IFOE_TX_LLR_REPLAY_COUNT.String():                      FieldMeta{Metric: ga.metrics.txLLRReplayCount},
+		exportermetrics.IFOEMetricField_IFOE_TX_LLR_REPLAYS_COMPLETED.String():                 FieldMeta{Metric: ga.metrics.txLLRReplaysCompleted},
+		exportermetrics.IFOEMetricField_IFOE_RX_LLR_BAD_PACKETS.String():                       FieldMeta{Metric: ga.metrics.rxLLRBadPackets},
+		exportermetrics.IFOEMetricField_IFOE_RX_LLR_DUPL_SEQ_PACKETS.String():                  FieldMeta{Metric: ga.metrics.rxLLRDuplSeqPackets},
+		exportermetrics.IFOEMetricField_IFOE_STATION_STREAM_REMAPS_NETWORK_PORT0.String():      FieldMeta{Metric: ga.metrics.stationStreamRemapsNetworkPort0},
+		exportermetrics.IFOEMetricField_IFOE_STATION_STREAM_REMAPS_NETWORK_PORT1.String():      FieldMeta{Metric: ga.metrics.stationStreamRemapsNetworkPort1},
+		exportermetrics.IFOEMetricField_IFOE_STATION_STREAM_REMAPS_NETWORK_PORT2.String():      FieldMeta{Metric: ga.metrics.stationStreamRemapsNetworkPort2},
+		exportermetrics.IFOEMetricField_IFOE_STATION_STREAM_REMAPS_NETWORK_PORT3.String():      FieldMeta{Metric: ga.metrics.stationStreamRemapsNetworkPort3},
 	}
 }
 
@@ -408,7 +796,8 @@ func (ga *GPUAgentIFOEClient) PopulateStaticHostLabels() error {
 func (ga *GPUAgentIFOEClient) populateLabelsFromObject(
 	wls map[string]scheduler.Workload,
 	ualStationMap map[string]*amdgpu.UALStation,
-	ualPort *amdgpu.UALNetworkPort) map[string]string {
+	ualPort *amdgpu.UALNetworkPort,
+	gpuUUID string) map[string]string {
 
 	var podInfo scheduler.PodResourceInfo
 
@@ -422,8 +811,7 @@ func (ga *GPUAgentIFOEClient) populateLabelsFromObject(
 		switch ckey {
 		case exportermetrics.GPUMetricLabel_GPU_UUID.String():
 			if ualPort != nil {
-				ifoeUUID := utils.UUIDToString(ualPort.Spec.Id)
-				labels[key] = ifoeUUID
+				labels[key] = gpuUUID
 			}
 		case exportermetrics.MetricLabel_CARD_SERIES.String():
 			if ualPort != nil {

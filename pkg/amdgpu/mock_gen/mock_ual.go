@@ -58,26 +58,6 @@ func (m *MockUALSvcClient) EXPECT() *MockUALSvcClientMockRecorder {
 	return m.recorder
 }
 
-// UALDeviceDatapathReset mocks base method.
-func (m *MockUALSvcClient) UALDeviceDatapathReset(ctx context.Context, in *amdgpu.UALDeviceDatapathResetRequest, opts ...grpc.CallOption) (*amdgpu.UALDeviceDatapathResetResponse, error) {
-	m.ctrl.T.Helper()
-	varargs := []any{ctx, in}
-	for _, a := range opts {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "UALDeviceDatapathReset", varargs...)
-	ret0, _ := ret[0].(*amdgpu.UALDeviceDatapathResetResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// UALDeviceDatapathReset indicates an expected call of UALDeviceDatapathReset.
-func (mr *MockUALSvcClientMockRecorder) UALDeviceDatapathReset(ctx, in any, opts ...any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx, in}, opts...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UALDeviceDatapathReset", reflect.TypeOf((*MockUALSvcClient)(nil).UALDeviceDatapathReset), varargs...)
-}
-
 // UALDeviceGet mocks base method.
 func (m *MockUALSvcClient) UALDeviceGet(ctx context.Context, in *amdgpu.UALDeviceGetRequest, opts ...grpc.CallOption) (*amdgpu.UALDeviceGetResponse, error) {
 	m.ctrl.T.Helper()
@@ -96,6 +76,26 @@ func (mr *MockUALSvcClientMockRecorder) UALDeviceGet(ctx, in any, opts ...any) *
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UALDeviceGet", reflect.TypeOf((*MockUALSvcClient)(nil).UALDeviceGet), varargs...)
+}
+
+// UALDeviceReset mocks base method.
+func (m *MockUALSvcClient) UALDeviceReset(ctx context.Context, in *amdgpu.UALDeviceResetRequest, opts ...grpc.CallOption) (*amdgpu.UALDeviceResetResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "UALDeviceReset", varargs...)
+	ret0, _ := ret[0].(*amdgpu.UALDeviceResetResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UALDeviceReset indicates an expected call of UALDeviceReset.
+func (mr *MockUALSvcClientMockRecorder) UALDeviceReset(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UALDeviceReset", reflect.TypeOf((*MockUALSvcClient)(nil).UALDeviceReset), varargs...)
 }
 
 // UALDeviceUpdate mocks base method.
@@ -156,6 +156,26 @@ func (mr *MockUALSvcClientMockRecorder) UALNetworkPortUpdate(ctx, in any, opts .
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UALNetworkPortUpdate", reflect.TypeOf((*MockUALSvcClient)(nil).UALNetworkPortUpdate), varargs...)
+}
+
+// UALPathToNetworkPortMapUpdate mocks base method.
+func (m *MockUALSvcClient) UALPathToNetworkPortMapUpdate(ctx context.Context, in *amdgpu.UALPathToNetworkPortMapUpdateRequest, opts ...grpc.CallOption) (*amdgpu.UALPathToNetworkPortMapUpdateResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "UALPathToNetworkPortMapUpdate", varargs...)
+	ret0, _ := ret[0].(*amdgpu.UALPathToNetworkPortMapUpdateResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UALPathToNetworkPortMapUpdate indicates an expected call of UALPathToNetworkPortMapUpdate.
+func (mr *MockUALSvcClientMockRecorder) UALPathToNetworkPortMapUpdate(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UALPathToNetworkPortMapUpdate", reflect.TypeOf((*MockUALSvcClient)(nil).UALPathToNetworkPortMapUpdate), varargs...)
 }
 
 // UALStationGet mocks base method.
@@ -222,21 +242,6 @@ func (m *MockUALSvcServer) EXPECT() *MockUALSvcServerMockRecorder {
 	return m.recorder
 }
 
-// UALDeviceDatapathReset mocks base method.
-func (m *MockUALSvcServer) UALDeviceDatapathReset(arg0 context.Context, arg1 *amdgpu.UALDeviceDatapathResetRequest) (*amdgpu.UALDeviceDatapathResetResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UALDeviceDatapathReset", arg0, arg1)
-	ret0, _ := ret[0].(*amdgpu.UALDeviceDatapathResetResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// UALDeviceDatapathReset indicates an expected call of UALDeviceDatapathReset.
-func (mr *MockUALSvcServerMockRecorder) UALDeviceDatapathReset(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UALDeviceDatapathReset", reflect.TypeOf((*MockUALSvcServer)(nil).UALDeviceDatapathReset), arg0, arg1)
-}
-
 // UALDeviceGet mocks base method.
 func (m *MockUALSvcServer) UALDeviceGet(arg0 context.Context, arg1 *amdgpu.UALDeviceGetRequest) (*amdgpu.UALDeviceGetResponse, error) {
 	m.ctrl.T.Helper()
@@ -250,6 +255,21 @@ func (m *MockUALSvcServer) UALDeviceGet(arg0 context.Context, arg1 *amdgpu.UALDe
 func (mr *MockUALSvcServerMockRecorder) UALDeviceGet(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UALDeviceGet", reflect.TypeOf((*MockUALSvcServer)(nil).UALDeviceGet), arg0, arg1)
+}
+
+// UALDeviceReset mocks base method.
+func (m *MockUALSvcServer) UALDeviceReset(arg0 context.Context, arg1 *amdgpu.UALDeviceResetRequest) (*amdgpu.UALDeviceResetResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UALDeviceReset", arg0, arg1)
+	ret0, _ := ret[0].(*amdgpu.UALDeviceResetResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UALDeviceReset indicates an expected call of UALDeviceReset.
+func (mr *MockUALSvcServerMockRecorder) UALDeviceReset(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UALDeviceReset", reflect.TypeOf((*MockUALSvcServer)(nil).UALDeviceReset), arg0, arg1)
 }
 
 // UALDeviceUpdate mocks base method.
@@ -295,6 +315,21 @@ func (m *MockUALSvcServer) UALNetworkPortUpdate(arg0 context.Context, arg1 *amdg
 func (mr *MockUALSvcServerMockRecorder) UALNetworkPortUpdate(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UALNetworkPortUpdate", reflect.TypeOf((*MockUALSvcServer)(nil).UALNetworkPortUpdate), arg0, arg1)
+}
+
+// UALPathToNetworkPortMapUpdate mocks base method.
+func (m *MockUALSvcServer) UALPathToNetworkPortMapUpdate(arg0 context.Context, arg1 *amdgpu.UALPathToNetworkPortMapUpdateRequest) (*amdgpu.UALPathToNetworkPortMapUpdateResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UALPathToNetworkPortMapUpdate", arg0, arg1)
+	ret0, _ := ret[0].(*amdgpu.UALPathToNetworkPortMapUpdateResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UALPathToNetworkPortMapUpdate indicates an expected call of UALPathToNetworkPortMapUpdate.
+func (mr *MockUALSvcServerMockRecorder) UALPathToNetworkPortMapUpdate(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UALPathToNetworkPortMapUpdate", reflect.TypeOf((*MockUALSvcServer)(nil).UALPathToNetworkPortMapUpdate), arg0, arg1)
 }
 
 // UALStationGet mocks base method.
