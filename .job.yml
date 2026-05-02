@@ -47,7 +47,7 @@ builds:
         - /device-metrics-exporter/bin/amdnic-exporter_24.04_amd64.deb
 
   build-rpm-package-rhel9:
-    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make libcopy-assets-RHEL9 rpmpkg rpmpkg-sriov"]
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make libcopy-assets-RHEL9 rpmpkg rpmpkg-sriov rpmpkg-ual"]
     owners: ["email:prshanmug@amd.com"]
     area:
     sub-area:
@@ -55,6 +55,7 @@ builds:
     artifacts:
         - /device-metrics-exporter/bin/amdgpu-exporter-rhel9.x86_64.rpm
         - /device-metrics-exporter/bin/amdgpu-exporter-sriov-rhel9.x86_64.rpm
+        - /device-metrics-exporter/bin/amdgpuifoe-exporter-rhel9.x86_64.rpm
 
   build-device-metrics-exporter-docker-sriov-ubi9.6:
     commands: ["sh", "-c", "cd /usr/src/github.com/ROCm/device-metrics-exporter && make all && \
@@ -145,7 +146,7 @@ targets:
         #- build-helm-nic-artifact
         - build-debian-package-ub22.04
         - build-debian-package-ub24.04
-        #- build-rpm-package-rhel9
+        - build-rpm-package-rhel9
         - e2e-build-mock-exporter
         #- build-nic-debian-package
         - build-ifoe-debian-package-ub22.04

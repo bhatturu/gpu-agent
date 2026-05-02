@@ -28,18 +28,14 @@ VCS:            tag=%{vcs_tag};sha=%{vcs_sha};
 %description
 %{summary}
 
-# stop seperate debug package generation
+# stop separate debug package generation
 %define debug_package %{nil}
 # disable stripping of the binaries
 %define __strip /bin/true
 # allow missing build-ids for precompiled binaries
 %global _missing_build_ids_terminate_build 0
 
-# disable stripping of binaries by default
-# this directive coupled with debug_package being {nil} as above should be working... but it is not and
-# had to short _'_strip' definition as in above.
-# TO_BE_FIXED: Figure a way to do this without hacking '__strip' definition.
-%define __spec_install_port /usr/lib/rpm/brp-compress
+%define __spec_install_post /usr/lib/rpm/brp-compress
 
 # Define source and destination paths
 %define SRC_DIR    ./%{name}-%{version}-%{release}/
@@ -111,7 +107,9 @@ install -p %{SRC_DIR}/lib/* $RPM_BUILD_ROOT%{DEST_LIB}/
 %clean
 
 %preun
-systemctl stop amd-metrics-exporter-sriov.service
-systemctl stop gpuagent-sriov.service
-systemctl disable gpuagent-sriov.service
-systemctl disable amd-metrics-exporter-sriov.service
+if [ $1 -eq 0 ]; then
+    systemctl stop amd-metrics-exporter-sriov.service
+    systemctl stop gpuagent-sriov.service
+    systemctl disable gpuagent-sriov.service
+    systemctl disable amd-metrics-exporter-sriov.service
+fi

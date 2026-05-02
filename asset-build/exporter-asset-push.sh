@@ -61,9 +61,10 @@ copy_artifacts () {
     # # copy NIC debian ubuntu packages
     # cp /device-metrics-exporter/bin/amdnic-exporter_22.04_amd64.deb  $BUNDLE_DIR/amdnic-exporter_$RELEASE~22.04_amd64.deb
     # cp /device-metrics-exporter/bin/amdnic-exporter_24.04_amd64.deb  $BUNDLE_DIR/amdnic-exporter_$RELEASE~24.04_amd64.deb
-    # # copy rpm rhel9 packages
-    # cp /device-metrics-exporter/bin/amdgpu-exporter-rhel9.x86_64.rpm $BUNDLE_DIR/amdgpu-exporter-$RELEASE.x86_64.rpm
-    # cp /device-metrics-exporter/bin/amdgpu-exporter-sriov-rhel9.x86_64.rpm $BUNDLE_DIR/amdgpu-exporter-sriov-$RELEASE.x86_64.rpm
+    # copy rpm rhel9 packages
+    cp /device-metrics-exporter/bin/amdgpu-exporter-rhel9.x86_64.rpm $BUNDLE_DIR/amdgpu-exporter-$RELEASE.x86_64.rpm
+    cp /device-metrics-exporter/bin/amdgpu-exporter-sriov-rhel9.x86_64.rpm $BUNDLE_DIR/amdgpu-exporter-sriov-$RELEASE.x86_64.rpm
+    cp /device-metrics-exporter/bin/amdgpuifoe-exporter-rhel9.x86_64.rpm $BUNDLE_DIR/amdgpuifoe-exporter-$RELEASE.x86_64.rpm
     # # copy helm charts
     # cp /device-metrics-exporter/build/charts/internal-device-metrics-exporter-charts.tgz $BUNDLE_DIR/internal-device-metrics-exporter-charts-$RELEASE.tgz
     # cp /device-metrics-exporter/build/charts/amdpsdo-device-metrics-exporter-charts.tgz $BUNDLE_DIR/amdpsdo-device-metrics-exporter-charts-$RELEASE.tgz

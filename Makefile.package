@@ -28,8 +28,10 @@ BUILT_LIB_PATH := ${TOP_DIR}/build/assets/${UBUNTU_LIBDIR}/exporterout/
 BUILT_LIB_RHEL9_PATH := ${TOP_DIR}/build/assets/RHEL9/exporterout/lib
 RPM_DIR_NAME := amdgpu-exporter-$(RPM_BUILD_VERSION)-$(RPM_RELEASE_LABEL)
 RPM_SRIOV_DIR_NAME := amdgpu-exporter-sriov-$(RPM_BUILD_VERSION)-$(RPM_RELEASE_LABEL)
+RPM_UAL_DIR_NAME := amdgpuifoe-exporter-$(RPM_BUILD_VERSION)-$(RPM_RELEASE_LABEL)
 RPM_PACKAGE_DIR := ${TOP_DIR}/${RPM_DIR_NAME}
 RPM_PACKAGE_SRIOV_DIR := ${TOP_DIR}/${RPM_SRIOV_DIR_NAME}
+RPM_PACKAGE_UAL_DIR := ${TOP_DIR}/${RPM_UAL_DIR_NAME}
 
 # NIC debian build related variables
 NIC_DEBIAN_CONTROL = ${TOP_DIR}/nic-debian/DEBIAN/control
@@ -37,15 +39,16 @@ NIC_PKG_PATH := ${TOP_DIR}/nic-debian/usr/local/bin
 NIC_METRICS_CONF_DIR := ${TOP_DIR}/nic-debian/etc
 NIC_METRICS_CONF_PATH := ${NIC_METRICS_CONF_DIR}/metrics
 
-.PHONY: debpkg debpkg-ual debpkg-clean rpmpkg rpmpkg-clean pkg pkg-clean debpkg-sriov-clean debpkg-sriov rpmpkg-sriov nic-debpkg
+.PHONY: debpkg debpkg-ual debpkg-clean rpmpkg rpmpkg-clean rpmpkg-ual rpmpkg-ual-clean pkg pkg-clean debpkg-sriov-clean debpkg-sriov rpmpkg-sriov nic-debpkg
 pkg: debpkg rpmpkg nic-debpkg
 
-pkg-clean: debpkg-clean debpkg-sriov-clean rpmpkg-clean
+pkg-clean: debpkg-clean debpkg-sriov-clean rpmpkg-clean rpmpkg-ual-clean
 
 rpmpkg-clean:
 	echo "clean rpm package"
 	@rm -rf ${RPM_PACKAGE_DIR}
 	@rm -rf ${RPM_PACKAGE_SRIOV_DIR}
+	@rm -rf ${RPM_PACKAGE_UAL_DIR}
 	@rm -rf ${${PKG_SRIOV_LUA_PATH}}
 	@rm -rf *.tar.gz
 	@rm -rf ${RPM_PATH}/*.tar.gz
@@ -55,54 +58,56 @@ rpmpkg-clean:
 	@rm -rf ${TOP_DIR}/BUILDROOT
 	@rm -rf ${TOP_DIR}/SOURCES
 
+define rpmpkg-stage-common
+	@mkdir -p $(RPM_STAGE_DIR)/bin $(RPM_STAGE_DIR)/lib $(RPM_STAGE_DIR)/share/rocprofiler-sdk
+	tar -xf $(RPM_GPUAGENT_BIN) -C $(RPM_STAGE_DIR)/bin/
+	@cp -vf $(RPM_GPUCTL_BIN) $(RPM_STAGE_DIR)/bin/gpuctl
+	@cp -vf $(CURDIR)/bin/amd-metrics-exporter $(RPM_STAGE_DIR)/bin/
+	@cp -vf $(CURDIR)/bin/metricsclient $(RPM_STAGE_DIR)/bin/
+	@cp -vf $(CURDIR)/bin/amdgpuhealth $(RPM_STAGE_DIR)/bin/
+	@cp -vaf ${TOP_DIR}/tools/techsupport/metrics-exporter-ts.sh $(RPM_STAGE_DIR)/bin/metrics-exporter-ts.sh
+	@cp -rvf ${GPUAGENT_LIBS_RHEL9}/ $(RPM_STAGE_DIR)/
+	@if [ ! -d $(PROFILER_RPM_LIBS_RHEL9) ]; then \
+		echo "profiler dependent assets not built, run target libcopy-assets-RHEL9"; \
+		exit 1; \
+	fi
+	@cp -vaf $(PROFILER_RPM_LIBS_RHEL9)/rocprofilerdeplib/lib* $(RPM_STAGE_DIR)/lib/
+	@cp -vf ${ROCPROFILER_ASSETS}/librocpclient* $(RPM_STAGE_DIR)/lib/
+	@cp -vf ${ROCPROFILER_ASSETS}/rocpctl $(RPM_STAGE_DIR)/bin/
+	@cp -vf ${ROCPROFLER_SDK_ASSETS}/* $(RPM_STAGE_DIR)/share/rocprofiler-sdk
+	@jq '$(RPM_JQ_FILTER)' $(CONFIG_DIR)/config.json > $(RPM_STAGE_DIR)/bin/config.json
+	@cp -vaf ${TOP_DIR}/debian $(RPM_STAGE_DIR)/
+	@cp -vf ${LUA_PROTO} $(RPM_STAGE_DIR)/debian/usr/local/etc/metrics/slurm/plugin.proto
+endef
+
+define rpmpkg-finalize
+	@cp -vaf LICENSE $(RPM_STAGE_DIR)/
+	@cp -vaf README.md $(RPM_STAGE_DIR)/
+	@rm -rf ${RPM_PATH}
+	@mkdir -p ${RPM_PATH}
+	@tar czvf $(RPM_DIR_LABEL).tar.gz $(RPM_DIR_LABEL)
+	@mv -vf $(RPM_DIR_LABEL).tar.gz ${RPM_PATH}/
+	@sed -i "s/RPM_BUILD_VERSION/$(RPM_BUILD_VERSION)/g" rpmbuild/amdgpu-exporter.spec
+	@sed -i "s/RPM_RELEASE_LABEL/$(RPM_RELEASE_LABEL)/g" rpmbuild/amdgpu-exporter.spec
+	@rpmbuild -ba --define "_topdir `pwd`" $(RPM_BUILD_DEFINES) -v --buildroot `pwd`/BUILDROOT/ \
+		--undefine dist rpmbuild/amdgpu-exporter.spec
+	@git checkout rpmbuild/amdgpu-exporter.spec
+	@mv -v ${TOP_DIR}/RPMS/x86_64/$(RPM_OUTPUT_GLOB) ${TOP_DIR}/bin/$(RPM_OUTPUT_FILE)
+endef
+
+rpmpkg: RPM_STAGE_DIR    = ${RPM_PACKAGE_DIR}
+rpmpkg: RPM_GPUAGENT_BIN = ${ASSETS_PATH}/gpuagent_static.bin.gz
+rpmpkg: RPM_GPUCTL_BIN   = ${ASSETS_PATH}/gpuctl.gobin
+rpmpkg: RPM_JQ_FILTER    = .CommonConfig.HealthService.Enable = false | del(.GPUConfig.ExtraPodLabels, .NICConfig, .IFOEConfig)
+rpmpkg: RPM_DIR_LABEL    = ${RPM_DIR_NAME}
+rpmpkg: RPM_BUILD_DEFINES =
+rpmpkg: RPM_OUTPUT_GLOB  = amdgpu-exporter*.x86_64.rpm
+rpmpkg: RPM_OUTPUT_FILE  = amdgpu-exporter-rhel9.x86_64.rpm
 rpmpkg: rpmpkg-clean
 	@echo "build rpm package for $(RPM_BUILD_VERSION)-$(RPM_RELEASE_LABEL)"
 	${MAKE} amdexporter
-	# copy to bin folders for tar
-	@mkdir -p ${RPM_PACKAGE_DIR}/bin
-	@mkdir -p ${RPM_PACKAGE_DIR}/lib
-	@mkdir -p ${RPM_PACKAGE_DIR}/share/rocprofiler-sdk
-	tar -xf ${ASSETS_PATH}/gpuagent_static.bin.gz -C ${RPM_PACKAGE_DIR}/bin/
-	@cp -vf ${ASSETS_PATH}/gpuctl.gobin ${RPM_PACKAGE_DIR}/bin/gpuctl
-	@cp -vf $(CURDIR)/bin/amd-metrics-exporter ${RPM_PACKAGE_DIR}/bin/
-	@cp -vf $(CURDIR)/bin/metricsclient ${RPM_PACKAGE_DIR}/bin/
-	@cp -vf $(CURDIR)/bin/amdgpuhealth ${RPM_PACKAGE_DIR}/bin/
-	@cp -vaf ${TOP_DIR}/tools/techsupport/metrics-exporter-ts.sh ${RPM_PACKAGE_DIR}/bin/metrics-exporter-ts.sh
-	# copy libraries
-	@echo "Copy prebuilt libraries"
-	@cp -rvf ${GPUAGENT_LIBS_RHEL9}/ ${RPM_PACKAGE_DIR}/
-	@if [ ! -d $(PROFILER_RPM_LIBS_RHEL9) ]; then \
-		echo "profiler dependent assets not built, run target libcopy-assets-RHEL9";\
-		exit 1;\
-	fi
-	@echo "Copying profiler dependent libraries form ${PROFILER_RPM_LIBS_RHEL9}"
-	@cp -vaf $(PROFILER_RPM_LIBS_RHEL9)/rocprofilerdeplib/lib* ${RPM_PACKAGE_DIR}/lib/
-	ls -lart ${RPM_PACKAGE_DIR}/lib
-	@echo "Copying rocprofiler client library and binary"
-	@cp -vf ${ROCPROFILER_ASSETS}/librocpclient* ${RPM_PACKAGE_DIR}/lib/
-	@cp -vf ${ROCPROFILER_ASSETS}/rocpctl ${RPM_PACKAGE_DIR}/bin/
-	@cp -vf ${ROCPROFLER_SDK_ASSETS}/* ${RPM_PACKAGE_DIR}/share/rocprofiler-sdk
-	#copy default config
-	@jq '.CommonConfig.HealthService.Enable = false | del(.GPUConfig.ExtraPodLabels, .NICConfig, .IFOEConfig)' $(CONFIG_DIR)/config.json > ${RPM_PACKAGE_DIR}/bin/config.json
-	@cat ${RPM_PACKAGE_DIR}/bin/config.json
-	@cp -vaf ${TOP_DIR}/debian ${RPM_PACKAGE_DIR}/
-	@cp -vaf LICENSE ${RPM_PACKAGE_DIR}/
-	@cp -vaf README.md ${RPM_PACKAGE_DIR}/
-	@rm -rf ${RPM_PATH}
-	@mkdir -p ${RPM_PATH}
-	@tar czvf ${RPM_DIR_NAME}.tar.gz ${RPM_DIR_NAME}
-	@mv -vf ${RPM_DIR_NAME}.tar.gz ${RPM_PATH}/
-	@tar czf amdgpu-exporter-$(RPM_BUILD_VERSION)-$(RPM_RELEASE_LABEL).tar.gz ${RPM_DIR_NAME}
-	@mv amdgpu-exporter-$(RPM_BUILD_VERSION)-$(RPM_RELEASE_LABEL).tar.gz ${RPM_PATH}
-	# set the version in the spec file
-	@sed -i "s/RPM_BUILD_VERSION/$(RPM_BUILD_VERSION)/g" rpmbuild/amdgpu-exporter.spec
-	@sed -i "s/RPM_RELEASE_LABEL/$(RPM_RELEASE_LABEL)/g" rpmbuild/amdgpu-exporter.spec
-	@rpmbuild -ba --define "_topdir `pwd`" -v --buildroot `pwd`/BUILDROOT/ \
-		--undefine dist rpmbuild/amdgpu-exporter.spec
-	# revert the dynamic version set file
-	@git checkout rpmbuild/amdgpu-exporter.spec
-	# rename for internal build
-	@mv -v ${TOP_DIR}/RPMS/x86_64/amdgpu-exporter*.x86_64.rpm ${TOP_DIR}/bin/amdgpu-exporter-rhel9.x86_64.rpm
+	$(rpmpkg-stage-common)
+	$(rpmpkg-finalize)
 
 rpmpkg-sriov: rpmpkg-clean
 	@echo "build rpm sriov package for $(RPM_BUILD_VERSION)-$(RPM_RELEASE_LABEL)"
@@ -148,6 +153,34 @@ rpmpkg-sriov: rpmpkg-clean
 	@rm -rf ${PKG_SRIOV_LUA_PATH}
 	@rm -rf ${PKG_SRIOV_LIB_PATH}
 	@mv -v ${TOP_DIR}/RPMS/x86_64/amdgpu-exporter-sriov*.x86_64.rpm ${TOP_DIR}/bin/amdgpu-exporter-sriov-rhel9.x86_64.rpm
+
+rpmpkg-ual-clean:
+	echo "clean rpm ual package"
+	@rm -rf ${RPM_PACKAGE_UAL_DIR}
+	@rm -rf *.tar.gz
+	@rm -rf ${RPM_PATH}/*.tar.gz
+	@rm -rf ${TOP_DIR}/BUILD
+	@rm -rf ${TOP_DIR}/RPMS
+	@rm -rf ${TOP_DIR}/SRPMS
+	@rm -rf ${TOP_DIR}/BUILDROOT
+	@rm -rf ${TOP_DIR}/SOURCES
+
+rpmpkg-ual: RPM_STAGE_DIR    = ${RPM_PACKAGE_UAL_DIR}
+rpmpkg-ual: RPM_GPUAGENT_BIN = ${ASSETS_PATH}/gpuagent_ual.bin.gz
+rpmpkg-ual: RPM_GPUCTL_BIN   = ${ASSETS_PATH}/gpuctl_ual
+rpmpkg-ual: RPM_JQ_FILTER    = .CommonConfig.HealthService.Enable = false | del(.GPUConfig.ExtraPodLabels, .NICConfig)
+rpmpkg-ual: RPM_DIR_LABEL    = ${RPM_UAL_DIR_NAME}
+rpmpkg-ual: RPM_BUILD_DEFINES = --define "ual 1"
+rpmpkg-ual: RPM_OUTPUT_GLOB  = amdgpuifoe-exporter*.x86_64.rpm
+rpmpkg-ual: RPM_OUTPUT_FILE  = amdgpuifoe-exporter-rhel9.x86_64.rpm
+rpmpkg-ual: rpmpkg-ual-clean
+	@echo "build rpm ual package for $(RPM_BUILD_VERSION)-$(RPM_RELEASE_LABEL)"
+	${MAKE} amdexporter
+	$(rpmpkg-stage-common)
+	@echo "PLATFORM=helios" >> $(RPM_STAGE_DIR)/debian/usr/local/etc/metrics/gpuagent.conf
+	@sed -i 's|ExecStart=/usr/local/bin/amd-metrics-exporter$$|ExecStart=/usr/local/bin/amd-metrics-exporter -monitor-ifoe=true|' \
+		$(RPM_STAGE_DIR)/debian/usr/lib/systemd/system/amd-metrics-exporter.service
+	$(rpmpkg-finalize)
 
 debpkg-clean:
 	rm -rf ${TOP_DIR}/bin/amdgpu-exporter*.deb

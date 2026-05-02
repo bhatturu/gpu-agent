@@ -1,51 +1,49 @@
 # Copyright (c) Advanced Micro Devices, Inc. All rights reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the \"License\");
+# Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an \"AS IS\" BASIS,
+# distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
 
-Name:           amdgpu-exporter
+Name:           %{?ual:amdgpuifoe-exporter}%{!?ual:amdgpu-exporter}
 Version:        RPM_BUILD_VERSION
 Release:        RPM_RELEASE_LABEL
-Summary:        AMD GPU Metrics Exporter for RHEL
+Summary:        AMD GPU Metrics Exporter for RHEL%{?ual: (IFOE/UAL mode)}
 Vendor:         AMD
 License:        Apache License Version 2.0
 Source0:        %{name}-%{version}-%{release}.tar.gz
 BuildArch:      x86_64
 URL:            https://instinct.docs.amd.com/projects/device-metrics-exporter
 Requires:       systemd
+%{?ual:Conflicts:      amdgpu-exporter}
 VCS:            tag=%{vcs_tag};sha=%{vcs_sha};
 
 %description
 %{summary}
 
-# stop seperate debug package generation
+# stop separate debug package generation
 %define debug_package %{nil}
 # disable stripping of the binaries
 %define __strip /bin/true
 # allow missing build-ids for precompiled binaries
 %global _missing_build_ids_terminate_build 0
 
-# disable stripping of binaries by default
-# this directive coupled with debug_package being {nil} as above should be working... but it is not and
-# had to short _'_strip' definition as in above.
-# TO_BE_FIXED: Figure a way to do this without hacking '__strip' definition.
-%define __spec_install_port /usr/lib/rpm/brp-compress
+%define __spec_install_post /usr/lib/rpm/brp-compress
 
 # Define source and destination paths
 %define SRC_DIR    ./%{name}-%{version}-%{release}/
 
 %define DEST_BIN   /usr/local/bin/
 %define DEST_SLURM /usr/local/etc/metrics/slurm/
+%define DEST_SLURM_LUA /usr/local/etc/metrics/slurm/lua.d/
 %define DEST_SVC   /usr/lib/systemd/system/
 %define DEST_LCONF /usr/local/etc/metrics/
 %define DEST_CONF  /etc/metrics/
@@ -61,6 +59,7 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/usr/local/bin/
 mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system/
 mkdir -p $RPM_BUILD_ROOT/usr/local/etc/metrics/slurm
+mkdir -p $RPM_BUILD_ROOT/usr/local/etc/metrics/slurm/lua.d
 mkdir -p $RPM_BUILD_ROOT/etc/metrics/
 mkdir -p $RPM_BUILD_ROOT/usr/local/metrics/share/rocprofiler-sdk
 mkdir -p $RPM_BUILD_ROOT/usr/local/metrics/lib
@@ -82,6 +81,8 @@ install -p %{SRC_DIR}/debian/usr/lib/systemd/system/gpuagent.service $RPM_BUILD_
 # install Config files
 install -p %{SRC_DIR}/debian/usr/local/etc/metrics/slurm/slurm-epilog.sh  $RPM_BUILD_ROOT%{DEST_SLURM}/slurm-epilog.sh
 install -p %{SRC_DIR}/debian/usr/local/etc/metrics/slurm/slurm-prolog.sh  $RPM_BUILD_ROOT%{DEST_SLURM}slurm-prolog.sh
+install -p %{SRC_DIR}/debian/usr/local/etc/metrics/slurm/plugin.proto $RPM_BUILD_ROOT%{DEST_SLURM}/plugin.proto
+install -p %{SRC_DIR}/debian/usr/local/etc/metrics/slurm/lua.d/pensando.lua $RPM_BUILD_ROOT%{DEST_SLURM_LUA}/pensando.lua
 install -p %{SRC_DIR}/debian/usr/local/etc/metrics/gpuagent.conf  $RPM_BUILD_ROOT%{DEST_LCONF}/gpuagent.conf
 install -p %{SRC_DIR}/bin/config.json  $RPM_BUILD_ROOT%{DEST_CONF}/config.json
 install -p %{SRC_DIR}//share/rocprofiler-sdk/* $RPM_BUILD_ROOT%{DEST_PROFILER_SDK_CONF}/
@@ -93,6 +94,8 @@ install -p %{SRC_DIR}/lib/* $RPM_BUILD_ROOT%{DEST_LIB}/
 %defattr(-,root,root, 0755)
 %attr(644, root, root) %{DEST_SLURM}/slurm-epilog.sh
 %attr(644, root, root) %{DEST_SLURM}/slurm-prolog.sh
+%attr(644, root, root) %{DEST_SLURM}/plugin.proto
+%attr(644, root, root) %{DEST_SLURM_LUA}/pensando.lua
 %attr(644, root, root) %{DEST_SVC}/amd-metrics-exporter.service
 %attr(644, root, root) %{DEST_SVC}/gpuagent.service
 %attr(644, root, root) %{DEST_LCONF}/gpuagent.conf
@@ -117,7 +120,9 @@ install -p %{SRC_DIR}/lib/* $RPM_BUILD_ROOT%{DEST_LIB}/
 %clean
 
 %preun
-systemctl stop amd-metrics-exporter.service
-systemctl stop gpuagent.service
-systemctl disable gpuagent.service
-systemctl disable amd-metrics-exporter.service
+if [ $1 -eq 0 ]; then
+    systemctl stop amd-metrics-exporter.service
+    systemctl stop gpuagent.service
+    systemctl disable gpuagent.service
+    systemctl disable amd-metrics-exporter.service
+fi
