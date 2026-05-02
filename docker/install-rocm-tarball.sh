@@ -40,7 +40,7 @@ mkdir -p "${KEEP_DIR}/lib" "${KEEP_DIR}/bin" "${KEEP_DIR}/libexec" "${KEEP_DIR}/
 for pat in \
     "libamdhip64.*" "librocm_kpack.*" "librocprofiler-sdk.*" "librocprofiler-sdk-roctx.*" \
     "librocprofiler-register.*" "libamd_comgr.*" "libamd_comgr_loader.*" \
-    "libhsa-runtime64.*" "libhsa-amd-aqlprofile64.*"; do
+    "libhsa-runtime64.*" "libhsa-amd-aqlprofile64.*" "librocrand.*"; do
     for f in "${ROCM_DIR}/lib"/${pat}; do
         if [ -e "$f" ] || [ -L "$f" ]; then
             cp -a "$f" "${KEEP_DIR}/lib/" 2>/dev/null || true
