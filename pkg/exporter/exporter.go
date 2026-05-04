@@ -20,7 +20,6 @@ import (
 	"context"
 	"expvar"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -150,8 +149,8 @@ func startMetricsServer(c *config.ConfigHandler, bindAddr string) *http.Server {
 	go func() {
 		logger.Log.Printf("serving requests on %s:%v", bindAddr, serverPort)
 		err := srv.ListenAndServe()
-		if err != http.ErrServerClosed {
-			log.Fatalf("ListenAndServe(): %v", err)
+		if err != nil && err != http.ErrServerClosed {
+			logger.Log.Fatalf("ListenAndServe(): %v", err)
 		}
 		logger.Log.Printf("server on %s:%v shutdown gracefully", bindAddr, serverPort)
 	}()

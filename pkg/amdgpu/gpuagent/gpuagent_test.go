@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	dto "github.com/prometheus/client_model/go"
 
@@ -1061,4 +1062,39 @@ func TestCPERFatalSeveritySetsGPUUnhealthy(t *testing.T) {
 		assert.Assert(t, state.Health != unhealthy, "GPU must not be unhealthy on non-fatal CPER severity")
 	}
 	gpuclient.Unlock()
+}
+
+// TestGetMetricsAllContextCancellation verifies that getMetricsAll returns
+// promptly when the context is cancelled, rather than blocking on the
+// profiler goroutine for the full rocpctl timeout.
+func TestGetMetricsAllContextCancellation(t *testing.T) {
+	teardownSuite := setupTest(t)
+	defer teardownSuite(t)
+
+	ga := getNewAgent(t)
+	defer ga.Close()
+
+	var gpuclient *GPUAgentGPUClient
+	for _, client := range ga.clients {
+		if client.GetDeviceType() == globals.GPUDevice {
+			gpuclient = client.(*GPUAgentGPUClient)
+			break
+		}
+	}
+
+	// Pre-cancel the context before calling getMetricsAll.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- gpuclient.getMetricsAll(ctx)
+	}()
+
+	select {
+	case err := <-done:
+		assert.Equal(t, context.Canceled, err, "expected context.Canceled, got: %v", err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("getMetricsAll did not return after context cancellation")
+	}
 }

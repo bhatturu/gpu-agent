@@ -1836,7 +1836,7 @@ func (ga *GPUAgentGPUClient) UpdateStaticMetrics() error {
 	if err != nil {
 		logger.Log.Printf("Error listing workloads: %v", err)
 	}
-	pmetrics, err := ga.getProfilerMetrics()
+	pmetrics, err := ga.getProfilerMetrics(context.Background())
 	if err != nil {
 		//continue as this may not be available at this time
 		pmetrics = nil
@@ -1865,7 +1865,7 @@ func (ga *GPUAgentGPUClient) UpdateStaticMetrics() error {
 }
 
 func (ga *GPUAgentGPUClient) UpdateMetricsStats(ctx context.Context) error {
-	return ga.getMetricsAll()
+	return ga.getMetricsAll(ctx)
 }
 
 func (ga *GPUAgentGPUClient) QueryMetrics() (interface{}, error) {
