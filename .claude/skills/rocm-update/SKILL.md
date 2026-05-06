@@ -183,7 +183,7 @@ make -C docker docker \
 Use `/builder mock` to build the mock docker image, then curl the endpoint:
 ```bash
 curl -s localhost:5001/metrics | grep vram_max_bandwidth
-# Expected: amd_gpu_vram_max_bandwidth 3.2768e+06  PASS
+# Expected: gpu_vram_max_bandwidth 3.2768e+06  PASS
 ```
 
 ### K8s e2e (real hardware — manual)
