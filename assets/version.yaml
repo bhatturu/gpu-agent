@@ -20,15 +20,15 @@ assets:
     branch  : main
 
   - name    : amd_smi_lib
-    version : 91c1f54
-    branch  : release/rocm-rel-7.2
+    version : 769135f
+    branch  : release/therock-7.12
 
   - name    : rocprofiler
-    version : 7.2
-    branch  : release/rocm-rel-7.2
+    version : 7.12
+    branch  : release/therock-7.12
 
   - name    : profiler_lib
-    version : 7.2
+    version : 7.12
 
   - name    : gpuagent_ual.bin.gz
     version : 1.127.0-99
