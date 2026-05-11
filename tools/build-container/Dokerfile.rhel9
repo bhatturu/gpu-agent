@@ -24,6 +24,8 @@ RUN dnf install -y --allowerasing \
     libstdc++-static \
     wget \
     yum \
+    libnl3-devel \
+    libmnl-devel \
     && dnf clean all
 
 RUN yum install -y sudo

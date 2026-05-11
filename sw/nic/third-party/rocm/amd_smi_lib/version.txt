@@ -1,2 +1,1 @@
-rocm-7.2.0
-
+amd-npi

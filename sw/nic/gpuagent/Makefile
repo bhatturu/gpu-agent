@@ -152,7 +152,7 @@ LDFLAGS_COMMON  := -pthread -rdynamic -no-canonical-prefixes -Wl,--gc-sections \
                    -l:libssl.a -l:libcrypto.a
 LDFLAGS_AMD_SMI := ${LDFLAGS_COMMON} \
                    -L${TOPDIR}/nic/third-party/rocm/amd_smi_lib/x86_64/lib/ \
-                   -l:libamd_smi.so
+                   -l:libamd_smi.so -Wl,--allow-shlib-undefined
 LDFLAGS_GIM_SMI := ${LDFLAGS_COMMON} \
                    -L${TOPDIR}/nic/third-party/rocm/gim_amd_smi_lib/x86_64/lib/ \
                    -l:libgim_amd_smi.so
