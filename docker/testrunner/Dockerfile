@@ -4,12 +4,12 @@ FROM ${BASE_IMAGE}
 LABEL maintainer="AMD Inc"
 LABEL OS="registry.access.redhat.com/ubi9/ubi:9.6"
 
-ARG ROCM_VERSION=7.2.1
+ARG ROCM_VERSION=7.2.3
 ARG RADEON_REPO_URL=https://repo.radeon.com
 # RVS_ROCM_VERSION: yum version suffix used to install rocm-validation-suite.
 # Defaults to ROCM_VERSION (same repo). When using ROCM_TARBALL_URL the target
 # version may not be on repo.radeon.com yet; override to the last known public
-# release, e.g. RVS_ROCM_VERSION=.yum_7.2.1.
+# release, e.g. RVS_ROCM_VERSION=.yum_7.2.3.
 ARG RVS_ROCM_VERSION=${ROCM_VERSION}
 
 # S3 therock nightly tarball (optional); override via ROCM_TARBALL_URL in dev.env
