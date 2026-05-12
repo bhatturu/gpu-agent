@@ -211,9 +211,16 @@ This project uses custom skills for specialized workflows:
 
 - **`/rocm-update`** - ROCm/therock version update workflow for DME + gpu-agent
   - Location: [.claude/skills/rocm-update/](.claude/skills/rocm-update/)
-  - Triggers: "update to ROCm 7.x", "new therock version", "update amdsmi"
+  - Triggers: "update to ROCm 7.x", "new therock version", "bump ROCm version"
   - Orchestrates full update across both repos: amdsmi extraction → gpuagent rebuild → DME branch → docker image
   - Reuses `/builder` for gpuagent/exporter/docker build steps
+
+- **`/amdsmi-update`** - Update libamd_smi.so to a new version or source branch (collab stack)
+  - Location: [.claude/skills/amdsmi-update/](.claude/skills/amdsmi-update/)
+  - Triggers: "update amdsmi", "new amd-npi commit", "bump libamd_smi", "update SO version"
+  - Distinct from `/rocm-update`: targets just the amdsmi library (public or private `AMD-ROCm-Internal/rocm-systems`)
+  - Full workflow: build amdsmi from source (RHEL9) → update gpu-agent vendor tree → rebuild gpuagent → update DME assets → rebuild docker images
+  - Handles SSH key forwarding for private `AMD-ROCm-Internal` repo, GLIBC cap validation, netlink runtime deps, SO version bumps
   - Key rules: rebuild gpuagent when amdsmi content changes, DCM changes are separate
 
 **Adding Skills:** Place new skills in `.claude/skills/` for auto-discovery
