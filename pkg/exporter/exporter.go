@@ -302,6 +302,9 @@ func NewExporter(agentGrpcport int, configFile string, opts ...ExporterOption) *
 			// This is important because the exporter relies on the k8s client for various operations,
 			return nil
 		} else {
+			if exporter.enableGPUMonitoring {
+				k8sApiClient.SetEventSourceComponent("amd-gpu-metrics-exporter")
+			}
 			exporter.k8sApiClient = k8sApiClient
 			logger.Log.Printf("k8s client created successfully")
 		}
