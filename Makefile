@@ -108,9 +108,13 @@ BUILD_DIR := $(DOCS_DIR)/_build
 HTML_DIR := $(BUILD_DIR)/html
 
 # library branch to build amdsmi libraries for gpuagent
+# NOTE: release/therock-7.13 does not yet exist in ROCm/rocm-systems.
+# libamd_smi.so.26.4.0 was extracted directly from the public tarball:
+#   https://repo.amd.com/rocm/tarball-multi-arch/therock-dist-linux-gfx94X-dcgpu-7.13.0.tar.gz
+# Update AMDSMI_BRANCH when release/therock-7.13 is cut in ROCm/rocm-systems.
 AMDSMI_REPO   ?= https://github.com/ROCm/rocm-systems.git
-AMDSMI_BRANCH ?= release/therock-7.13
-AMDSMI_COMMIT ?= therock-7.13.0
+AMDSMI_BRANCH ?= release/therock-7.12
+AMDSMI_COMMIT ?= therock-7.13.0-tarball
 AMDSMI_SUBDIR ?= projects/amdsmi
 GIMSMI_BRANCH ?= mainline
 GIMSMI_COMMIT ?= mainline/8.7.0.K
