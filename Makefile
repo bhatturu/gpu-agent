@@ -109,16 +109,16 @@ HTML_DIR := $(BUILD_DIR)/html
 
 # library branch to build amdsmi libraries for gpuagent
 AMDSMI_REPO   ?= https://github.com/ROCm/rocm-systems.git
-AMDSMI_BRANCH ?= release/therock-7.12
-AMDSMI_COMMIT ?= 769135f77f91c2848871c496ffa04e6230ea3674
+AMDSMI_BRANCH ?= release/therock-7.13
+AMDSMI_COMMIT ?= therock-7.13.0
 AMDSMI_SUBDIR ?= projects/amdsmi
 GIMSMI_BRANCH ?= mainline
 GIMSMI_COMMIT ?= mainline/8.7.0.K
 GPUAGENT_BRANCH ?= main
 GPUAGENT_COMMIT ?= 9645999
 
-ROCM_VERSION ?= .yum_7.2.1
-ROCM_APT_VERSION ?= .apt_7.2.1
+ROCM_VERSION ?= 7.13.0
+ROCM_APT_VERSION ?= 7.13.0
 AINIC_VERSION ?= 1.117.5-a-56
 
 export ${GOROOT}

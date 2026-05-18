@@ -6,8 +6,8 @@ LABEL maintainer="AMD Inc"
 LABEL OS="registry.access.redhat.com/ubi9/ubi-minimal:9.6"
 
 
-ARG ROCM_VERSION=7.2
-ARG AMDGPU_VERSION=7.2
+ARG ROCM_VERSION=7.13
+ARG AMDGPU_VERSION=7.13
 ARG AMDGPU_REPO_URL=https://repo.radeon.com
 # S3 therock nightly tarball (optional). Set ROCM_TARBALL_URL to install ROCm
 # from a therock tarball instead of repo.radeon.com.
