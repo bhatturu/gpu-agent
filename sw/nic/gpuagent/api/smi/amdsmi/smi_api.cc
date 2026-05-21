@@ -2100,7 +2100,17 @@ smi_gpu_init_immutable_attrs (aga_gpu_handle_t gpu_handle, aga_gpu_spec_t *spec,
     // fill the GPU vendor information
     memcpy(status->card_vendor, board_info.manufacturer_name, AGA_MAX_STR_LEN);
     // fill the GPU card model
-    memcpy(status->card_model, board_info.model_number, AGA_MAX_STR_LEN);
+    // Prefer model_number; fall back to asic market_name for GPUs (e.g. Navi48/gfx1201)
+    // where board_info fields are empty but amdsmi_get_gpu_asic_info() returns a name.
+    if (strlen(board_info.model_number) > 0) {
+        memcpy(status->card_model, board_info.model_number, AGA_MAX_STR_LEN);
+    } else {
+        amdsmi_asic_info_t asic_info = {};
+        amdsmi_ret = amdsmi_get_gpu_asic_info(gpu_handle, &asic_info);
+        if (amdsmi_ret == AMDSMI_STATUS_SUCCESS && strlen(asic_info.market_name) > 0) {
+            memcpy(status->card_model, asic_info.market_name, AGA_MAX_STR_LEN);
+        }
+    }
     // fill the driver version
     amdsmi_ret = amdsmi_get_gpu_driver_info(gpu_handle, &driver_info);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
