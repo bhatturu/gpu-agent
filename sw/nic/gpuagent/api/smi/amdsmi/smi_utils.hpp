@@ -57,16 +57,16 @@ find_low_high_frequency (amdsmi_frequencies_t *freq,
     *min = 0xffffffff;
     *max = 0xffffffff;
 
-    if (freq->has_deep_sleep) {
-        // lowest supported freq will be deep sleep value; set the second lowest
-        // frequency to be the minimum
-        if (f.size() > 1) {
-            *min = (uint32_t)(f[1]/1000000);
-        }
-    } else {
-        // lowest supported frequency
-        if (f.size() >= 1) {
-            *min = (uint32_t)(f[0]/1000000);
+    // find the lowest non-zero, non-deep-sleep frequency
+    // skip index 0 if has_deep_sleep is set (it's the deep sleep value)
+    // also skip any 0 entries — on some platforms (e.g. RDNA4/gfx1201)
+    // the DPM table contains a 0 MHz deep-sleep entry without
+    // has_deep_sleep being set
+    size_t start = freq->has_deep_sleep ? 1 : 0;
+    for (size_t i = start; i < f.size(); i++) {
+        if (f[i] > 0) {
+            *min = (uint32_t)(f[i] / 1000000);
+            break;
         }
     }
     if (f.size() >= 1) {

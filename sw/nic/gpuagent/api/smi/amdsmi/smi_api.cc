@@ -87,6 +87,20 @@ smi_fill_gpu_clock_frequency_spec_ (aga_gpu_handle_t gpu_handle,
         clock_spec->lo = clock_info.min_clk;
         clock_spec->hi = clock_info.max_clk;
     }
+    // on some platforms (e.g. RDNA4/gfx1201), amdsmi_get_clock_info() returns
+    // min_clk=0 because the GFX clock drops to 0 MHz at idle; fall back to the
+    // DPM table to derive the actual minimum operational frequency
+    if (clock_spec->lo == 0) {
+        amdsmi_ret = amdsmi_get_clk_freq(gpu_handle, AMDSMI_CLK_TYPE_SYS,
+                                          &freq);
+        if (amdsmi_ret == AMDSMI_STATUS_SUCCESS) {
+            uint32_t dpm_min = 0, dpm_max = 0;
+            find_low_high_frequency(&freq, &dpm_min, &dpm_max);
+            if (dpm_min != 0 && dpm_min != 0xffffffff) {
+                clock_spec->lo = dpm_min;
+            }
+        }
+    }
     clk_cnt++;
     // memory clock
     clock_spec = &spec->clock_freq[clk_cnt];
