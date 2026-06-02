@@ -1267,8 +1267,14 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
 
     // fill VRAM usage
     smi_fill_vram_usage_(gpu_handle, &stats->vram_usage);
-    // fill additional statistics from gpu metrics
-    {
+    // fetch fresh gpu metrics; fall back to cache on amdsmi error
+    amdsmi_ret = amdsmi_get_gpu_metrics_info(gpu_handle, &metrics_info);
+    if (amdsmi_ret == AMDSMI_STATUS_SUCCESS) {
+        std::lock_guard<std::mutex> lock(g_gpu_metrics_mutex);
+        g_gpu_metrics[gpu_handle] = metrics_info;
+    } else {
+        AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}; "
+                      "falling back to cache", gpu_handle, amdsmi_ret);
         std::lock_guard<std::mutex> lock(g_gpu_metrics_mutex);
         if (g_gpu_metrics.find(gpu_handle) != g_gpu_metrics.end()) {
             metrics_info = g_gpu_metrics[gpu_handle];
