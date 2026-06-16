@@ -175,6 +175,12 @@ smi_state::smi_watcher_update_all_watch_fields_(uint32_t gpu_id,
     uint64_t pcie_tx = 0, pcie_rx = 0;
     amdsmi_counter_value_t counter_value = { 0 };
 
+    // skip ALL waking telemetry ioctls on runtime-suspended GPUs (ROCM-26020):
+    // serve the last cached watch_info so the device is not resumed just to poll
+    if (smi_gpu_runtime_suspended(gpu_handle)) {
+        return SDK_RET_OK;
+    }
+
     watch_db->watch_info[gpu_id] = { 0 };
 
     // get GPU metrics, which can be used to bulk fill a few fields

@@ -146,18 +146,26 @@ smi_gpu_fill_spec (aga_gpu_handle_t gpu_handle,
     uint32_t sensor_idx[AGA_GPU_MAX_POWER_CAP_SENSOR];
     amdsmi_power_cap_type_t sensor_types[AGA_GPU_MAX_POWER_CAP_SENSOR];
 
-    // re-fetch gpu metrics for this GPU handle
-    amdsmi_ret = amdsmi_get_gpu_metrics_info(gpu_handle, &metrics_info);
-    {
-        std::lock_guard<std::mutex> lock(g_gpu_metrics_mutex);
-        g_gpu_metrics.erase(gpu_handle);
-        if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-            AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
-                          gpu_handle, amdsmi_ret);
-        } else {
-            // cache response
-            g_gpu_metrics[gpu_handle] = metrics_info;
+    // skip the waking metrics ioctl on runtime-suspended GPUs; serve cache (ROCM-26020)
+    bool runtime_suspended = smi_gpu_runtime_suspended(gpu_handle);
+    if (!runtime_suspended) {
+        amdsmi_ret = amdsmi_get_gpu_metrics_info(gpu_handle, &metrics_info);
+        {
+            std::lock_guard<std::mutex> lock(g_gpu_metrics_mutex);
+            g_gpu_metrics.erase(gpu_handle);
+            if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+                AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, "
+                              "err {}", gpu_handle, amdsmi_ret);
+            } else {
+                // cache response
+                g_gpu_metrics[gpu_handle] = metrics_info;
+            }
         }
+    }
+    // skip waking spec ioctls on runtime-suspended GPUs (ROCM-26020); these
+    // are static-ish attributes so the spec already holds the last known values
+    if (runtime_suspended) {
+        return SDK_RET_OK;
     }
     // fill the overdrive level
     amdsmi_ret = amdsmi_get_gpu_overdrive_level(gpu_handle, &value_32);
@@ -794,6 +802,9 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle,
     amdsmi_xgmi_status_t xgmi_st;
     amdsmi_od_volt_freq_data_t vc_data;
     amdsmi_gpu_metrics_t metrics_info = { 0 };
+    // skip waking status ioctls on runtime-suspended GPUs (ROCM-26020); the
+    // status struct already holds the last known values from init/prev read
+    bool runtime_suspended = smi_gpu_runtime_suspended(gpu_handle);
 
     {
         std::lock_guard<std::mutex> lock(g_gpu_metrics_mutex);
@@ -801,7 +812,7 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle,
             metrics_info = g_gpu_metrics[gpu_handle];
         }
     }
-    if (metrics_info.common_header.structure_size != 0) {
+    if (!runtime_suspended && metrics_info.common_header.structure_size != 0) {
         // fill the clock status with metrics info
         smi_fill_clock_status_(gpu_handle, spec, status, &metrics_info);
         // fill firmware timestamp
@@ -819,34 +830,39 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle,
         AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
     }
-    // fill the PCIe status
-    smi_fill_pcie_status_(gpu_handle, status);
-    // fill the xgmi error count
-    amdsmi_ret = amdsmi_gpu_xgmi_error_status(gpu_handle, &xgmi_st);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get xgmi error status for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        status->xgmi_status.error_status = smi_to_aga_gpu_xgmi_error(xgmi_st);
-    }
-    // fill the voltage curve points
-    amdsmi_ret = amdsmi_get_gpu_od_volt_info(gpu_handle, &vc_data);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get voltage curve points for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        for (uint32_t i = 0;
-             (i < AGA_GPU_MAX_VOLTAGE_CURVE_POINT) &&
-             (i < AMDSMI_NUM_VOLTAGE_CURVE_POINTS); i++) {
-            status->voltage_curve_point[i].point = i;
-            status->voltage_curve_point[i].frequency =
-                vc_data.curve.vc_points[i].frequency/1000000;
-            status->voltage_curve_point[i].voltage =
-                vc_data.curve.vc_points[i].voltage;
+    // skip waking status ioctls on runtime-suspended GPUs (ROCM-26020); the
+    // status struct already holds the last known values from init/prev read
+    if (!runtime_suspended) {
+        // fill the PCIe status
+        smi_fill_pcie_status_(gpu_handle, status);
+        // fill the xgmi error count
+        amdsmi_ret = amdsmi_gpu_xgmi_error_status(gpu_handle, &xgmi_st);
+        if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+            AGA_TRACE_ERR("Failed to get xgmi error status for GPU {}, err {}",
+                          gpu_handle, amdsmi_ret);
+        } else {
+            status->xgmi_status.error_status =
+                smi_to_aga_gpu_xgmi_error(xgmi_st);
         }
+        // fill the voltage curve points
+        amdsmi_ret = amdsmi_get_gpu_od_volt_info(gpu_handle, &vc_data);
+        if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
+            AGA_TRACE_ERR("Failed to get voltage curve points for GPU {}, "
+                          "err {}", gpu_handle, amdsmi_ret);
+        } else {
+            for (uint32_t i = 0;
+                 (i < AGA_GPU_MAX_VOLTAGE_CURVE_POINT) &&
+                 (i < AMDSMI_NUM_VOLTAGE_CURVE_POINTS); i++) {
+                status->voltage_curve_point[i].point = i;
+                status->voltage_curve_point[i].frequency =
+                    vc_data.curve.vc_points[i].frequency/1000000;
+                status->voltage_curve_point[i].voltage =
+                    vc_data.curve.vc_points[i].voltage;
+            }
+        }
+        smi_fill_gpu_kfd_pid_status_(gpu_handle, gpu_id, status);
+        smi_fill_gpu_enumeration_id_status_(gpu_handle, status);
     }
-    smi_fill_gpu_kfd_pid_status_(gpu_handle, gpu_id, status);
-    smi_fill_gpu_enumeration_id_status_(gpu_handle, status);
     // TODO: oper status
     // TODO: RAS status
     return SDK_RET_OK;
@@ -1266,6 +1282,9 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
     uint64_t sent, received, max_pkt_size;
     amdsmi_gpu_metrics_t metrics_info = {};
     amdsmi_gpu_metrics_t cached_metrics = {};
+    // skip waking telemetry ioctls on runtime-suspended GPUs (ROCM-26020);
+    // cached metrics below still serve the idle values
+    bool runtime_suspended = smi_gpu_runtime_suspended(gpu_handle);
 
     // reset stats to invalid values
     memset(&stats->usage, 0xff, sizeof(aga_gpu_usage_t));
@@ -1275,7 +1294,9 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
            sizeof(aga_gpu_xgmi_link_stats_t) * AGA_GPU_MAX_XGMI_LINKS);
 
     // fill VRAM usage
-    smi_fill_vram_usage_(gpu_handle, &stats->vram_usage);
+    if (!runtime_suspended) {
+        smi_fill_vram_usage_(gpu_handle, &stats->vram_usage);
+    }
     // fill additional statistics from gpu metrics
     {
         std::lock_guard<std::mutex> lock(g_gpu_metrics_mutex);
@@ -1302,7 +1323,9 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
         }
         // fill violation statistics only for primary partition
         if (!partition_id) {
-            smi_fill_ecc_stats_(gpu_handle, stats);
+            if (!runtime_suspended) {
+                smi_fill_ecc_stats_(gpu_handle, stats);
+            }
             smi_fill_violation_stats_(gpu_handle, partition_id,
                                       &metrics_info,
                                       &stats->violation_stats);
@@ -1364,6 +1387,7 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
         }
     }
     // read PCIe throughput
+    if (!runtime_suspended) {
     amdsmi_ret = amdsmi_get_gpu_pci_throughput(gpu_handle, &sent, &received,
                                                &max_pkt_size);
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
@@ -1402,8 +1426,9 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
                              &stats->xgmi_neighbor4_tx_throughput);
     g_smi_state.read_counter(gpu_handle, AMDSMI_EVNT_XGMI_DATA_OUT_5,
                              &stats->xgmi_neighbor5_tx_throughput);
+    }
     // fill activity and usage information based on partition mode
-    if (is_partitioned) {
+    if (is_partitioned && !runtime_suspended) {
         // partitioned mode: fetch partition-specific metrics
         amdsmi_ret = amdsmi_get_gpu_partition_metrics_info(gpu_handle,
                                                            &metrics_info);
@@ -2266,6 +2291,12 @@ smi_gpu_get_cper_entries (aga_gpu_handle_t gpu_handle,
     uint64_t num_cper_hdr = AGA_GPU_MAX_CPER_ENTRY;
     amdsmi_status_t status = AMDSMI_STATUS_MORE_DATA;
     amdsmi_cper_hdr_t *cper_hdrs[AGA_GPU_MAX_CPER_ENTRY];
+
+    // skip the waking CPER ioctl on runtime-suspended GPUs (ROCM-26020):
+    // a suspended GPU is idle and accrues no new CPER records
+    if (smi_gpu_runtime_suspended(gpu_handle)) {
+        return SDK_RET_OK;
+    }
 
     // set severity mask
     switch (severity) {
