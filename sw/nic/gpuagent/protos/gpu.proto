@@ -751,6 +751,12 @@ message GPUStats {
   uint64                     GFXActivityAccumulated      = 65;
   // memory activity accumulated in %
   uint64                     MemoryActivityAccumulated   = 66;
+  // accumulated HBM bandwidth for all HBM stacks in the socket
+  uint64                     DRAMBandwidthAccumulated    = 89;
+  // HSMP accumulation counter, incremented when accumulators update
+  uint64                     AccumulationCounter         = 90;
+  // accumulated socket XCC busy
+  uint64                     SocketGFXBusyAccumulated    = 91;
   // GPU XGMI link statistics
   repeated GPUXGMILinkStats  XGMILinkStats               = 67;
   // GPU violation statistics
