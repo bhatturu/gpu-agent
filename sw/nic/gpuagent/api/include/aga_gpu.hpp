@@ -35,7 +35,7 @@ limitations under the License.
 #define AGA_GPU_MAX_VOLTAGE_CURVE_POINT        4
 #define AGA_GPU_MIN_OVERDRIVE_LEVEL            0
 #define AGA_GPU_MAX_OVERDRIVE_LEVEL            20
-#define AGA_MAX_PEER_DEVICE                    16
+#define AGA_MAX_PEER_DEVICE                    128
 #define AGA_GPU_GFX_MAX_CLOCK                  8
 #define AGA_GPU_MEM_MAX_CLOCK                  1
 #define AGA_GPU_VIDEO_MAX_CLOCK                4

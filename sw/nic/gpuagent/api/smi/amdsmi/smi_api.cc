@@ -1828,7 +1828,17 @@ gpu_topo_walk_cb (void *obj, void *ctxt)
     gpu1 = walk_ctxt->gpu;
     info = walk_ctxt->info;
 
+    if (gpu1->is_parent_gpu() || gpu2->is_parent_gpu()) {
+        // partition parent GPU objects can be skipped
+        return false;
+    }
     if (gpu1->handle() != gpu2->handle()) {
+        if (walk_ctxt->count >= AGA_MAX_PEER_DEVICE) {
+            AGA_TRACE_ERR("Peer device list full at {} entries for GPU {}, "
+                          "stopping topology walk", AGA_MAX_PEER_DEVICE,
+                          gpu1->key().str());
+            return true;
+        }
         info->peer_device[walk_ctxt->count].peer_device.type =
             AGA_DEVICE_TYPE_GPU;
         strncpy(info->peer_device[walk_ctxt->count].peer_device.name,
