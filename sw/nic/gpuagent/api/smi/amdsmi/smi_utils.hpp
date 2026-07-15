@@ -25,6 +25,8 @@ limitations under the License.
 
 #include <vector>
 #include <algorithm>
+#include <cstdio>
+#include <cstring>
 extern "C" {
 #include "nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h"
 }
@@ -37,6 +39,65 @@ namespace aga {
 /// \defgroup AGA_SMI - smi module APIs
 /// \ingroup AGA
 /// @{
+
+/// \brief read a single whitespace-delimited token from a sysfs file
+static inline bool
+smi_sysfs_read_token (const char *path, char *buf, size_t buflen)
+{
+    FILE *fp = fopen(path, "r");
+    if (fp == NULL) {
+        return false;
+    }
+    if (fgets(buf, buflen, fp) == NULL) {
+        fclose(fp);
+        return false;
+    }
+    fclose(fp);
+    // strip trailing newline/whitespace
+    size_t len = strlen(buf);
+    while (len > 0 &&
+           (buf[len - 1] == '\n' || buf[len - 1] == '\r' ||
+            buf[len - 1] == ' '  || buf[len - 1] == '\t')) {
+        buf[--len] = '\0';
+    }
+    return true;
+}
+
+/// \brief true if the GPU is runtime-PM capable (control==auto) and currently
+///        suspended; these sysfs reads do not resume the device (ROCM-26020).
+///        On MI300A/MI325X control is "on"/forbidden so this returns false and
+///        the caller behaves exactly as before.
+static inline bool
+smi_gpu_runtime_suspended (amdsmi_processor_handle gpu_handle)
+{
+    amdsmi_bdf_t bdf = { 0 };
+    char path[256];
+    char token[64];
+
+    if (amdsmi_get_gpu_device_bdf(gpu_handle, &bdf) != AMDSMI_STATUS_SUCCESS) {
+        return false;
+    }
+    snprintf(path, sizeof(path),
+             "/sys/bus/pci/devices/%04lx:%02lx:%02lx.%01lx/power/control",
+             (unsigned long)bdf.domain_number, (unsigned long)bdf.bus_number,
+             (unsigned long)bdf.device_number,
+             (unsigned long)bdf.function_number);
+    if (!smi_sysfs_read_token(path, token, sizeof(token))) {
+        return false;
+    }
+    if (strcmp(token, "auto") != 0) {
+        return false;
+    }
+    snprintf(path, sizeof(path),
+             "/sys/bus/pci/devices/%04lx:%02lx:%02lx.%01lx/power/runtime_status",
+             (unsigned long)bdf.domain_number, (unsigned long)bdf.bus_number,
+             (unsigned long)bdf.device_number,
+             (unsigned long)bdf.function_number);
+    if (!smi_sysfs_read_token(path, token, sizeof(token))) {
+        return false;
+    }
+    return (strcmp(token, "suspended") == 0);
+}
 
 /// \brief function to get the low and high frequencies for a clock type
 /// \param[in] freq    supported frequencies struct from amdsmi

@@ -146,6 +146,21 @@ smi_gpu_fill_spec (aga_gpu_handle_t gpu_handle,
     uint32_t sensor_idx[AGA_GPU_MAX_POWER_CAP_SENSOR];
     amdsmi_power_cap_type_t sensor_types[AGA_GPU_MAX_POWER_CAP_SENSOR];
 
+    // On a runtime-suspended GPU every amdsmi info call below opens the DRM
+    // render node, which resumes the device (pm_runtime_get_sync) and makes the
+    // first post-resume gpu_metrics read return a spurious-high gfx_activity /
+    // clock on RDNA4 (ROCM-26020/GPUOP-842). Detect the suspended state with a
+    // non-waking sysfs read and skip the whole fill; the spec already holds the
+    // last-known values (these are static-ish attributes) and Prometheus
+    // staleness carries the last real metric. This is a no-op on MI300A/MI325X
+    // where power/control is "on" (never runtime-suspends).
+    if (smi_gpu_runtime_suspended(gpu_handle)) {
+        std::lock_guard<std::mutex> lock(g_gpu_metrics_mutex);
+        // drop any stale cached metrics so downstream reports NA rather than a
+        // resumed-and-latched cold-read value
+        g_gpu_metrics.erase(gpu_handle);
+        return SDK_RET_OK;
+    }
     // re-fetch gpu metrics for this GPU handle
     amdsmi_ret = amdsmi_get_gpu_metrics_info(gpu_handle, &metrics_info);
     {
@@ -826,6 +841,12 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle,
         AGA_TRACE_ERR("Failed to get GPU metrics info for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
     }
+    // skip the remaining waking amdsmi status ioctls on a runtime-suspended GPU
+    // (ROCM-26020/GPUOP-842); status retains last-known values. No-op on
+    // MI300A/MI325X (power/control == "on").
+    if (smi_gpu_runtime_suspended(gpu_handle)) {
+        return SDK_RET_OK;
+    }
     // fill the PCIe status
     smi_fill_pcie_status_(gpu_handle, status);
     // fill the xgmi error count
@@ -1284,6 +1305,13 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
     memset(&stats->xgmi_link_stats, 0xff,
            sizeof(aga_gpu_xgmi_link_stats_t) * AGA_GPU_MAX_XGMI_LINKS);
 
+    // skip the waking amdsmi stats ioctls on a runtime-suspended GPU
+    // (ROCM-26020/GPUOP-842); stats stay at the invalid/NA sentinels set above
+    // rather than resuming the device for a cold-read. No-op on MI300A/MI325X
+    // (power/control == "on").
+    if (smi_gpu_runtime_suspended(gpu_handle)) {
+        return SDK_RET_OK;
+    }
     // fill VRAM usage
     smi_fill_vram_usage_(gpu_handle, &stats->vram_usage);
     // UBB node power + cap (MI350X+); decodes to 0 where unsupported
