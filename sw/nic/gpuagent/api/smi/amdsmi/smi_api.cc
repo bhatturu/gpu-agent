@@ -33,6 +33,7 @@ extern "C" {
 #include "nic/gpuagent/api/smi/smi_api.hpp"
 #include "nic/gpuagent/api/smi/smi_state.hpp"
 #include "nic/gpuagent/api/smi/amdsmi/smi_utils.hpp"
+#include "nic/gpuagent/api/smi/gpu_process_cache.hpp"
 
 // TODO:
 // not using aga_ here for proper naming !!!
@@ -867,8 +868,9 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle,
     } else {
         status->xgmi_status.error_status = smi_to_aga_gpu_xgmi_error(xgmi_st);
     }
-    // fill list of pids using the GPU
-    smi_fill_gpu_kfd_pid_status_(gpu_handle, gpu_id, status);
+    // fill list of pids using the GPU from background cache (KUBE-50:
+    // process list moved off hot path to avoid gRPC threadpool exhaustion)
+    gpu_process_cache::instance().fill_status(gpu_handle, status);
     // TODO: oper status
     // TODO: RAS status
     return SDK_RET_OK;

@@ -644,6 +644,11 @@ smi_teardown (void)
     return SDK_RET_OK;
 }
 
+void
+smi_post_gpu_init (void)
+{
+}
+
 sdk_ret_t
 smi_init (aga_api_init_params_t *init_params)
 {

@@ -321,6 +321,8 @@ aga_init (aga_init_params_t *init_params)
     if (unlikely(ret != SDK_RET_OK)) {
         return ret;
     }
+    // start any post-GPU-creation background work (e.g. process cache)
+    aga::smi_post_gpu_init();
     // register for all gRPC services and start the gRPC server
     grpc_server_start(init_params->grpc_server);
     return SDK_RET_OK;

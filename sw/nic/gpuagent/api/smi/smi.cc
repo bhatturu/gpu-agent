@@ -40,4 +40,10 @@ smi_teardown (void)
     return g_smi_state.teardown();
 }
 
+void
+smi_post_gpu_init (void)
+{
+    g_smi_state.post_gpu_init();
+}
+
 }    // namespace aga

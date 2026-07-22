@@ -78,6 +78,10 @@ public:
     /// \return SDK_RET_OK or error status in case of failure
     sdk_ret_t teardown(void);
 
+    /// \brief    post-GPU-creation initialization (called after create_gpus);
+    ///           starts background tasks that require a populated gpu_db
+    void post_gpu_init(void);
+
     /// \brief    event database and monitoring infra initialization
     /// \return SDK_RET_OK or error status in case of failure
     sdk_ret_t event_monitor_init(void);

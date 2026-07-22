@@ -797,6 +797,12 @@ smi_state::init(aga_api_init_params_t *init_params) {
     return SDK_RET_OK;
 }
 
+void
+smi_state::post_gpu_init (void)
+{
+    // no-op for GIM variant (process list not collected in GIM mode)
+}
+
 sdk_ret_t
 smi_state::teardown (void)
 {

@@ -31,6 +31,7 @@ extern "C" {
 #include "nic/gpuagent/api/smi/smi_state.hpp"
 #include "nic/gpuagent/api/smi/smi_watch.hpp"
 #include "nic/gpuagent/api/smi/amdsmi/smi_utils.hpp"
+#include "nic/gpuagent/api/smi/gpu_process_cache.hpp"
 
 using std::vector;
 
@@ -1577,6 +1578,14 @@ smi_state::init(aga_api_init_params_t *init_params) {
     return SDK_RET_OK;
 }
 
+void
+smi_state::post_gpu_init (void)
+{
+    // start background process list cache after GPU objects are created
+    // so the refresh thread can walk the gpu_db safely (KUBE-50)
+    gpu_process_cache::instance().start();
+}
+
 sdk_ret_t
 smi_state::teardown (void)
 {
@@ -1585,6 +1594,8 @@ smi_state::teardown (void)
     if (!initialized_) {
         return SDK_RET_OK;
     }
+    // stop process cache before shutting down SMI library (KUBE-50)
+    gpu_process_cache::instance().stop();
     // stop the watcher thread before shutting down the SMI library to
     // avoid racing with the watcher timer callback which calls SMI APIs
     if (watcher_thread_) {

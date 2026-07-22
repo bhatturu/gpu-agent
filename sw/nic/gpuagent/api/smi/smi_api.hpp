@@ -58,6 +58,9 @@ sdk_ret_t smi_init(aga_api_init_params_t *init_params);
 /// \return     SDK_RET_OK or error code in case of failure
 sdk_ret_t smi_teardown(void);
 
+/// \brief    post-GPU-creation hook (called after create_gpus completes)
+void smi_post_gpu_init(void);
+
 /// \brief    fill gpu object config specification
 /// \param[in] handle    GPU handle (may be stale across amdsmi re-init in
 ///                      lazy mode; uuid is used to refresh inside)
