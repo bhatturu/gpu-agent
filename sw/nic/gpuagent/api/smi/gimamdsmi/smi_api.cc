@@ -1591,6 +1591,10 @@ smi_gpu_init_immutable_attrs (aga_gpu_handle_t gpu_handle_in,
     amdsmi_board_info_t board_info = {};
     amdsmi_driver_info_t driver_info = {};
     amdsmi_virtualization_mode_t mode;
+    // tracks whether the virtualization mode (the immutable attr that drives
+    // the exported deployment_mode label) was captured; returned to the caller
+    // so a failed one-time read can be retried on a later refresh
+    sdk_ret_t ret = SDK_RET_OK;
 
     AGA_SMI_SESSION_GUARD(gpu_key, gpu_handle_in);
 
@@ -1611,6 +1615,9 @@ smi_gpu_init_immutable_attrs (aga_gpu_handle_t gpu_handle_in,
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
         AGA_TRACE_ERR("Failed to get virtualization mode for GPU {}, err {}",
                       gpu_handle, amdsmi_ret);
+        // signal the caller to retry: leaving virtualization_mode UNKNOWN
+        // would surface as a permanent (wrong) baremetal deployment_mode
+        ret = amdsmi_ret_to_sdk_ret(amdsmi_ret);
     } else {
         status->virtualization_mode = smi_to_aga_virtualization_mode(mode);
     }
@@ -1659,18 +1666,27 @@ smi_gpu_init_immutable_attrs (aga_gpu_handle_t gpu_handle_in,
     }
     // fill VRAM status
     smi_fill_vram_status_(gpu_handle, status);
-    return SDK_RET_OK;
+    // ret is non-OK only when the virtualization mode read failed, so the
+    // caller retries the one-time immutable init on a subsequent refresh
+    return ret;
 }
 
 sdk_ret_t
 smi_gpu_init_attrs (aga_gpu_handle_t gpu_handle, const aga_obj_key_t *gpu_key,
                     aga_gpu_spec_t *spec, aga_gpu_status_t *status)
 {
-    // initialize the immutable attributes
-    smi_gpu_init_immutable_attrs(gpu_handle, gpu_key, spec, status);
+    sdk_ret_t ret;
+
+    // initialize the immutable attributes; propagate the status so the caller
+    // can retry when the one-time read races with transient amdsmi/GIM device
+    // state (e.g. lazy-init UUID->handle resolve failing before /dev/gim-smi0
+    // is ready). Without a retry the once-captured virtualization_mode stays
+    // UNKNOWN -> deployment_mode is misreported as baremetal for the lifetime
+    // of the process.
+    ret = smi_gpu_init_immutable_attrs(gpu_handle, gpu_key, spec, status);
     // read the attributes that are also read on every get
     smi_gpu_fill_spec(gpu_handle, gpu_key, spec);
-    return SDK_RET_OK;
+    return ret;
 }
 
 static inline std::string

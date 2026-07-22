@@ -325,6 +325,13 @@ private:
     /// GPU status; we set static fields in the status at init time to avoid
     /// repeat api calls for static fields
     aga_gpu_status_t status_;
+    /// whether the one-time immutable attr read (virtualization mode, board
+    /// info, vbios, fw) succeeded; false until it does. When false, the next
+    /// status refresh retries init_attrs() so a create-time read that raced
+    /// with transient amdsmi/GIM device state does not permanently mislabel
+    /// deployment_mode as baremetal. Once true it never re-reads (no per-scrape
+    /// GPU wake), preserving the ROCM-26020 idle-suspend behaviour.
+    bool immutable_attrs_valid_;
     /// GPU watch stats
     aga_gpu_watch_fields_t stats_;
     /// GPU virtualization mode;

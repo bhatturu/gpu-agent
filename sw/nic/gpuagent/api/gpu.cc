@@ -34,6 +34,8 @@ gpu_entry::gpu_entry() {
     partition_id_ = AGA_GPU_INVALID_PARTITION_ID;
     // reset parent GPU uuid
     parent_gpu_.reset();
+    // immutable attrs not yet read
+    immutable_attrs_valid_ = false;
 }
 
 gpu_entry *
@@ -170,6 +172,14 @@ gpu_entry::fill_status_(aga_gpu_spec_t *spec, aga_gpu_status_t *status) {
             status->gpu_partition[i] = child_gpus_[i];
         }
     } else {
+        // if the one-time immutable read failed at create (e.g. lazy-init
+        // UUID->handle resolve raced with GIM device readiness), retry it here.
+        // This runs only until it succeeds once, so a healthy GPU pays the cost
+        // exactly once and there is no repeated per-scrape render-node wake
+        // (preserves ROCM-26020 idle-suspend behaviour).
+        if (!immutable_attrs_valid_) {
+            init_attrs();
+        }
         // copy information that we got at init time
         memcpy(status, &status_, sizeof(aga_gpu_status_t));
         if (parent_gpu_.valid()) {
@@ -185,8 +195,14 @@ gpu_entry::init_attrs(void) {
     status_.index = id_;
     status_.handle = handle_;
     status_.partition_id = partition_id_;
-    // fill initial attributes that we can get from API calls
-    smi_gpu_init_attrs(handle_, &key_, &spec_, &status_);
+    // fill initial attributes that we can get from API calls; a non-OK return
+    // means the one-time immutable read (virtualization mode etc.) raced with
+    // transient amdsmi/GIM device state. Track success so fill_status_() can
+    // retry until it lands once, instead of permanently mislabeling
+    // deployment_mode as baremetal.
+    if (smi_gpu_init_attrs(handle_, &key_, &spec_, &status_) == SDK_RET_OK) {
+        immutable_attrs_valid_ = true;
+    }
 }
 
 void
