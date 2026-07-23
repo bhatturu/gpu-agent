@@ -23,6 +23,7 @@ limitations under the License.
 #include <sstream>
 #include <iomanip>
 #include <mutex>
+#include <cstdlib>
 extern "C" {
 #include "nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h"
 }
@@ -868,7 +869,20 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle,
         status->xgmi_status.error_status = smi_to_aga_gpu_xgmi_error(xgmi_st);
     }
     // fill list of pids using the GPU
-    smi_fill_gpu_kfd_pid_status_(gpu_handle, gpu_id, status);
+    // AGA_SKIP_PROCESS_LIST=1 skips the KFD process-list walk, which dominates
+    // GPUGet latency under high process counts. Read once.
+    static const bool skip_process_list = [] {
+        const char *env = std::getenv("AGA_SKIP_PROCESS_LIST");
+        bool skip = (env != NULL && env[0] == '1');
+        if (skip) {
+            AGA_TRACE_INFO("AGA_SKIP_PROCESS_LIST=1: skipping GPU process-list "
+                           "enumeration");
+        }
+        return skip;
+    }();
+    if (!skip_process_list) {
+        smi_fill_gpu_kfd_pid_status_(gpu_handle, gpu_id, status);
+    }
     // TODO: oper status
     // TODO: RAS status
     return SDK_RET_OK;
