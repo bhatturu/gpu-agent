@@ -852,7 +852,10 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle,
                 vc_data.curve.vc_points[i].voltage;
         }
     }
-    smi_fill_gpu_kfd_pid_status_(gpu_handle, gpu_id, status);
+    // Temporarily skipped: the KFD process-list walk dominates GPUGet latency
+    // under high process counts and can exhaust the gRPC threadpool.
+    // smi_fill_gpu_kfd_pid_status_(gpu_handle, gpu_id, status);
+    (void)smi_fill_gpu_kfd_pid_status_;
     smi_fill_gpu_enumeration_id_status_(gpu_handle, status);
     // TODO: oper status
     // TODO: RAS status
