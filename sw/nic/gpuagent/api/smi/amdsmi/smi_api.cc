@@ -868,7 +868,10 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle,
         status->xgmi_status.error_status = smi_to_aga_gpu_xgmi_error(xgmi_st);
     }
     // fill list of pids using the GPU
-    smi_fill_gpu_kfd_pid_status_(gpu_handle, gpu_id, status);
+    // Temporarily skipped: the KFD process-list walk dominates GPUGet latency
+    // under high process counts and can exhaust the gRPC threadpool.
+    // smi_fill_gpu_kfd_pid_status_(gpu_handle, gpu_id, status);
+    (void)smi_fill_gpu_kfd_pid_status_;
     // TODO: oper status
     // TODO: RAS status
     return SDK_RET_OK;
