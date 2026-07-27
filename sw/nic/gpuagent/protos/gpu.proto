@@ -43,6 +43,9 @@ service GPUSvc {
   rpc GPUMemoryPartitionGet(GPUMemoryPartitionGetRequest) returns (GPUMemoryPartitionGetResponse) {}
   // GPU CPER get API
   rpc GPUCPERGet (GPUCPERGetRequest) returns (GPUCPERGetResponse) {}
+  // GPU process info get API (separate from GPUGet so the expensive KFD
+  // process-list walk stays off the metrics scrape path)
+  rpc GPUProcessGet (GPUProcessGetRequest) returns (GPUProcessGetResponse) {}
 
   // operational APIs or tasks
   // GPU reset API
@@ -1050,4 +1053,30 @@ message GPUCPERGetResponse {
   types.ErrorCode       ErrorCode = 2;
   // GPU CPER entries
   repeated GPUCPEREntry CPER      = 3;
+}
+
+// per-GPU process information entry
+message GPUProcessInfo {
+  // GPU uuid
+  bytes            Id            = 1;
+  // KFD process ids using the GPU
+  repeated uint32  KFDProcessId  = 2;
+  // per-process compute-unit occupancy
+  GPUProcessStatus ProcessStatus = 3;
+}
+
+// GPU process get request
+message GPUProcessGetRequest {
+  // list of GPU uuids; empty implies all GPUs
+  repeated bytes Id = 1;
+}
+
+// GPU process get response
+message GPUProcessGetResponse {
+  // result of the API processing
+  types.ApiStatus        ApiStatus = 1;
+  // specific error code, if any
+  types.ErrorCode        ErrorCode = 2;
+  // per-GPU process information
+  repeated GPUProcessInfo Process  = 3;
 }

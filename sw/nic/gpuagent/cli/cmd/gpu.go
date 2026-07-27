@@ -117,6 +117,13 @@ var gpuStatsShowCmd = &cobra.Command{
 	RunE:  gpuStatsShowCmdHandler,
 }
 
+var gpuProcessShowCmd = &cobra.Command{
+	Use:   "process",
+	Short: "show GPU process information",
+	Long:  "show GPU KFD process information",
+	RunE:  gpuProcessShowCmdHandler,
+}
+
 var gpuUpdateCmd = &cobra.Command{
 	Use:     "gpu",
 	Short:   "update gpu object",
@@ -146,6 +153,9 @@ func init() {
 
 	gpuShowCmd.AddCommand(gpuStatsShowCmd)
 	gpuStatsShowCmd.Flags().StringVarP(&gpuID, "id", "i", "", "Specify GPU id")
+
+	gpuShowCmd.AddCommand(gpuProcessShowCmd)
+	gpuProcessShowCmd.Flags().StringVarP(&gpuID, "id", "i", "", "Specify GPU id")
 
 	gpuShowCmd.AddCommand(gpuPartitionsShowCmd)
 	gpuPartitionsShowCmd.Flags().StringVarP(&gpuID, "id", "i", "", "Specify partitioned GPU's id")
@@ -341,6 +351,64 @@ func NewCPER(cper *aga.GPUCPEREntry) *ShadowGPUCPEREntry {
 func printGPUCPEREntryJson(cper *aga.GPUCPEREntry) {
 	b, _ := json.MarshalIndent(NewCPER(cper), "  ", "  ")
 	fmt.Printf("  %s", string(b))
+}
+
+func gpuProcessShowCmdHandler(cmd *cobra.Command, args []string) error {
+	if len(args) > 0 {
+		return fmt.Errorf("Invalid argument")
+	}
+	if cmd != nil {
+		if cmd.Flags().Changed("id") {
+			if err := utils.IsUUIDValid(gpuID); err != nil {
+				return err
+			}
+		}
+		cmd.SilenceUsage = true
+	}
+	var req *aga.GPUProcessGetRequest
+	if cmd != nil && cmd.Flags().Changed("id") {
+		req = &aga.GPUProcessGetRequest{
+			Id: [][]byte{uuid.FromStringOrNil(gpuID).Bytes()},
+		}
+	} else {
+		req = &aga.GPUProcessGetRequest{
+			Id: [][]byte{},
+		}
+	}
+	c, ctxt, cancel, err := utils.CreateNewAGAGRPClient()
+	if err != nil {
+		return fmt.Errorf("Could not connect to the GPU agent, is agent " +
+			"running?")
+	}
+	defer c.Close()
+	defer cancel()
+
+	client := aga.NewGPUSvcClient(c)
+	respMsg, err := client.GPUProcessGet(ctxt, req)
+	if err != nil {
+		return fmt.Errorf("Getting GPU process info failed, err %v", err)
+	}
+	if respMsg.ApiStatus != aga.ApiStatus_API_STATUS_OK {
+		return fmt.Errorf("Operation failed with %v error", respMsg.ApiStatus)
+	}
+	hdrLine := strings.Repeat("-", 80)
+	fmt.Println(hdrLine)
+	fmt.Printf("%-40s%-12s%-15s\n", "GPU", "PID", "CUOccupancy")
+	fmt.Println(hdrLine)
+	for _, proc := range respMsg.Process {
+		gpuStr := utils.IdToStr(proc.GetId())
+		ps := proc.GetProcessStatus()
+		if ps == nil || len(ps.GetProcessInfo()) == 0 {
+			fmt.Printf("%-40s%-12s%-15s\n", gpuStr, "-", "-")
+			continue
+		}
+		for _, pi := range ps.GetProcessInfo() {
+			fmt.Printf("%-40s%-12d%-15d\n", gpuStr, pi.GetPId(),
+				pi.GetCUOccupancy())
+		}
+	}
+	fmt.Println(hdrLine)
+	return nil
 }
 
 func gpuCPERShowCmdHandler(cmd *cobra.Command, args []string) error {

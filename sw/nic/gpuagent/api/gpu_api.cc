@@ -461,3 +461,59 @@ aga_gpu_cper_read (aga_obj_key_t *key, aga_cper_severity_t severity,
     }
     return SDK_RET_ENTRY_NOT_FOUND;
 }
+
+typedef struct aga_gpu_process_read_args_s {
+    void *ctxt;
+    gpu_process_read_cb_t cb;
+} aga_gpu_process_read_args_t;
+
+static bool
+aga_gpu_process_info_from_entry (void *entry, void *ctxt)
+{
+    sdk_ret_t ret;
+    aga_gpu_status_t status = {};
+    aga_gpu_proc_read_info_t info = {};
+    gpu_entry *gpu = (gpu_entry *)entry;
+    aga_gpu_process_read_args_t *args =
+        (aga_gpu_process_read_args_t *)ctxt;
+
+    if (gpu->in_use()) {
+        // some API operation is in progress on this object, skip it
+        return false;
+    }
+    if (gpu->is_parent_gpu()) {
+        // partition parent GPU objects can be skipped
+        return false;
+    }
+    ret = aga::smi_gpu_fill_process(gpu->handle(), gpu->id(), &status);
+    if (ret != SDK_RET_OK) {
+        return false;
+    }
+    info.gpu = gpu->key();
+    info.num_kfd_process_id = status.num_kfd_process_id;
+    for (uint32_t i = 0; i < status.num_kfd_process_id; i++) {
+        info.kfd_process_id[i] = status.kfd_process_id[i];
+        info.process_info[i] = status.process_info[i];
+    }
+    args->cb(&info, args->ctxt);
+    return false;
+}
+
+sdk_ret_t
+aga_gpu_process_read (aga_obj_key_t *key, gpu_process_read_cb_t cb, void *ctxt)
+{
+    gpu_entry *gpu;
+    aga_gpu_process_read_args_t args = { 0 };
+
+    args.ctxt = ctxt;
+    args.cb = cb;
+    if (*key == k_aga_obj_key_invalid) {
+        return gpu_db()->walk(aga_gpu_process_info_from_entry, &args);
+    } else {
+        gpu = gpu_db()->find(key);
+        if (gpu) {
+            return aga_gpu_process_info_from_entry(gpu, &args);
+        }
+    }
+    return SDK_RET_ENTRY_NOT_FOUND;
+}

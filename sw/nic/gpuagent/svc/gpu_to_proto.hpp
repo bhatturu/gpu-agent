@@ -903,4 +903,28 @@ aga_gpu_cper_api_info_to_proto (aga_cper_info_t *info,
     }
 }
 
+// populate gpu process information proto buf
+static inline void
+aga_gpu_process_api_info_to_proto (aga_gpu_proc_read_info_t *info,
+                                   void *ctxt)
+{
+    amdgpu::GPUProcessInfo *proc;
+    amdgpu::GPUProcessGetResponse *proto_rsp =
+        (amdgpu::GPUProcessGetResponse *)ctxt;
+
+    proc = proto_rsp->add_process();
+    proc->set_id(info->gpu.id, OBJ_MAX_KEY_LEN);
+    for (uint32_t i = 0; i < info->num_kfd_process_id; i++) {
+        if (info->kfd_process_id[i]) {
+            proc->add_kfdprocessid(info->kfd_process_id[i]);
+        }
+    }
+    auto proto_status = proc->mutable_processstatus();
+    for (uint32_t i = 0; i < info->num_kfd_process_id; i++) {
+        auto process_info = proto_status->add_processinfo();
+        process_info->set_pid(info->process_info[i].pid);
+        process_info->set_cuoccupancy(info->process_info[i].cu_occupancy);
+    }
+}
+
 #endif    // __AGA_SVC_GPU_TO_PROTO_HPP__

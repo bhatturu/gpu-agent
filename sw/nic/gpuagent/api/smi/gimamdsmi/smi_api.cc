@@ -912,6 +912,15 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle_in,
     return SDK_RET_OK;
 }
 
+sdk_ret_t
+smi_gpu_fill_process (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
+                      aga_gpu_status_t *status)
+{
+    // SR-IOV host does not enumerate guest KFD processes
+    status->num_kfd_process_id = 0;
+    return SDK_RET_OK;
+}
+
 /// \brief function to get number of bad pages for GPU
 /// \param[in]  gpu             GPU object
 /// \param[out] num_bad_pages   number of bad pages

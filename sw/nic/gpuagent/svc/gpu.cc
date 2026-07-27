@@ -132,3 +132,15 @@ GPUSvcImpl::GPUCPERGet(ServerContext *context,
     return Status::OK;
 }
 
+Status
+GPUSvcImpl::GPUProcessGet(ServerContext *context,
+                          const GPUProcessGetRequest *proto_req,
+                          GPUProcessGetResponse *proto_rsp) {
+    sdk_ret_t ret;
+
+    ret = aga_svc_gpu_process_get(proto_req, proto_rsp);
+    proto_rsp->set_apistatus(sdk_ret_to_api_status(ret));
+    proto_rsp->set_errorcode(sdk_ret_to_error_code(ret));
+    return Status::OK;
+}
+

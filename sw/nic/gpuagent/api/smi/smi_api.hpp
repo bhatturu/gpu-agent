@@ -79,6 +79,15 @@ sdk_ret_t smi_gpu_fill_status(aga_gpu_handle_t handle,
                               uint32_t id,
                               aga_gpu_spec_t *spec, aga_gpu_status_t *status);
 
+/// \brief    fill GPU KFD process list (served by the GPUProcessGet RPC, off
+///           the GPUGet metrics path)
+/// \param[in] handle    GPU handle
+/// \param[in] id        GPU id
+/// \param[out] status   status whose process fields are filled
+/// \return    SDK_RET_OK or error code in case of failure
+sdk_ret_t smi_gpu_fill_process(aga_gpu_handle_t handle, uint32_t id,
+                               aga_gpu_status_t *status);
+
 /// \brief    fill gpu object statistics
 /// \param[in] handle                   GPU handle (uuid refreshes inside)
 /// \param[in] uuid                     stable GPU UUID

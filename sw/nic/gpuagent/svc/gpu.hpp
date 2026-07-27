@@ -67,6 +67,9 @@ using amdgpu::GPUMemoryPartitionGetResponse;
 using amdgpu::GPUCPEREntry;
 using amdgpu::GPUCPERGetRequest;
 using amdgpu::GPUCPERGetResponse;
+using amdgpu::GPUProcessInfo;
+using amdgpu::GPUProcessGetRequest;
+using amdgpu::GPUProcessGetResponse;
 
 class GPUSvcImpl final : public GPUSvc::Service {
 public:
@@ -94,6 +97,9 @@ public:
     Status GPUCPERGet(ServerContext *context,
                       const GPUCPERGetRequest *proto_req,
                       GPUCPERGetResponse *proto_rsp) override;
+    Status GPUProcessGet(ServerContext *context,
+                         const GPUProcessGetRequest *proto_req,
+                         GPUProcessGetResponse *proto_rsp) override;
 };
 
 class DebugGPUSvcImpl final : public DebugGPUSvc::Service {

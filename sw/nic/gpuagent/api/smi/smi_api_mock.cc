@@ -264,6 +264,14 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle,
 }
 
 sdk_ret_t
+smi_gpu_fill_process (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
+                      aga_gpu_status_t *status)
+{
+    status->num_kfd_process_id = 0;
+    return SDK_RET_OK;
+}
+
+sdk_ret_t
 smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
                     const aga_obj_key_t *gpu_key,
                     bool is_partitioned,

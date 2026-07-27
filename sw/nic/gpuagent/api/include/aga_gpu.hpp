@@ -1106,4 +1106,29 @@ sdk_ret_t aga_gpu_cper_read(_In_ aga_obj_key_t *key,
                             _In_ gpu_cper_read_cb_t gpu_cper_read_cb,
                             _In_ void *ctxt);
 
+/// \brief per-GPU KFD process list read result
+typedef struct aga_gpu_proc_read_info_s {
+    /// GPU uuid
+    aga_obj_key_t gpu;
+    /// number of KFD process ids
+    uint32_t num_kfd_process_id;
+    /// KFD process ids using the GPU
+    uint32_t kfd_process_id[AGA_GPU_MAX_PROCESS_PER_DEVICE];
+    /// per-process info (pid + cu occupancy)
+    aga_gpu_process_info_t process_info[AGA_GPU_MAX_PROCESS_PER_DEVICE];
+} aga_gpu_proc_read_info_t;
+
+typedef void (*gpu_process_read_cb_t)(aga_gpu_proc_read_info_t *info,
+                                      void *ctxt);
+
+/// \brief    read gpu KFD process list (off the GPUGet metrics path)
+/// \param[in]  key     key of the gpu object, if k_aga_obj_key_invalid we read
+///                     the process list of all gpus
+/// \param[in]  cb      callback function
+/// \param[in]  ctxt    opaque context passed to cb
+/// \return #SDK_RET_OK on success, failure status code on error
+sdk_ret_t aga_gpu_process_read(_In_ aga_obj_key_t *key,
+                               _In_ gpu_process_read_cb_t gpu_process_read_cb,
+                               _In_ void *ctxt);
+
 #endif    /// __API_INCLUDE_AGA_GPU_HPP__
