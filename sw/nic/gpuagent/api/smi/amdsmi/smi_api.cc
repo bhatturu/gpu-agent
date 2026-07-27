@@ -852,11 +852,19 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle,
                 vc_data.curve.vc_points[i].voltage;
         }
     }
-    smi_fill_gpu_kfd_pid_status_(gpu_handle, gpu_id, status);
+    // KFD process-list walk is collected only when the PROCESS info group is
+    // requested (smi_gpu_fill_process), not on the default GPUGet path.
     smi_fill_gpu_enumeration_id_status_(gpu_handle, status);
     // TODO: oper status
     // TODO: RAS status
     return SDK_RET_OK;
+}
+
+sdk_ret_t
+smi_gpu_fill_process (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
+                      aga_gpu_status_t *status)
+{
+    return smi_fill_gpu_kfd_pid_status_(gpu_handle, gpu_id, status);
 }
 
 /// \brief function to get number of bad pages for GPU

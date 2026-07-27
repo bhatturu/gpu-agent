@@ -27,6 +27,18 @@ limitations under the License.
 #include "nic/gpuagent/api/include/base.hpp"
 #include "nic/gpuagent/api/smi/smi.hpp"
 
+// GPUGet info-group bit flags; mirror proto enum GPUInfoType. Callers combine
+// these to request only the collectors they need. AGA_GPU_INFO_DEFAULT is used
+// when no mask is supplied (all groups except the expensive PROCESS walk).
+#define AGA_GPU_INFO_SPEC                       0x1
+#define AGA_GPU_INFO_STATUS                     0x2
+#define AGA_GPU_INFO_STATS                      0x4
+#define AGA_GPU_INFO_PROCESS                    0x8
+#define AGA_GPU_INFO_DEFAULT \
+    (AGA_GPU_INFO_SPEC | AGA_GPU_INFO_STATUS | AGA_GPU_INFO_STATS)
+#define AGA_GPU_INFO_ALL \
+    (AGA_GPU_INFO_DEFAULT | AGA_GPU_INFO_PROCESS)
+
 #define AGA_GPU_MAX_CLOCK_FREQUENCY            6
 #define AGA_GPU_MAX_HBM                        4
 #define AGA_GPU_MAX_FIRMWARE_VERSION           85
@@ -996,18 +1008,23 @@ typedef struct aga_cper_info_s {
 sdk_ret_t aga_gpu_create(_In_ aga_gpu_spec_t *spec);
 
 /// \brief      read gpu
-/// \param[in]  key  key of the gpu object
-/// \param[out] info information
+/// \param[in]  key       key of the gpu object
+/// \param[out] info      information
+/// \param[in]  info_mask bitmask of AGA_GPU_INFO_* groups to collect;
+///                       defaults to AGA_GPU_INFO_ALL for non-GPUGet callers
 /// \return     #SDK_RET_OK on success, failure status code on error
-sdk_ret_t aga_gpu_read(_In_ aga_obj_key_t *key, _Out_ aga_gpu_info_t *info);
+sdk_ret_t aga_gpu_read(_In_ aga_obj_key_t *key, _Out_ aga_gpu_info_t *info,
+                       _In_ uint32_t info_mask = AGA_GPU_INFO_ALL);
 
 typedef void (*gpu_read_cb_t)(aga_gpu_info_t *info, void *ctxt);
 
 /// \brief    read all gpu information
-/// \param[in]  cb      callback function
-/// \param[in]  ctxt    opaque context passed to cb
+/// \param[in]  cb        callback function
+/// \param[in]  ctxt      opaque context passed to cb
+/// \param[in]  info_mask bitmask of AGA_GPU_INFO_* groups to collect
 /// \return #SDK_RET_OK on success, failure status code on error
-sdk_ret_t aga_gpu_read_all(_In_ gpu_read_cb_t gpu_read_cb, _In_ void *ctxt);
+sdk_ret_t aga_gpu_read_all(_In_ gpu_read_cb_t gpu_read_cb, _In_ void *ctxt,
+                           _In_ uint32_t info_mask = AGA_GPU_INFO_ALL);
 
 /// \brief      function to get compute partition info of a given physical gpu
 ///             which has been partitioned

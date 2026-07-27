@@ -83,7 +83,8 @@ aga_gpu_create (_In_ aga_gpu_spec_t *spec)
 }
 
 sdk_ret_t
-aga_gpu_read (_In_ aga_obj_key_t *key, _Out_ aga_gpu_info_t *info)
+aga_gpu_read (_In_ aga_obj_key_t *key, _Out_ aga_gpu_info_t *info,
+              _In_ uint32_t info_mask)
 {
     sdk_ret_t ret;
     gpu_entry *entry;
@@ -95,12 +96,13 @@ aga_gpu_read (_In_ aga_obj_key_t *key, _Out_ aga_gpu_info_t *info)
     if (unlikely(ret != SDK_RET_OK)) {
         return ret;
     }
-    return entry->read(info);
+    return entry->read(info, info_mask);
 }
 
 typedef struct aga_gpu_read_args_s {
     void *ctxt;
     gpu_read_cb_t cb;
+    uint32_t info_mask;
 } aga_gpu_read_args_t;
 
 static bool
@@ -120,17 +122,18 @@ aga_gpu_info_from_entry (void *entry, void *ctxt)
     }
     memset(&info, 0, sizeof(aga_gpu_info_t));
     // call entry read
-    gpu->read(&info);
+    gpu->read(&info, args->info_mask);
     // call cb on info
     args->cb(&info, args->ctxt);
     return false;
 }
 
 sdk_ret_t
-aga_gpu_read_all (gpu_read_cb_t gpu_read_cb, void *ctxt)
+aga_gpu_read_all (gpu_read_cb_t gpu_read_cb, void *ctxt, uint32_t info_mask)
 {
     aga_gpu_read_args_t args = { 0 };
 
+    args.info_mask = info_mask;
     args.ctxt = ctxt;
     args.cb = gpu_read_cb;
     return gpu_db()->walk(aga_gpu_info_from_entry, &args);

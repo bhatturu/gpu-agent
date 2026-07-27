@@ -505,7 +505,7 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
                 vc_data.curve.vc_points[i].voltage;
         }
     }
-    smi_fill_gpu_kfd_pid_status_(gpu_id, status);
+    // KFD process-list walk moved to smi_gpu_fill_process (PROCESS info group)
     // fill total memory
     rsmi_ret = rsmi_dev_memory_total_get(gpu_id, RSMI_MEM_TYPE_VRAM,
                                          &value_64);
@@ -520,6 +520,13 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
     // TODO: oper status
     // TODO: RAS status
     return SDK_RET_OK;
+}
+
+sdk_ret_t
+smi_gpu_fill_process (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
+                      aga_gpu_status_t *status)
+{
+    return smi_fill_gpu_kfd_pid_status_(gpu_id, status);
 }
 
 sdk_ret_t

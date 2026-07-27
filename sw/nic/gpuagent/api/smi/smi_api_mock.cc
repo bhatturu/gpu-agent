@@ -257,10 +257,16 @@ smi_gpu_fill_status (aga_gpu_handle_t gpu_handle,
     status->xgmi_status.error_status = AGA_GPU_XGMI_STATUS_NO_ERROR;
     // fill total memory
     // fill kfd pid info
-    smi_fill_gpu_kfd_pid_status_(gpu_handle, status);
     status->partition_id = 0;
     smi_fill_gpu_enumeration_id_status_(gpu_handle, status);
     return SDK_RET_OK;
+}
+
+sdk_ret_t
+smi_gpu_fill_process (aga_gpu_handle_t gpu_handle, uint32_t gpu_id,
+                      aga_gpu_status_t *status)
+{
+    return smi_fill_gpu_kfd_pid_status_(gpu_handle, status);
 }
 
 sdk_ret_t

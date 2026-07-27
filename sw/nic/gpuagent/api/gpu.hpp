@@ -100,8 +100,10 @@ public:
 
     /// \brief          read config
     /// \param[out]     info pointer to the info object
+    /// \param[in]      info_mask bitmask of AGA_GPU_INFO_* groups to collect
     /// \return         SDK_RET_OK on success, failure status code on error
-    sdk_ret_t read(aga_gpu_info_t *info);
+    sdk_ret_t read(aga_gpu_info_t *info,
+                   uint32_t info_mask = AGA_GPU_INFO_ALL);
 
     /// \brief return stringified key of the object (for debugging)
     virtual string key2str(void) const override {
@@ -301,6 +303,10 @@ private:
     /// \brief      fill the gpu statistics
     /// \param[out] stats statistics
     void fill_stats_(aga_gpu_stats_t *stats);
+
+    /// \brief      fill the gpu KFD process list (PROCESS info group)
+    /// \param[out] status status whose process fields are filled
+    void fill_process_(aga_gpu_status_t *status);
 
 private:
     /// uuid of the object

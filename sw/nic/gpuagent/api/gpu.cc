@@ -200,11 +200,28 @@ gpu_entry::fill_spec_(aga_gpu_spec_t *spec) {
     }
 }
 
+void
+gpu_entry::fill_process_(aga_gpu_status_t *status) {
+    // KFD process-list walk only for non-parent GPUs
+    if (!child_gpus_.size()) {
+        smi_gpu_fill_process(handle_, id_, status);
+    }
+}
+
 sdk_ret_t
-gpu_entry::read(aga_gpu_info_t *info) {
-    fill_spec_(&info->spec);
-    fill_status_(&info->spec, &info->status);
-    fill_stats_(&info->stats);
+gpu_entry::read(aga_gpu_info_t *info, uint32_t info_mask) {
+    if (info_mask & AGA_GPU_INFO_SPEC) {
+        fill_spec_(&info->spec);
+    }
+    if (info_mask & AGA_GPU_INFO_STATUS) {
+        fill_status_(&info->spec, &info->status);
+    }
+    if (info_mask & AGA_GPU_INFO_STATS) {
+        fill_stats_(&info->stats);
+    }
+    if (info_mask & AGA_GPU_INFO_PROCESS) {
+        fill_process_(&info->status);
+    }
     return SDK_RET_OK;
 }
 
