@@ -811,10 +811,25 @@ message GPU {
   GPUStats  Stats  = 3;
 }
 
+// GPU info groups selectable on a GPUGet request. Bit flags so a client can
+// request any combination. Absence of the mask (0) means the default set
+// (SPEC | STATUS | STATS), which deliberately excludes the expensive PROCESS
+// walk unless a client asks for it explicitly.
+enum GPUInfoType {
+  GPU_INFO_TYPE_NONE    = 0;
+  GPU_INFO_TYPE_SPEC    = 1;
+  GPU_INFO_TYPE_STATUS  = 2;
+  GPU_INFO_TYPE_STATS   = 4;
+  // KFD process-list walk; expensive, off by default
+  GPU_INFO_TYPE_PROCESS = 8;
+}
+
 // GPU get request message
 message GPUGetRequest {
   // list of GPU uuids
   repeated bytes Id = 1;
+  // bitmask of GPUInfoType groups to collect; 0 = SPEC|STATUS|STATS (no process)
+  uint32 InfoMask = 2;
 }
 
 // response to GPU get request
