@@ -23,6 +23,9 @@ limitations under the License.
 #include <sstream>
 #include <iomanip>
 #include <mutex>
+#include <thread>
+#include <vector>
+#include <chrono>
 extern "C" {
 #include "nic/third-party/rocm/amd_smi_lib/include/amd_smi/amdsmi.h"
 }
@@ -52,6 +55,20 @@ namespace aga {
 /// status and statistics
 std::mutex g_gpu_metrics_mutex;
 std::unordered_map<aga_gpu_handle_t, amdsmi_gpu_metrics_t> g_gpu_metrics;
+
+/// PCIe throughput cache, refreshed off the GPUGet path. The underlying
+/// amdsmi_get_gpu_pci_throughput reads the kernel pcie_bw sysfs node which
+/// blocks ~1s/GPU on gfx90a; inline it made GPUGet exceed the client deadline
+/// on high-GPU-count nodes.
+typedef struct pcie_throughput_s {
+    uint64_t sent;
+    uint64_t received;
+    bool     valid;
+} pcie_throughput_t;
+std::mutex g_pcie_tput_mutex;
+std::unordered_map<aga_gpu_handle_t, pcie_throughput_t> g_pcie_tput;
+std::vector<aga_gpu_handle_t> g_pcie_tput_handles;
+#define PCIE_TPUT_REFRESH_SECS  10
 /// counter resolution in uJ; this is a constant value that we get once during
 /// init time and use whenever we want to calculate energy accumalated
 float g_energy_counter_resolution;
@@ -157,6 +174,14 @@ smi_gpu_fill_spec (aga_gpu_handle_t gpu_handle,
         } else {
             // cache response
             g_gpu_metrics[gpu_handle] = metrics_info;
+        }
+    }
+    // register handle for background PCIe-throughput refresh
+    {
+        std::lock_guard<std::mutex> lock(g_pcie_tput_mutex);
+        if (g_pcie_tput.find(gpu_handle) == g_pcie_tput.end()) {
+            g_pcie_tput[gpu_handle] = { 0, 0, false };
+            g_pcie_tput_handles.push_back(gpu_handle);
         }
     }
     // fill the overdrive level
@@ -1261,6 +1286,40 @@ smi_fill_vram_usage_ (aga_gpu_handle_t gpu_handle,
     return SDK_RET_OK;
 }
 
+static void
+smi_pcie_throughput_refresh_ (void)
+{
+    for (;;) {
+        std::vector<aga_gpu_handle_t> handles;
+        {
+            std::lock_guard<std::mutex> lock(g_pcie_tput_mutex);
+            handles = g_pcie_tput_handles;
+        }
+        for (auto gpu_handle : handles) {
+            uint64_t sent = 0, received = 0, max_pkt_size = 0;
+            amdsmi_status_t ret = amdsmi_get_gpu_pci_throughput(
+                gpu_handle, &sent, &received, &max_pkt_size);
+            std::lock_guard<std::mutex> lock(g_pcie_tput_mutex);
+            if (ret == AMDSMI_STATUS_SUCCESS) {
+                g_pcie_tput[gpu_handle] = { sent, received, true };
+            } else if (!g_pcie_tput[gpu_handle].valid) {
+                g_pcie_tput[gpu_handle] = { 0, 0, false };
+            }
+        }
+        std::this_thread::sleep_for(
+            std::chrono::seconds(PCIE_TPUT_REFRESH_SECS));
+    }
+}
+
+static void
+smi_pcie_throughput_start_ (void)
+{
+    static std::once_flag flag;
+    std::call_once(flag, [] {
+        std::thread(smi_pcie_throughput_refresh_).detach();
+    });
+}
+
 sdk_ret_t
 smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
                     const aga_obj_key_t *gpu_key,
@@ -1273,7 +1332,6 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
     amdsmi_npm_info_t npm_info = {};
     amdsmi_power_info_t power_info = {};
     amdsmi_node_handle node_handle = {};
-    uint64_t sent, received, max_pkt_size;
     amdsmi_gpu_metrics_t metrics_info = {};
     amdsmi_gpu_metrics_t cached_metrics = {};
 
@@ -1385,15 +1443,16 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle,
             }
         }
     }
-    // read PCIe throughput
-    amdsmi_ret = amdsmi_get_gpu_pci_throughput(gpu_handle, &sent, &received,
-                                               &max_pkt_size);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get PCIe throughput for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        stats->pcie_stats.tx_bytes = received;
-        stats->pcie_stats.rx_bytes = sent;
+    // PCIe throughput from the background cache; unpopulated or unsupported
+    // leaves the invalid sentinel set by the memset above.
+    smi_pcie_throughput_start_();
+    {
+        std::lock_guard<std::mutex> lock(g_pcie_tput_mutex);
+        auto it = g_pcie_tput.find(gpu_handle);
+        if (it != g_pcie_tput.end() && it->second.valid) {
+            stats->pcie_stats.tx_bytes = it->second.received;
+            stats->pcie_stats.rx_bytes = it->second.sent;
+        }
     }
     // read xgmi stats
     g_smi_state.read_counter(gpu_handle, AMDSMI_EVNT_XGMI_0_NOP_TX,
