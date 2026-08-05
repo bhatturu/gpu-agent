@@ -49,6 +49,8 @@ namespace aga {
 #define CPER_BUF_SIZE                   (4 * 1024 * 1024) // 4 MB
 // max metric records a single gpu_metrics stream can carry (per amdsmi.h)
 #define AGA_GIM_MAX_METRICS             AMDSMI_MAX_NUM_METRICS
+// amdsmi_metric_t.vf_mask high bit = valid flag; low bits = per-VF bitmask
+#define AGA_GIM_VF_MASK_VALID_BIT       0x80000000u
 
 /// \brief  per-request session guard that ALSO refreshes the GPU handle
 ///         from its stable gpu_key (UUID). In lazy_init mode, opens a
@@ -885,7 +887,8 @@ smi_fill_ecc_stats_ (aga_gpu_handle_t gpu_handle,
 sdk_ret_t
 smi_get_gpu_partition_id (aga_gpu_handle_t gpu_handle, uint32_t *partition_id)
 {
-    // for now set partition id as 0
+    // unused on GIM: per-VF partition id is stamped on the discovery profile
+    // (smi_expand_vf_profiles_) and set via init.cc set_partition_id().
     *partition_id = 0;
     return SDK_RET_OK;
 }
@@ -981,13 +984,28 @@ smi_gpu_get_bad_page_records (void *gpu_obj,
     return SDK_RET_OK;
 }
 
+// route a self-describing gpu_metrics record to a partition: XCP records carry
+// res_instance==partition_id; others carry a vf_mask with bit k set for VF k.
+static inline bool
+smi_metric_for_partition_ (const amdsmi_metric_t &m, uint32_t partition_id)
+{
+    if (m.res_group == AMDSMI_METRIC_RES_GROUP_XCP) {
+        return m.res_instance == partition_id;
+    }
+    uint32_t vf_bits = m.vf_mask & ~AGA_GIM_VF_MASK_VALID_BIT;
+    // vf_bits==0: record is not VF-scoped -> applies to the whole device
+    if (vf_bits == 0) {
+        return true;
+    }
+    return (vf_bits & (1u << partition_id)) != 0;
+}
+
 /// \brief    walk amdsmi_get_gpu_metrics() stream to populate VCN/JPEG/GFX
-///           per-engine activity plus throttle/violation residency telemetry
-/// \param[in] gpu_handle    GPU handle
-/// \param[out] stats        stats struct whose usage/violation fields are filled
-/// \return SDK_RET_OK or error code
+///           per-engine activity plus throttle/violation residency telemetry;
+///           sliced to partition_id when is_partitioned
 static sdk_ret_t
-smi_walk_gpu_metrics (aga_gpu_handle_t gpu_handle, aga_gpu_stats_t *stats)
+smi_walk_gpu_metrics (aga_gpu_handle_t gpu_handle, bool is_partitioned,
+                      uint32_t partition_id, aga_gpu_stats_t *stats)
 {
     bool is_inst;
     uint32_t idx;
@@ -1006,6 +1024,12 @@ smi_walk_gpu_metrics (aga_gpu_handle_t gpu_handle, aga_gpu_stats_t *stats)
 
     for (uint32_t i = 0; i < metrics_count; i++) {
         auto &m = metrics_list[i];
+
+        // per-VF slicing; non-partitioned callers accept every record
+        if (is_partitioned && !smi_metric_for_partition_(m, partition_id)) {
+            continue;
+        }
+
         is_inst = (m.flags & AMDSMI_METRIC_TYPE_INST);
         idx = m.res_instance;
 
@@ -1100,6 +1124,10 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle_in,
 
     AGA_SMI_SESSION_GUARD(gpu_key, gpu_handle_in);
 
+    // per-VF activity/violation is sliced in smi_walk_gpu_metrics via partition_id.
+    // per-VF-only fields (VRAM/GTT/FB, PCIe, XGMI) stay at the 0xff sentinel below.
+    (void)first_partition_handle;
+
     // host-unsupported fields: sentinel-init so DME reports NA, not a bogus 0
     memset(&stats->usage, 0xff, sizeof(aga_gpu_usage_t));
     memset(&stats->pcie_stats, 0xff, sizeof(aga_gpu_pcie_stats_t));
@@ -1137,7 +1165,7 @@ smi_gpu_fill_stats (aga_gpu_handle_t gpu_handle_in,
     // gpu_metrics stream; walk it if either activity or violation is requested
     if (!AGA_GPU_SKIP(filter, skip_activity_stats) ||
         !AGA_GPU_SKIP(filter, skip_violation_stats)) {
-        smi_walk_gpu_metrics(gpu_handle, stats);
+        smi_walk_gpu_metrics(gpu_handle, is_partitioned, partition_id, stats);
     }
     // fill the PCIe stats
     if (!AGA_GPU_SKIP(filter, skip_pcie_stats)) {
@@ -1555,6 +1583,89 @@ smi_fill_gpu_profile_ (uint32_t id, aga_gpu_handle_t handle,
     return SDK_RET_OK;
 }
 
+/// \brief    parse an amdsmi uuid string into an aga_obj_key_t
+/// \param[in]  uuid    amdsmi uuid string (ex: 2eff74a1-0000-1000-80fe-...)
+/// \param[out] key     aga_obj_key_t derived from the uuid string
+static void
+smi_uuid_str_to_key_ (const char *uuid, aga_obj_key_t *key)
+{
+    char uuid_rem[20];
+
+    key->reset();
+    sscanf(uuid, "%x-%hx-%hx-%hx-%s", (uint32_t *)&key->id[0],
+           (uint16_t *)&key->id[4], (uint16_t *)&key->id[6],
+           (uint16_t *)&key->id[8], uuid_rem);
+    *(uint32_t *)&key->id[0] = htonl(*(uint32_t *)&key->id[0]);
+    *(uint16_t *)&key->id[4] = htons(*(uint16_t *)&key->id[4]);
+    *(uint16_t *)&key->id[6] = htons(*(uint16_t *)&key->id[6]);
+    *(uint16_t *)&key->id[8] = htons(*(uint16_t *)&key->id[8]);
+    sscanf(uuid_rem, "%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx", &key->id[10],
+           &key->id[11], &key->id[12], &key->id[13], &key->id[14],
+           &key->id[15]);
+}
+
+/// \brief  expand an SR-IOV PF into one profile entry per enabled VF, in the
+///         shape init.cc:create_gpus() expects (VF0 = tree head with the PF
+///         compute-partition type, VF1..N = children). Returns SDK_RET_ERR to
+///         signal the caller should fall back to a single PF entry.
+static sdk_ret_t
+smi_expand_vf_profiles_ (aga_gpu_handle_t pf_handle,
+                         const aga_gpu_profile_t& base,
+                         uint32_t *next_id, aga_gpu_profile_t *gpu,
+                         uint32_t *emitted)
+{
+    amdsmi_status_t status;
+    uint32_t num_vf_enabled = 0;
+    uint32_t num_vf_supported = 0;
+    amdsmi_partition_info_t part_info[AMDSMI_MAX_ACCELERATOR_PARTITIONS] = {};
+
+    *emitted = 0;
+    // only PFs report VFs; a non-SR-IOV or single-VF handle falls back
+    status = amdsmi_get_num_vf(pf_handle, &num_vf_enabled, &num_vf_supported);
+    if (status != AMDSMI_STATUS_SUCCESS || num_vf_enabled <= 1) {
+        return SDK_RET_ERR;
+    }
+    // the tree only forms for a real compute partition (DPX/TPX/QPX/CPX); an
+    // SPX/NONE PF with many VFs is ambiguous, so fall back to a single entry.
+    if ((base.compute_partition == AGA_GPU_COMPUTE_PARTITION_TYPE_NONE) ||
+        (base.compute_partition == AGA_GPU_COMPUTE_PARTITION_TYPE_SPX)) {
+        return SDK_RET_ERR;
+    }
+    if (num_vf_enabled > AMDSMI_MAX_ACCELERATOR_PARTITIONS) {
+        num_vf_enabled = AMDSMI_MAX_ACCELERATOR_PARTITIONS;
+    }
+    status = amdsmi_get_vf_partition_info(pf_handle, num_vf_enabled, part_info);
+    if (status != AMDSMI_STATUS_SUCCESS) {
+        AGA_TRACE_ERR("Failed to get VF partition info for PF {}, err {}",
+                      pf_handle, status);
+        return SDK_RET_ERR;
+    }
+    for (uint32_t k = 0; k < num_vf_enabled; k++) {
+        aga_gpu_profile_t& vf = gpu[*next_id];
+        char uuid[AMDSMI_GPU_UUID_SIZE];
+        uint32_t uuid_len = AMDSMI_GPU_UUID_SIZE;
+
+        vf = base;
+        vf.id = *next_id;
+        vf.handle = pf_handle;
+        vf.partition_id = k;
+        // VF 0 = tree head (keeps PF partition type); VF 1..N = children
+        vf.compute_partition = k ? AGA_GPU_COMPUTE_PARTITION_TYPE_NONE :
+                                   base.compute_partition;
+        // stable per-VF key from the VF uuid; fall back to a tagged PF key
+        status = amdsmi_get_vf_uuid(part_info[k].id, &uuid_len, uuid);
+        if (status == AMDSMI_STATUS_SUCCESS) {
+            smi_uuid_str_to_key_(uuid, &vf.key);
+        } else {
+            vf.key = base.key;
+            vf.key.id[15] = (uint8_t)k;
+        }
+        (*next_id)++;
+        (*emitted)++;
+    }
+    return SDK_RET_OK;
+}
+
 sdk_ret_t
 smi_discover_gpus (uint32_t *num_gpu, aga_gpu_profile_t *gpu)
 {
@@ -1593,14 +1704,24 @@ smi_discover_gpus (uint32_t *num_gpu, aga_gpu_profile_t *gpu)
     }
     // get uuids of each GPU
     for (uint32_t j = 0; j < num_procs; j++) {
-        ret = smi_fill_gpu_profile_(*num_gpu, proc_handles[j],
-                                    gpu[*num_gpu]);
+        uint32_t emitted = 0;
+        aga_gpu_profile_t base = {};
+
+        // fill the PF profile once; expand clones it per VF
+        ret = smi_fill_gpu_profile_(*num_gpu, proc_handles[j], base);
         if (ret != SDK_RET_OK) {
             AGA_TRACE_ERR("GPU discovery failed when processing GPU {}",
                           proc_handles[j]);
             return ret;
         }
-        (*num_gpu)++;
+        // on multi-VF SR-IOV emit one entry per VF; otherwise fall back to the
+        // single PF entry (today's behavior, no regression)
+        ret = smi_expand_vf_profiles_(proc_handles[j], base, num_gpu, gpu,
+                                      &emitted);
+        if (ret != SDK_RET_OK || emitted == 0) {
+            gpu[*num_gpu] = base;
+            (*num_gpu)++;
+        }
     }
     return SDK_RET_OK;
 }
