@@ -1,0 +1,83 @@
+name: TheRock CI Build
+
+# Same as ci.yml, but builds gpuagent against a TheRock ROCm amdsmi tarball
+# (overlaid into the vendored amd_smi_lib) instead of the committed vendored
+# amdsmi. Catches upstream amdsmi API changes early without a manual bump.
+
+on:
+  pull_request:
+    branches:
+      - '**'
+  workflow_dispatch:
+    inputs:
+      rocm_tarball_url:
+        description: 'TheRock tarball URL'
+        required: true
+        type: string
+
+concurrency:
+  group: therock-ci-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build builder container
+        uses: docker/build-push-action@v6
+        with:
+          context: tools/build-container
+          file: tools/build-container/Dokerfile.rhel9
+          load: true
+          tags: gpuagent-builder-rhel:9
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Overlay tarball amdsmi into vendored tree
+        env:
+          # workflow_dispatch: use the given URL; PR: stable 10.0 prerelease fallback
+          INPUT_URL: ${{ inputs.rocm_tarball_url }}
+        run: |
+          set -euo pipefail
+          URL="${INPUT_URL:-https://rocm.prereleases.amd.com/tarball-multi-arch/therock-dist-linux-multiarch-10.0.0rc2.tar.gz}"
+          # trim surrounding whitespace/newlines that can sneak in from the input
+          URL="$(echo -n "$URL" | tr -d '[:space:]')"
+          echo "amdsmi tarball: [${URL}]"
+          VENDOR=sw/nic/third-party/rocm/amd_smi_lib
+          mkdir -p /tmp/smi
+          curl -fsSL --max-time 1800 "$URL" \
+            | tar -xz -C /tmp/smi --wildcards --no-anchored \
+                'include/amd_smi/amdsmi.h' 'lib/libamd_smi.so*' \
+                'lib/rocm_sysdeps/lib/librocm_sysdeps_nl_3.so.200' \
+                'lib/rocm_sysdeps/lib/librocm_sysdeps_nl_genl_3.so.200' \
+                'lib/rocm_sysdeps/lib/librocm_sysdeps_mnl.so.0'
+          so_full=$(basename "$(ls /tmp/smi/lib/libamd_smi.so.*.*.* | head -1)")
+          so_ver=${so_full#libamd_smi.so.}; so_maj=${so_ver%%.*}
+          echo "Overlaying amdsmi SO ${so_ver} (major ${so_maj})"
+          rm -f $VENDOR/x86_64/lib/libamd_smi.so*
+          cp /tmp/smi/lib/libamd_smi.so.${so_ver} $VENDOR/x86_64/lib/
+          ( cd $VENDOR/x86_64/lib \
+              && ln -sf libamd_smi.so.${so_ver} libamd_smi.so.${so_maj} \
+              && ln -sf libamd_smi.so.${so_maj} libamd_smi.so )
+          cp -a /tmp/smi/lib/rocm_sysdeps/lib/librocm_sysdeps_*.so* $VENDOR/x86_64/lib/ 2>/dev/null || true
+          cp /tmp/smi/include/amd_smi/amdsmi.h $VENDOR/include/amd_smi/amdsmi.h
+
+      - name: Build gpuagent
+        run: |
+          make gpuagent \
+            GIT_COMMIT=$(git rev-list -1 HEAD --abbrev-commit) \
+            BUILD_DATE=$(date +%Y-%m-%dT%H:%M:%S%z)
