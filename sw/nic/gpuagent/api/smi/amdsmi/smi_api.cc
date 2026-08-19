@@ -662,14 +662,23 @@ smi_fill_clock_status_ (aga_gpu_handle_t gpu_handle,
         clk_cnt++;
     }
     // SOC clock
+    // get_clk_freq(SOC) is only queried for min/max: it returns BUSY when idle and
+    // is empty on RDNA. The current value comes from gpu_metrics (current_socclks[]
+    // on CDNA, current_socclk on RDNA), so SOC is reported even when idle/on RDNA.
+    low_freq = high_freq = 0;
     amdsmi_ret = amdsmi_get_clk_freq(gpu_handle, AMDSMI_CLK_TYPE_SOC, &freq);
-    if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
-        AGA_TRACE_ERR("Failed to get SOC clock frequencies for GPU {}, err {}",
-                      gpu_handle, amdsmi_ret);
-    } else {
-        low_freq = high_freq = 0;
-        // min and max frequencies are per clock type
+    if (amdsmi_ret == AMDSMI_STATUS_SUCCESS) {
         find_low_high_frequency(&freq, &low_freq, &high_freq);
+    }
+    bool have_socclks_array = false;
+    for (uint32_t i = 0; i < AMDSMI_MAX_NUM_CLKS; i++) {
+        if (metrics_info->current_socclks[i] != 0 &&
+            metrics_info->current_socclks[i] != 0xffff) {
+            have_socclks_array = true;
+            break;
+        }
+    }
+    if (have_socclks_array) {
         for (uint32_t i = 0; i < AMDSMI_MAX_NUM_CLKS; i++) {
             clock_status = &status->clock_status[clk_cnt];
             clock_status->clock_type = AGA_GPU_CLOCK_TYPE_SOC;
@@ -681,6 +690,30 @@ smi_fill_clock_status_ (aga_gpu_handle_t gpu_handle,
                 (clock_status->frequency < clock_status->low_frequency);
             clk_cnt++;
         }
+    } else if (metrics_info->current_socclk != 0 &&
+               metrics_info->current_socclk != 0xffff) {
+        // RDNA: single SOC clock; backfill min/max from get_clock_info when the
+        // DPM table was unavailable
+        uint32_t soc_lo = low_freq, soc_hi = high_freq;
+        if (soc_lo == 0 || soc_lo == AMDSMI_INVALID_UINT32 ||
+            soc_hi == 0 || soc_hi == AMDSMI_INVALID_UINT32) {
+            amdsmi_clk_info_t soc_info = {};
+            if (amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_SOC, &soc_info)
+                    == AMDSMI_STATUS_SUCCESS) {
+                if (soc_lo == 0 || soc_lo == AMDSMI_INVALID_UINT32)
+                    soc_lo = soc_info.min_clk;
+                if (soc_hi == 0 || soc_hi == AMDSMI_INVALID_UINT32)
+                    soc_hi = soc_info.max_clk;
+            }
+        }
+        clock_status = &status->clock_status[clk_cnt];
+        clock_status->clock_type = AGA_GPU_CLOCK_TYPE_SOC;
+        clock_status->frequency = metrics_info->current_socclk;
+        clock_status->low_frequency = soc_lo;
+        clock_status->high_frequency = soc_hi;
+        clock_status->deep_sleep =
+            (clock_status->frequency < clock_status->low_frequency);
+        clk_cnt++;
     }
     // data fabric clock
     amdsmi_ret = amdsmi_get_clk_freq(gpu_handle, AMDSMI_CLK_TYPE_DF, &freq);
@@ -688,16 +721,27 @@ smi_fill_clock_status_ (aga_gpu_handle_t gpu_handle,
     if (unlikely(amdsmi_ret != AMDSMI_STATUS_SUCCESS)) {
         AGA_TRACE_ERR("Failed to get data fabric clock frequencies for GPU {}, "
                       "err {}", gpu_handle, amdsmi_ret);
-    } else if (cur_freq != AMDSMI_INVALID_UINT32) {
-        // skip clock types whose current frequency is reported as NA
+    } else if (cur_freq != AMDSMI_INVALID_UINT32 && cur_freq != 0) {
+        // backfill min/max from get_clock_info when the DPM table carries only
+        // the current index (RDNA)
         low_freq = high_freq = 0;
+        find_low_high_frequency(&freq, &low_freq, &high_freq);
+        if (low_freq == 0 || low_freq == AMDSMI_INVALID_UINT32 ||
+            high_freq == 0 || high_freq == AMDSMI_INVALID_UINT32) {
+            amdsmi_clk_info_t df_info = {};
+            if (amdsmi_get_clock_info(gpu_handle, AMDSMI_CLK_TYPE_DF, &df_info)
+                    == AMDSMI_STATUS_SUCCESS) {
+                if (low_freq == 0 || low_freq == AMDSMI_INVALID_UINT32)
+                    low_freq = df_info.min_clk;
+                if (high_freq == 0 || high_freq == AMDSMI_INVALID_UINT32)
+                    high_freq = df_info.max_clk;
+            }
+        }
         clock_status = &status->clock_status[clk_cnt];
-        // min and max frequencies are per clock type
-        find_low_high_frequency(&freq,
-                                &clock_status->low_frequency,
-                                &clock_status->high_frequency);
         clock_status->clock_type = AGA_GPU_CLOCK_TYPE_FABRIC;
         clock_status->frequency = cur_freq / 1000000;
+        clock_status->low_frequency = low_freq;
+        clock_status->high_frequency = high_freq;
         clock_status->deep_sleep =
             (clock_status->frequency < clock_status->low_frequency);
         clk_cnt++;
