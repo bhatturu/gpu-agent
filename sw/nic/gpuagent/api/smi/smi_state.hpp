@@ -25,6 +25,8 @@ limitations under the License.
 
 #include <unordered_map>
 #include <set>
+#include <mutex>
+#include <chrono>
 #include "nic/sdk/include/sdk/base.hpp"
 #include "nic/sdk/lib/thread/thread.hpp"
 #include "nic/sdk/include/sdk/timestamp.hpp"
@@ -68,6 +70,13 @@ public:
 
     /// \brief    return true if per-request (lazy) init mode is enabled
     bool lazy_init(void) const { return lazy_init_; }
+
+    /// \brief  serialize entry into the gim SMI ioctl path so a VF reset/FLR
+    ///         wedges at most one thread in-kernel. false on timeout.
+    bool smi_call_try_acquire(void) {
+        return smi_call_mtx_.try_lock_for(std::chrono::seconds(2));
+    }
+    void smi_call_release(void) { smi_call_mtx_.unlock(); }
 
     /// \brief    initialization routine
     /// \param[in] init_params    initialization parameters
@@ -187,6 +196,8 @@ private:
     uint32_t num_gpu_;
     /// true if AGA_SMI_LAZY_INIT=1 (per-request session mode)
     bool lazy_init_;
+    /// serializes entry into the gim SMI ioctl path
+    std::timed_mutex smi_call_mtx_;
     /// gpu handles
     aga_gpu_handle_t gpu_handles_[AGA_MAX_GPU];
     /// gpu cpunter handles

@@ -67,10 +67,22 @@ namespace aga {
 ///         `caller_handle` and a `const aga_obj_key_t *gpu_key`):
 ///             AGA_SMI_SESSION_GUARD(gpu_key, caller_handle);
 ///             // ... amdsmi calls now use the refreshed local `gpu_handle` ...
+// RAII release of the gim SMI call gate.
+struct smi_call_gate_t {
+    bool held = false;
+    ~smi_call_gate_t() { if (held) g_smi_state.smi_call_release(); }
+};
 #define AGA_SMI_SESSION_GUARD(gpu_key_ptr, caller_handle)            \
             std::unique_ptr<smi_session> _smi_sess_;                 \
             aga_gpu_handle_t gpu_handle = (caller_handle);           \
+            smi_call_gate_t _smi_gate_;                              \
             if (g_smi_state.lazy_init()) {                           \
+                if (!g_smi_state.smi_call_try_acquire()) {           \
+                    AGA_TRACE_ERR("gim SMI path busy (VF reset?), "  \
+                                  "shedding request");               \
+                    return SDK_RET_RETRY;                            \
+                }                                                    \
+                _smi_gate_.held = true;                              \
                 _smi_sess_ = std::make_unique<smi_session>();        \
                 if (!_smi_sess_->ok()) {                             \
                     AGA_TRACE_ERR("Per-request smi_session "         \
